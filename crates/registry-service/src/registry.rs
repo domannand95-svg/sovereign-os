@@ -93,6 +93,23 @@ impl Registry {
 
         self.log.append_active_event(&active_event)?;
         self.apply_event(event);
+        self.maybe_snapshot()?;
+        Ok(())
+    }
+
+    pub fn maybe_snapshot(&self) -> Result<(), RegistryError> {
+        let event_count = self
+            .log
+            .len()
+            .map_err(|e| RegistryError::General(e.to_string()))?;
+
+        if event_count > 0 && event_count % 500 == 0 {
+            let snap_path = snapshot_path(self.log.path());
+
+            self.write_snapshot(&snap_path, event_count as u64)
+                .map_err(|e| RegistryError::General(e.to_string()))?;
+        }
+
         Ok(())
     }
 

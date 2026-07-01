@@ -6,12 +6,15 @@ use crate::EventLogError;
 
 pub struct EventLog {
     memory: ActiveMemory,
+    path: PathBuf,
 }
 
 impl EventLog {
     pub fn open(path: impl Into<PathBuf>) -> Result<Self, EventLogError> {
+        let path = path.into();
         Ok(Self {
-            memory: ActiveMemory::open(path)?,
+            memory: ActiveMemory::open(path.clone())?,
+            path,
         })
     }
 
@@ -40,5 +43,13 @@ impl EventLog {
 
     pub fn replay(&self) -> Result<Vec<ActiveEvent>, EventLogError> {
         Ok(self.memory.history()?)
+    }
+
+    pub fn len(&self) -> Result<usize, EventLogError> {
+        Ok(self.memory.history()?.len())
+    }
+
+    pub fn path(&self) -> &std::path::Path {
+        &self.path
     }
 }
