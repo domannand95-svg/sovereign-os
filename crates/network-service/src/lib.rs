@@ -14,3 +14,5 @@ pub use election::ElectionTimer;
 pub use heartbeat::{HeartbeatRecord, HeartbeatService, PeerState};
 pub use messaging::{MessageTransport, MessagingError, NetworkMessage};
 pub mod install_snapshot;
+
+pub mod snapshot_storage;
