@@ -1,5 +1,6 @@
 use governance_wrapper::{GovernanceEngine, GovernanceError};
 use registry_service::OperationalStatus;
+use registry_service::CapacityMetrics;
 use uuid::Uuid;
 
 #[test]
@@ -10,7 +11,7 @@ fn governance_allows_valid_status_transition() {
     let governance = GovernanceEngine::open(&path).unwrap();
 
     governance
-        .register_node("node-001", "validator")
+        .register_node(Uuid::new_v4(), vec!["validator".to_string()], CapacityMetrics { total_compute_cores: 0, allocated_compute_cores: 0, total_memory_bytes: 0, allocated_memory_bytes: 0 })
         .unwrap();
 
     let history = std::fs::read_to_string(&path).unwrap();

@@ -22,43 +22,26 @@ impl GovernanceEngine {
 
     pub fn register_node(
         &self,
-        node_id: impl Into<String>,
-        role: impl Into<String>,
+        node_id: Uuid,
+        capabilities: Vec<String>,
+        metrics: CapacityMetrics,
     ) -> Result<(), GovernanceError> {
-        let node_id_input = node_id.into();
-        let role = role.into();
-
-        if node_id_input.trim().is_empty() {
-            return Err(GovernanceError::PolicyViolation(
-                "node_id cannot be empty".to_string(),
-            ));
-        }
-
-        if role.trim().is_empty() {
-            return Err(GovernanceError::PolicyViolation(
-                "role cannot be empty".to_string(),
-            ));
-        }
-
-        let node_id = Uuid::new_v4();
-
         if self.registry.get_node(&node_id).is_some() {
             return Err(GovernanceError::DuplicateNode(node_id));
         }
 
-        let metrics = CapacityMetrics {
-            total_compute_cores: 0,
-            allocated_compute_cores: 0,
-            total_memory_bytes: 0,
-            allocated_memory_bytes: 0,
-        };
+        if capabilities.is_empty() {
+            return Err(GovernanceError::PolicyViolation(
+                "capabilities cannot be empty".to_string(),
+            ));
+        }
 
         Self::validate_capacity(&metrics)?;
 
         let node = NodeRecord {
             node_id,
             status: OperationalStatus::Initializing,
-            capabilities: vec![role],
+            capabilities,
             metrics,
         };
 
@@ -85,6 +68,24 @@ impl GovernanceEngine {
             registry_service::RegistryEvent::StatusUpdated {
                 node_id,
                 new_status,
+            },
+        )?;
+
+        Ok(())
+    }
+
+    pub fn update_metrics(
+        &self,
+        node_id: Uuid,
+        new_metrics: CapacityMetrics,
+    ) -> Result<(), GovernanceError> {
+        self.validate_node_exists(&node_id)?;
+        Self::validate_capacity(&new_metrics)?;
+
+        self.registry.append_registry_event(
+            registry_service::RegistryEvent::MetricsUpdated {
+                node_id,
+                metrics: new_metrics,
             },
         )?;
 

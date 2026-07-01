@@ -1,4 +1,5 @@
 use governance_wrapper::GovernanceEngine;
+use registry_service::CapacityMetrics;
 use uuid::Uuid;
 
 #[test]
@@ -10,7 +11,7 @@ fn governance_to_storage_end_to_end_loop() {
         .expect("failed to initialize governance engine");
 
     governance
-        .register_node("node-e2e-001", "validator")
+        .register_node(Uuid::new_v4(), vec!["validator".to_string()], CapacityMetrics { total_compute_cores: 0, allocated_compute_cores: 0, total_memory_bytes: 0, allocated_memory_bytes: 0 })
         .expect("failed to register node through governance layer");
 
     assert!(ledger_path.exists(), "ledger file was not created");
