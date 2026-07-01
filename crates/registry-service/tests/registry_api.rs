@@ -1,4 +1,9 @@
-use registry_service::{NodeRecord, Registry};
+use registry_service::{
+    CapacityMetrics,
+    NodeRecord,
+    OperationalStatus,
+    Registry,
+};
 use uuid::Uuid;
 
 #[test]
@@ -8,9 +13,18 @@ fn registry_registers_node_into_event_log() {
 
     let registry = Registry::open(&path).unwrap();
 
+    let node_id = Uuid::new_v4();
+
     let node = NodeRecord {
-        node_id: "node-001".to_string(),
-        role: "validator".to_string(),
+        node_id,
+        status: OperationalStatus::Initializing,
+        capabilities: vec!["validator".to_string()],
+        metrics: CapacityMetrics {
+            total_compute_cores: 4,
+            allocated_compute_cores: 0,
+            total_memory_bytes: 8_589_934_592,
+            allocated_memory_bytes: 0,
+        },
     };
 
     registry.register_node(node).unwrap();
@@ -20,7 +34,7 @@ fn registry_registers_node_into_event_log() {
     assert_eq!(history.len(), 1);
     assert_eq!(history[0].action, "NODE_REGISTERED");
     assert_eq!(history[0].payload["source"], "registry-service");
-    assert_eq!(history[0].payload["target"], "node-001");
+    assert_eq!(history[0].payload["target"], node_id.to_string());
 
     let _ = std::fs::remove_file(path);
 }

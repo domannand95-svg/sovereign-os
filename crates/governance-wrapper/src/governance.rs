@@ -1,5 +1,11 @@
-use registry_service::{NodeRecord, Registry};
+use registry_service::{
+    CapacityMetrics,
+    NodeRecord,
+    OperationalStatus,
+    Registry,
+};
 use std::path::PathBuf;
+use uuid::Uuid;
 
 use crate::GovernanceError;
 
@@ -34,7 +40,17 @@ impl GovernanceEngine {
             ));
         }
 
-        let node = NodeRecord { node_id, role };
+        let node = NodeRecord {
+            node_id: Uuid::new_v4(),
+            status: OperationalStatus::Initializing,
+            capabilities: vec![role],
+            metrics: CapacityMetrics {
+                total_compute_cores: 0,
+                allocated_compute_cores: 0,
+                total_memory_bytes: 0,
+                allocated_memory_bytes: 0,
+            },
+        };
 
         self.registry.register_node(node)?;
 

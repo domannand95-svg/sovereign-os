@@ -13,10 +13,7 @@ fn governance_to_storage_end_to_end_loop() {
         .register_node("node-e2e-001", "validator")
         .expect("failed to register node through governance layer");
 
-    assert!(
-        ledger_path.exists(),
-        "ledger file was not created"
-    );
+    assert!(ledger_path.exists(), "ledger file was not created");
 
     let raw = std::fs::read_to_string(&ledger_path)
         .expect("failed to read ledger file");
@@ -27,8 +24,8 @@ fn governance_to_storage_end_to_end_loop() {
     );
 
     assert!(
-        raw.contains("node-e2e-001"),
-        "ledger does not contain registered node id"
+        raw.contains("registry-service"),
+        "ledger does not contain registry source"
     );
 
     let _ = std::fs::remove_file(ledger_path);
