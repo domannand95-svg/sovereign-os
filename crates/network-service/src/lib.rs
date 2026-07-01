@@ -8,13 +8,9 @@ pub mod discovery;
 pub mod election;
 pub mod heartbeat;
 pub mod messaging;
-
-pub use discovery::{DiscoveryError, DiscoveryService, PeerAnnouncement};
-
-pub use heartbeat::{HeartbeatRecord, HeartbeatService, PeerState};
-
-pub use messaging::{MessageTransport, MessagingError, NetworkMessage};
-
 pub use consensus::{ConsensusState, NodeRole};
-
+pub use discovery::{DiscoveryError, DiscoveryService, PeerAnnouncement};
 pub use election::ElectionTimer;
+pub use heartbeat::{HeartbeatRecord, HeartbeatService, PeerState};
+pub use messaging::{MessageTransport, MessagingError, NetworkMessage};
+pub mod install_snapshot;
