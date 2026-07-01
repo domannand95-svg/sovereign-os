@@ -4,10 +4,9 @@ use uuid::Uuid;
 
 #[test]
 fn scheduler_selects_highest_ranked_viable_node() {
-    let path = std::env::temp_dir()
-        .join(format!("scheduler_selection_{}.jsonl", Uuid::new_v4()));
+    let path = std::env::temp_dir().join(format!("scheduler_selection_{}.jsonl", Uuid::new_v4()));
 
-    let governance = GovernanceEngine::open(&path).unwrap();
+    let mut governance = GovernanceEngine::open(&path).unwrap();
 
     let small_node = Uuid::new_v4();
     let large_node = Uuid::new_v4();
@@ -46,15 +45,18 @@ fn scheduler_selects_highest_ranked_viable_node() {
         .update_status(large_node, OperationalStatus::Active)
         .unwrap();
 
-    let scheduler = Scheduler::new(&governance);
-
     let request = AllocationRequest {
         required_compute_cores: 4,
         required_memory_bytes: 4_294_967_296,
         required_capabilities: vec!["compute-tier-1".to_string()],
     };
 
-    let selected = scheduler.schedule_workload(&request).unwrap();
+    let selected = {
+        let mut scheduler = Scheduler::new(&mut governance);
+        scheduler
+            .schedule_workload(Uuid::new_v4(), 100, request)
+            .unwrap()
+    };
 
     assert_eq!(selected, large_node);
 

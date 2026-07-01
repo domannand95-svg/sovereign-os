@@ -28,8 +28,5 @@ fn storage_engine_round_trip() {
 
     assert_eq!(events.len(), 1);
     assert_eq!(events[0].action, "storage_test");
-    assert_eq!(
-        events[0].payload["message"],
-        "storage engine verification"
-    );
+    assert_eq!(events[0].payload["message"], "storage engine verification");
 }

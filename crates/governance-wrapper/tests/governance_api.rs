@@ -13,8 +13,7 @@ fn zero_metrics() -> CapacityMetrics {
 
 #[test]
 fn governance_registers_valid_node() {
-    let path = std::env::temp_dir()
-        .join(format!("governance_valid_{}.jsonl", Uuid::new_v4()));
+    let path = std::env::temp_dir().join(format!("governance_valid_{}.jsonl", Uuid::new_v4()));
 
     let governance = GovernanceEngine::open(&path).unwrap();
 
@@ -31,16 +30,14 @@ fn governance_registers_valid_node() {
 
 #[test]
 fn governance_rejects_empty_capabilities() {
-    let path = std::env::temp_dir()
-        .join(format!("governance_empty_capabilities_{}.jsonl", Uuid::new_v4()));
+    let path = std::env::temp_dir().join(format!(
+        "governance_empty_capabilities_{}.jsonl",
+        Uuid::new_v4()
+    ));
 
     let governance = GovernanceEngine::open(&path).unwrap();
 
-    let result = governance.register_node(
-        Uuid::new_v4(),
-        Vec::new(),
-        zero_metrics(),
-    );
+    let result = governance.register_node(Uuid::new_v4(), Vec::new(), zero_metrics());
 
     match result {
         Err(GovernanceError::PolicyViolation(_)) => {}
@@ -52,25 +49,16 @@ fn governance_rejects_empty_capabilities() {
 
 #[test]
 fn governance_rejects_duplicate_node() {
-    let path = std::env::temp_dir()
-        .join(format!("governance_duplicate_{}.jsonl", Uuid::new_v4()));
+    let path = std::env::temp_dir().join(format!("governance_duplicate_{}.jsonl", Uuid::new_v4()));
 
     let governance = GovernanceEngine::open(&path).unwrap();
     let node_id = Uuid::new_v4();
 
     governance
-        .register_node(
-            node_id,
-            vec!["validator".to_string()],
-            zero_metrics(),
-        )
+        .register_node(node_id, vec!["validator".to_string()], zero_metrics())
         .unwrap();
 
-    let result = governance.register_node(
-        node_id,
-        vec!["validator".to_string()],
-        zero_metrics(),
-    );
+    let result = governance.register_node(node_id, vec!["validator".to_string()], zero_metrics());
 
     match result {
         Err(GovernanceError::DuplicateNode(id)) => assert_eq!(id, node_id),

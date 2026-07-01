@@ -4,8 +4,8 @@ use uuid::Uuid;
 
 #[test]
 fn test_stateful_scheduling_and_reclamation_lifecycle() {
-    let ledger_path = std::env::temp_dir()
-        .join(format!("sovereign_orchestration_{}.jsonl", Uuid::new_v4()));
+    let ledger_path =
+        std::env::temp_dir().join(format!("scheduler_orchestration_{}.jsonl", Uuid::new_v4()));
 
     let node_id = Uuid::new_v4();
 
@@ -29,7 +29,7 @@ fn test_stateful_scheduling_and_reclamation_lifecycle() {
     };
 
     {
-        let governance = GovernanceEngine::open(&ledger_path).unwrap();
+        let mut governance = GovernanceEngine::open(&ledger_path).unwrap();
 
         governance
             .register_node(
@@ -43,23 +43,36 @@ fn test_stateful_scheduling_and_reclamation_lifecycle() {
             .update_status(node_id, OperationalStatus::Active)
             .unwrap();
 
-        let scheduler = Scheduler::new(&governance);
+        let allocated_node_id = {
+            let mut scheduler = Scheduler::new(&mut governance);
+            scheduler
+                .schedule_workload(Uuid::new_v4(), 100, workload_a.clone())
+                .unwrap()
+        };
 
-        let allocated_node_id = scheduler.schedule_workload(&workload_a).unwrap();
         assert_eq!(allocated_node_id, node_id);
 
         let post_alloc_node = governance.registry().get_node(&node_id).unwrap();
         assert_eq!(post_alloc_node.metrics.allocated_compute_cores, 4);
-        assert_eq!(post_alloc_node.metrics.allocated_memory_bytes, 17_179_869_184);
+        assert_eq!(
+            post_alloc_node.metrics.allocated_memory_bytes,
+            17_179_869_184
+        );
 
-        let oversized_result = scheduler.schedule_workload(&workload_b);
+        let oversized_result = {
+            let mut scheduler = Scheduler::new(&mut governance);
+            scheduler.schedule_workload(Uuid::new_v4(), 200, workload_b.clone())
+        };
 
         match oversized_result {
             Err(SchedulerError::NoResourceAvailability) => {}
             other => panic!("expected NoResourceAvailability, got: {:?}", other),
         }
 
-        scheduler.release_resources(node_id, &workload_a).unwrap();
+        {
+            let mut scheduler = Scheduler::new(&mut governance);
+            scheduler.release_resources(node_id, &workload_a).unwrap();
+        }
 
         let released_node = governance.registry().get_node(&node_id).unwrap();
         assert_eq!(released_node.metrics.allocated_compute_cores, 0);

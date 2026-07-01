@@ -28,11 +28,7 @@ fn setup_populated_test_registry(ledger_path: &std::path::Path) -> (Uuid, Uuid) 
         .unwrap();
 
     engine
-        .register_node(
-            node_dormant_id,
-            vec!["storage".to_string()],
-            dummy_metrics,
-        )
+        .register_node(node_dormant_id, vec!["storage".to_string()], dummy_metrics)
         .unwrap();
 
     engine
@@ -48,8 +44,8 @@ fn setup_populated_test_registry(ledger_path: &std::path::Path) -> (Uuid, Uuid) 
 
 #[test]
 fn test_discovery_query_behaviors() {
-    let ledger_path = std::env::temp_dir()
-        .join(format!("sovereign_discovery_{}.jsonl", Uuid::new_v4()));
+    let ledger_path =
+        std::env::temp_dir().join(format!("sovereign_discovery_{}.jsonl", Uuid::new_v4()));
 
     let (active_id, dormant_id) = setup_populated_test_registry(&ledger_path);
 

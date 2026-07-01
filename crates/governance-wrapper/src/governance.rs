@@ -1,9 +1,4 @@
-use registry_service::{
-    CapacityMetrics,
-    NodeRecord,
-    OperationalStatus,
-    Registry,
-};
+use registry_service::{CapacityMetrics, NodeRecord, OperationalStatus, Registry};
 use std::path::PathBuf;
 use uuid::Uuid;
 
@@ -14,8 +9,11 @@ pub struct GovernanceEngine {
 }
 
 impl GovernanceEngine {
-
     /// Read-only access to the underlying Registry.
+    pub fn registry_mut(&mut self) -> &mut Registry {
+        &mut self.registry
+    }
+
     pub fn registry(&self) -> &registry_service::Registry {
         &self.registry
     }
@@ -70,12 +68,11 @@ impl GovernanceEngine {
 
         self.validate_transition(current_record.status, new_status)?;
 
-        self.registry.append_registry_event(
-            registry_service::RegistryEvent::StatusUpdated {
+        self.registry
+            .append_registry_event(registry_service::RegistryEvent::StatusUpdated {
                 node_id,
                 new_status,
-            },
-        )?;
+            })?;
 
         Ok(())
     }
@@ -88,12 +85,11 @@ impl GovernanceEngine {
         self.validate_node_exists(&node_id)?;
         Self::validate_capacity(&new_metrics)?;
 
-        self.registry.append_registry_event(
-            registry_service::RegistryEvent::MetricsUpdated {
+        self.registry
+            .append_registry_event(registry_service::RegistryEvent::MetricsUpdated {
                 node_id,
                 metrics: new_metrics,
-            },
-        )?;
+            })?;
 
         Ok(())
     }
@@ -108,9 +104,8 @@ impl GovernanceEngine {
 
         self.validate_transition(current_record.status, OperationalStatus::Terminated)?;
 
-        self.registry.append_registry_event(
-            registry_service::RegistryEvent::NodeTerminated { node_id },
-        )?;
+        self.registry
+            .append_registry_event(registry_service::RegistryEvent::NodeTerminated { node_id })?;
 
         Ok(())
     }
@@ -140,12 +135,12 @@ impl GovernanceEngine {
                 "terminated nodes cannot transition".to_string(),
             )),
 
-            _ => Err(GovernanceError::IllegalTransition(
-                format!("illegal transition: {:?} -> {:?}", current, next),
-            )),
+            _ => Err(GovernanceError::IllegalTransition(format!(
+                "illegal transition: {:?} -> {:?}",
+                current, next
+            ))),
         }
     }
-
 
     fn validate_capacity(metrics: &CapacityMetrics) -> Result<(), GovernanceError> {
         if metrics.allocated_compute_cores > metrics.total_compute_cores {

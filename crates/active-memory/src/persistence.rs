@@ -20,18 +20,13 @@ impl StorageEngine {
             }
         }
 
-        OpenOptions::new()
-            .create(true)
-            .append(true)
-            .open(&path)?;
+        OpenOptions::new().create(true).append(true).open(&path)?;
 
         Ok(Self { path })
     }
 
     pub fn append_event(&self, event: &ActiveEvent) -> Result<(), ActiveMemoryError> {
-        let mut file = OpenOptions::new()
-            .append(true)
-            .open(&self.path)?;
+        let mut file = OpenOptions::new().append(true).open(&self.path)?;
 
         let serialized = serde_json::to_string(event)?;
         writeln!(file, "{serialized}")?;

@@ -1,5 +1,5 @@
+use crate::AllocationRequest;
 use event_log::EventLog;
-use serde::{Deserialize, Serialize};
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::path::PathBuf;
@@ -7,7 +7,7 @@ use uuid::Uuid;
 
 use crate::RegistryError;
 
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, serde::Serialize, serde::Deserialize, PartialEq, Eq)]
 pub enum OperationalStatus {
     Initializing,
     Active,
@@ -15,7 +15,7 @@ pub enum OperationalStatus {
     Terminated,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize, PartialEq, Eq)]
 pub struct CapacityMetrics {
     pub total_compute_cores: u32,
     pub allocated_compute_cores: u32,
@@ -23,7 +23,7 @@ pub struct CapacityMetrics {
     pub allocated_memory_bytes: u64,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize, PartialEq, Eq)]
 pub struct NodeRecord {
     pub node_id: Uuid,
     pub status: OperationalStatus,
@@ -31,24 +31,70 @@ pub struct NodeRecord {
     pub metrics: CapacityMetrics,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize, PartialEq, Eq)]
+pub enum WorkloadState {
+    Pending,
+    Running { assigned_node_id: Uuid },
+    Completed,
+    Failed(String),
+}
+
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize, PartialEq, Eq)]
+pub struct Workload {
+    pub workload_id: Uuid,
+    pub priority: u32,
+    pub requirements: AllocationRequest,
+    pub state: WorkloadState,
+}
+
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize, PartialEq, Eq)]
 pub enum RegistryEvent {
-    NodeRegistered { record: NodeRecord },
-    StatusUpdated { node_id: Uuid, new_status: OperationalStatus },
-    MetricsUpdated { node_id: Uuid, metrics: CapacityMetrics },
-    NodeTerminated { node_id: Uuid },
+    NodeRegistered {
+        record: NodeRecord,
+    },
+    StatusUpdated {
+        node_id: Uuid,
+        new_status: OperationalStatus,
+    },
+    MetricsUpdated {
+        node_id: Uuid,
+        metrics: CapacityMetrics,
+    },
+    NodeTerminated {
+        node_id: Uuid,
+    },
+    WorkloadScheduled {
+        workload: Workload,
+        node_id: Uuid,
+    },
+    WorkloadCompleted {
+        workload_id: Uuid,
+        node_id: Uuid,
+    },
 }
 
 pub struct Registry {
     log: EventLog,
     nodes: RefCell<HashMap<Uuid, NodeRecord>>,
+    workloads: RefCell<HashMap<Uuid, Workload>>,
 }
 
 impl Registry {
+    pub fn append_governed_event(&mut self, event: RegistryEvent) -> Result<(), RegistryError> {
+        let active_event = event
+            .to_active_event()
+            .map_err(|e| RegistryError::General(e.to_string()))?;
+
+        self.log.append_active_event(&active_event)?;
+        self.apply_event(event);
+        Ok(())
+    }
+
     pub fn open(path: impl Into<PathBuf>) -> Result<Self, RegistryError> {
         let registry = Self {
             log: EventLog::open(path)?,
             nodes: RefCell::new(HashMap::new()),
+            workloads: RefCell::new(HashMap::new()),
         };
 
         for active_event in registry.log.replay()? {
@@ -115,28 +161,90 @@ impl Registry {
     }
 
     fn apply_event(&self, event: RegistryEvent) {
-        let mut nodes = self.nodes.borrow_mut();
-
         match event {
             RegistryEvent::NodeRegistered { record } => {
-                nodes.insert(record.node_id, record);
+                self.nodes.borrow_mut().insert(record.node_id, record);
             }
-            RegistryEvent::StatusUpdated { node_id, new_status } => {
-                if let Some(node) = nodes.get_mut(&node_id) {
+
+            RegistryEvent::StatusUpdated {
+                node_id,
+                new_status,
+            } => {
+                if let Some(node) = self.nodes.borrow_mut().get_mut(&node_id) {
                     node.status = new_status;
                 }
             }
+
             RegistryEvent::MetricsUpdated { node_id, metrics } => {
-                if let Some(node) = nodes.get_mut(&node_id) {
+                if let Some(node) = self.nodes.borrow_mut().get_mut(&node_id) {
                     node.metrics = metrics;
                 }
             }
+
             RegistryEvent::NodeTerminated { node_id } => {
-                if let Some(node) = nodes.get_mut(&node_id) {
+                if let Some(node) = self.nodes.borrow_mut().get_mut(&node_id) {
                     node.status = OperationalStatus::Terminated;
                 }
             }
+
+            RegistryEvent::WorkloadScheduled { workload, node_id } => {
+                {
+                    let mut nodes = self.nodes.borrow_mut();
+                    if let Some(node) = nodes.get_mut(&node_id) {
+                        node.metrics.allocated_compute_cores +=
+                            workload.requirements.required_compute_cores;
+                        node.metrics.allocated_memory_bytes +=
+                            workload.requirements.required_memory_bytes;
+                    }
+                }
+
+                self.workloads
+                    .borrow_mut()
+                    .insert(workload.workload_id, workload);
+            }
+
+            RegistryEvent::WorkloadCompleted {
+                workload_id,
+                node_id,
+            } => {
+                let requirements = {
+                    let mut workloads = self.workloads.borrow_mut();
+
+                    if let Some(workload) = workloads.get_mut(&workload_id) {
+                        workload.state = WorkloadState::Completed;
+                        Some(workload.requirements.clone())
+                    } else {
+                        None
+                    }
+                };
+
+                if let Some(requirements) = requirements {
+                    let mut nodes = self.nodes.borrow_mut();
+
+                    if let Some(node) = nodes.get_mut(&node_id) {
+                        node.metrics.allocated_compute_cores = node
+                            .metrics
+                            .allocated_compute_cores
+                            .saturating_sub(requirements.required_compute_cores);
+
+                        node.metrics.allocated_memory_bytes = node
+                            .metrics
+                            .allocated_memory_bytes
+                            .saturating_sub(requirements.required_memory_bytes);
+                    }
+                }
+            }
         }
+    }
+}
+
+impl Registry {
+    pub fn get_workload(&self, workload_id: &Uuid) -> Option<Workload> {
+        self.workloads.borrow().get(workload_id).cloned()
+    }
+
+    pub fn list_workloads(&self) -> Vec<Workload> {
+        self.workloads.borrow().values().cloned().collect()
     }
 }
 
@@ -147,6 +255,8 @@ impl RegistryEvent {
             RegistryEvent::StatusUpdated { .. } => "STATUS_UPDATED",
             RegistryEvent::MetricsUpdated { .. } => "METRICS_UPDATED",
             RegistryEvent::NodeTerminated { .. } => "NODE_TERMINATED",
+            RegistryEvent::WorkloadScheduled { .. } => "WORKLOAD_SCHEDULED",
+            RegistryEvent::WorkloadCompleted { .. } => "WORKLOAD_COMPLETED",
         };
 
         let payload = serde_json::to_value(self)?;

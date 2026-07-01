@@ -1,15 +1,9 @@
-use registry_service::{
-    CapacityMetrics,
-    NodeRecord,
-    OperationalStatus,
-    Registry,
-};
+use registry_service::{CapacityMetrics, NodeRecord, OperationalStatus, Registry};
 use uuid::Uuid;
 
 #[test]
 fn registry_registers_node_into_event_log() {
-    let path = std::env::temp_dir()
-        .join(format!("registry_service_{}.jsonl", Uuid::new_v4()));
+    let path = std::env::temp_dir().join(format!("registry_service_{}.jsonl", Uuid::new_v4()));
 
     let registry = Registry::open(&path).unwrap();
 

@@ -4,8 +4,10 @@ use uuid::Uuid;
 
 #[test]
 fn governance_rejects_invalid_metrics_update() {
-    let path = std::env::temp_dir()
-        .join(format!("governance_metrics_invalid_{}.jsonl", Uuid::new_v4()));
+    let path = std::env::temp_dir().join(format!(
+        "governance_metrics_invalid_{}.jsonl",
+        Uuid::new_v4()
+    ));
 
     let governance = GovernanceEngine::open(&path).unwrap();
 
@@ -30,13 +32,24 @@ fn governance_rejects_invalid_metrics_update() {
 
 #[test]
 fn governance_rejects_overallocated_metrics_for_existing_node() {
-    let path = std::env::temp_dir()
-        .join(format!("governance_metrics_overallocated_{}.jsonl", Uuid::new_v4()));
+    let path = std::env::temp_dir().join(format!(
+        "governance_metrics_overallocated_{}.jsonl",
+        Uuid::new_v4()
+    ));
 
     let governance = GovernanceEngine::open(&path).unwrap();
 
     governance
-        .register_node(Uuid::new_v4(), vec!["validator".to_string()], CapacityMetrics { total_compute_cores: 0, allocated_compute_cores: 0, total_memory_bytes: 0, allocated_memory_bytes: 0 })
+        .register_node(
+            Uuid::new_v4(),
+            vec!["validator".to_string()],
+            CapacityMetrics {
+                total_compute_cores: 0,
+                allocated_compute_cores: 0,
+                total_memory_bytes: 0,
+                allocated_memory_bytes: 0,
+            },
+        )
         .unwrap();
 
     let history = governance_wrapper_test_read(&path);

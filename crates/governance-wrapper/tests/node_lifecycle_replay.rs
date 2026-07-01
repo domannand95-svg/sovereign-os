@@ -4,8 +4,8 @@ use uuid::Uuid;
 
 #[test]
 fn test_node_lifecycle_e2e_replay() {
-    let ledger_path = std::env::temp_dir()
-        .join(format!("sovereign_replay_{}.jsonl", Uuid::new_v4()));
+    let ledger_path =
+        std::env::temp_dir().join(format!("sovereign_replay_{}.jsonl", Uuid::new_v4()));
 
     let node_id = Uuid::new_v4();
     let initial_capabilities = vec!["compute-tier-1".to_string(), "storage-local".to_string()];
@@ -27,9 +27,15 @@ fn test_node_lifecycle_e2e_replay() {
     {
         let engine = GovernanceEngine::open(&ledger_path).unwrap();
 
-        engine.register_node(node_id, initial_capabilities.clone(), initial_metrics).unwrap();
-        engine.update_status(node_id, OperationalStatus::Active).unwrap();
-        engine.update_metrics(node_id, updated_metrics.clone()).unwrap();
+        engine
+            .register_node(node_id, initial_capabilities.clone(), initial_metrics)
+            .unwrap();
+        engine
+            .update_status(node_id, OperationalStatus::Active)
+            .unwrap();
+        engine
+            .update_metrics(node_id, updated_metrics.clone())
+            .unwrap();
         engine.terminate_node(node_id).unwrap();
     }
 

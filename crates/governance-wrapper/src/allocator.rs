@@ -1,11 +1,5 @@
+use registry_service::AllocationRequest;
 use registry_service::{NodeRecord, OperationalStatus, Registry};
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct AllocationRequest {
-    pub required_compute_cores: u32,
-    pub required_memory_bytes: u64,
-    pub required_capabilities: Vec<String>,
-}
 
 #[derive(Debug, Clone)]
 pub struct PlacementCandidate {

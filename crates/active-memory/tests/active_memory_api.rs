@@ -4,15 +4,11 @@ use uuid::Uuid;
 
 #[test]
 fn active_memory_api_round_trip() {
-    let path = std::env::temp_dir()
-        .join(format!("active_memory_api_{}.jsonl", Uuid::new_v4()));
+    let path = std::env::temp_dir().join(format!("active_memory_api_{}.jsonl", Uuid::new_v4()));
 
     let memory = ActiveMemory::open(&path).unwrap();
 
-    let event = ActiveEvent::new(
-        "API_TEST",
-        json!({"status":"ok"}),
-    );
+    let event = ActiveEvent::new("API_TEST", json!({"status":"ok"}));
 
     memory.record(&event).unwrap();
 
