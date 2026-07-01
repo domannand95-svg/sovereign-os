@@ -20,3 +20,5 @@ pub mod snapshot_storage;
 pub mod state_machine;
 
 pub mod commit_index;
+
+pub mod log_conflict;
