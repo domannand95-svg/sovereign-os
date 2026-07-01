@@ -14,6 +14,12 @@ pub struct GovernanceEngine {
 }
 
 impl GovernanceEngine {
+
+    /// Read-only access to the underlying Registry.
+    pub fn registry(&self) -> &registry_service::Registry {
+        &self.registry
+    }
+
     pub fn open(path: impl Into<PathBuf>) -> Result<Self, GovernanceError> {
         Ok(Self {
             registry: Registry::open(path)?,
