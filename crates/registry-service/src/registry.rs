@@ -1,3 +1,9 @@
+fn snapshot_path<P: AsRef<std::path::Path>>(ledger: P) -> std::path::PathBuf {
+    let mut p = ledger.as_ref().to_path_buf();
+    p.set_extension("snap");
+    p
+}
+
 use crate::AllocationRequest;
 use event_log::EventLog;
 use std::cell::RefCell;
