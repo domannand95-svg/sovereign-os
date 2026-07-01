@@ -77,6 +77,28 @@ impl Registry {
         self.nodes.borrow().get(node_id).cloned()
     }
 
+    pub fn list_nodes(&self) -> Vec<NodeRecord> {
+        self.nodes.borrow().values().cloned().collect()
+    }
+
+    pub fn nodes_by_status(&self, status: OperationalStatus) -> Vec<NodeRecord> {
+        self.nodes
+            .borrow()
+            .values()
+            .filter(|node| node.status == status)
+            .cloned()
+            .collect()
+    }
+
+    pub fn nodes_with_capability(&self, capability: &str) -> Vec<NodeRecord> {
+        self.nodes
+            .borrow()
+            .values()
+            .filter(|node| node.capabilities.iter().any(|item| item == capability))
+            .cloned()
+            .collect()
+    }
+
     pub fn active_node_count(&self) -> usize {
         self.nodes.borrow().len()
     }
