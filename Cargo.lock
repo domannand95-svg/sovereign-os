@@ -241,9 +241,11 @@ name = "registry-service"
 version = "0.1.0"
 dependencies = [
  "active-memory",
+ "event-log",
  "serde",
  "serde_json",
  "thiserror",
+ "uuid",
 ]
 
 [[package]]
