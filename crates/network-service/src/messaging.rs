@@ -22,6 +22,15 @@ pub enum NetworkMessage {
         node_id: Uuid,
         protocol_version: u32,
     },
+    VoteRequest {
+        term: u64,
+        candidate_id: Uuid,
+    },
+    VoteResponse {
+        term: u64,
+        voter_id: Uuid,
+        vote_granted: bool,
+    },
     HeartbeatPing {
         node_id: Uuid,
         sequence: u64,
@@ -103,6 +112,34 @@ mod tests {
                 required_memory_bytes: 34_359_738_368,
                 required_capabilities: vec!["high-throughput".to_string()],
             },
+        };
+
+        let message_clone = outbound_message.clone();
+
+        let server_handle = thread::spawn(move || {
+            let (mut inbound_stream, _) = server_listener.accept().unwrap();
+            let incoming_payload = MessageTransport::receive(&mut inbound_stream).unwrap();
+
+            assert_eq!(incoming_payload, message_clone);
+        });
+
+        let mut client_stream = TcpStream::connect(bound_addr).unwrap();
+        MessageTransport::send(&mut client_stream, &outbound_message).unwrap();
+
+        server_handle.join().unwrap();
+    }
+
+    #[test]
+    fn test_vote_response_tcp_round_trip() {
+        let server_listener = TcpListener::bind("127.0.0.1:0").unwrap();
+        let bound_addr = server_listener.local_addr().unwrap();
+
+        let voter_id = Uuid::new_v4();
+
+        let outbound_message = NetworkMessage::VoteResponse {
+            term: 7,
+            voter_id,
+            vote_granted: true,
         };
 
         let message_clone = outbound_message.clone();
