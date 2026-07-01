@@ -30,3 +30,5 @@ pub mod durable_log;
 pub mod append_entries_handler;
 
 pub mod request_vote;
+
+pub mod raft_service;
