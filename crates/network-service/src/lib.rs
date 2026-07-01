@@ -34,3 +34,5 @@ pub mod request_vote;
 pub mod raft_service;
 
 pub mod client_command_pipeline;
+
+pub mod leader_election;
