@@ -1,3 +1,8 @@
+pub mod log_replication;
+
+pub use log_replication::{
+    AppendEntriesRequest, AppendEntriesResponse, LogEntry, ReplicationState,
+};
 pub mod consensus;
 pub mod discovery;
 pub mod election;
