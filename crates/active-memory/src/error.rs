@@ -2,12 +2,12 @@ use thiserror::Error;
 
 #[derive(Debug, Error)]
 pub enum ActiveMemoryError {
+    #[error("I/O error encountered: {0}")]
+    Io(#[from] std::io::Error),
+
     #[error("serialization failed: {0}")]
     Serialization(#[from] serde_json::Error),
 
-    #[error("file I/O failed: {0}")]
-    Io(#[from] std::io::Error),
-
-    #[error("invalid event: {0}")]
+    #[error("invalid event state: {0}")]
     InvalidEvent(String),
 }

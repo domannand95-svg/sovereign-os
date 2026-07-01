@@ -1,21 +1,22 @@
 use std::fs::OpenOptions;
-use std::io::Write;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
-use crate::{ActiveEvent, ActiveMemoryError};
+use crate::ActiveMemoryError;
 
-pub fn append_event_to_jsonl(
-    path: impl AsRef<Path>,
-    event: &ActiveEvent,
-) -> Result<(), ActiveMemoryError> {
-    let serialized = serde_json::to_string(event)?;
+#[derive(Debug, Clone)]
+pub struct StorageEngine {
+    path: PathBuf,
+}
 
-    let mut file = OpenOptions::new()
-        .create(true)
-        .append(true)
-        .open(path)?;
+impl StorageEngine {
+    pub fn new(path: impl AsRef<Path>) -> Result<Self, ActiveMemoryError> {
+        let path = path.as_ref().to_path_buf();
 
-    writeln!(file, "{serialized}")?;
+        OpenOptions::new()
+            .create(true)
+            .append(true)
+            .open(&path)?;
 
-    Ok(())
+        Ok(Self { path })
+    }
 }
