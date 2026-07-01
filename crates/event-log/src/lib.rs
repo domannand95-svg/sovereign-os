@@ -1,5 +1,5 @@
 pub mod error;
-pub mod models;
+pub mod ledger;
 
 pub use error::EventLogError;
-pub use models::LogEntry;
+pub use ledger::EventLog;
