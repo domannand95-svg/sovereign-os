@@ -1,77 +1,49 @@
-# Sovereign OS Documentation
+# Documentation
 
-This directory contains the technical documentation for the Sovereign OS distributed consensus subsystem.
+This directory contains architecture, consensus, storage, and development documentation for Sovereign OS.
 
----
+## Architecture
 
-# Architecture
+- [System Architecture](system-architecture.md)
+- [Repository Architecture](repository-architecture.md)
+- [Network Service Architecture](network-service-architecture.md)
+- [Architecture Visuals](architecture/README.md)
 
-These documents describe the overall system structure.
+## Raft Consensus
 
-- System Architecture
-- Repository Architecture
-- Network Service Architecture
+- [Network Consensus Protocol](network-consensus-protocol.md)
+- [Leader Election](leader-election.md)
+- [Heartbeat Protocol](heartbeat-protocol.md)
+- [RequestVote RPC](request-vote-rpc.md)
+- [AppendEntries RPC](append-entries-rpc.md)
+- [Log Replication](log-replication.md)
+- [Log Conflict Resolution](log-conflict-resolution.md)
+- [Commit Index Management](commit-index-management.md)
+- [Cluster Membership](cluster-membership.md)
 
----
+## Storage and State
 
-# Consensus Protocol
+- [Persistent Storage](persistent-storage.md)
+- [Snapshot Installation](snapshot-installation.md)
+- [Log Compaction](log-compaction.md)
+- [State Machine Application](state-machine-application.md)
 
-Core Raft consensus documentation.
+## Recommended Reading Order
 
-- Leader Election
-- Heartbeat Protocol
-- RequestVote RPC
-- AppendEntries RPC
-- Network Consensus Protocol
-- Cluster Membership
-
----
-
-# Log Management
-
-Replication and persistence.
-
-- Log Replication
-- Log Conflict Resolution
-- Log Compaction
-- Commit Index Management
-
----
-
-# State Management
-
-Managing durable state.
-
-- Persistent Storage
-- Snapshot Installation
-- State Machine Application
-
----
-
-# Development
-
-Development workflow and repository organization.
-
-- Repository Architecture
-
----
-
-# Reading Order
-
-New contributors should read the documentation in this order:
-
-1. System Architecture
-2. Repository Architecture
-3. Network Service Architecture
-4. Network Consensus Protocol
-5. Leader Election
-6. Heartbeat Protocol
-7. RequestVote RPC
-8. AppendEntries RPC
-9. Log Replication
-10. Commit Index Management
-11. Log Compaction
-12. Snapshot Installation
-13. Persistent Storage
-14. State Machine Application
-15. Cluster Membership
+1. [System Architecture](system-architecture.md)
+2. [Repository Architecture](repository-architecture.md)
+3. [Network Service Architecture](network-service-architecture.md)
+4. [Architecture Visuals](architecture/README.md)
+5. [Network Consensus Protocol](network-consensus-protocol.md)
+6. [Leader Election](leader-election.md)
+7. [Heartbeat Protocol](heartbeat-protocol.md)
+8. [RequestVote RPC](request-vote-rpc.md)
+9. [AppendEntries RPC](append-entries-rpc.md)
+10. [Log Replication](log-replication.md)
+11. [Log Conflict Resolution](log-conflict-resolution.md)
+12. [Commit Index Management](commit-index-management.md)
+13. [Persistent Storage](persistent-storage.md)
+14. [Snapshot Installation](snapshot-installation.md)
+15. [Log Compaction](log-compaction.md)
+16. [State Machine Application](state-machine-application.md)
+17. [Cluster Membership](cluster-membership.md)
