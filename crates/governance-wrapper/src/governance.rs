@@ -25,10 +25,10 @@ impl GovernanceEngine {
         node_id: impl Into<String>,
         role: impl Into<String>,
     ) -> Result<(), GovernanceError> {
-        let node_id = node_id.into();
+        let node_id_input = node_id.into();
         let role = role.into();
 
-        if node_id.trim().is_empty() {
+        if node_id_input.trim().is_empty() {
             return Err(GovernanceError::PolicyViolation(
                 "node_id cannot be empty".to_string(),
             ));
@@ -40,19 +40,45 @@ impl GovernanceEngine {
             ));
         }
 
+        let node_id = Uuid::new_v4();
+
+        if self.registry.get_node(&node_id).is_some() {
+            return Err(GovernanceError::DuplicateNode(node_id));
+        }
+
+        let metrics = CapacityMetrics {
+            total_compute_cores: 0,
+            allocated_compute_cores: 0,
+            total_memory_bytes: 0,
+            allocated_memory_bytes: 0,
+        };
+
+        Self::validate_capacity(&metrics)?;
+
         let node = NodeRecord {
-            node_id: Uuid::new_v4(),
+            node_id,
             status: OperationalStatus::Initializing,
             capabilities: vec![role],
-            metrics: CapacityMetrics {
-                total_compute_cores: 0,
-                allocated_compute_cores: 0,
-                total_memory_bytes: 0,
-                allocated_memory_bytes: 0,
-            },
+            metrics,
         };
 
         self.registry.register_node(node)?;
+
+        Ok(())
+    }
+
+    fn validate_capacity(metrics: &CapacityMetrics) -> Result<(), GovernanceError> {
+        if metrics.allocated_compute_cores > metrics.total_compute_cores {
+            return Err(GovernanceError::InvalidCapacity(
+                "allocated compute cores exceed total compute cores".to_string(),
+            ));
+        }
+
+        if metrics.allocated_memory_bytes > metrics.total_memory_bytes {
+            return Err(GovernanceError::InvalidCapacity(
+                "allocated memory bytes exceed total memory bytes".to_string(),
+            ));
+        }
 
         Ok(())
     }
