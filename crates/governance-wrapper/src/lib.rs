@@ -9,5 +9,5 @@ pub use governance::GovernanceEngine;
 pub use allocator::{
     PlacementCandidate,
     ResourceAllocator,
-    WorkloadProfile,
+    AllocationRequest,
 };

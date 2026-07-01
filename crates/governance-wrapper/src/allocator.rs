@@ -1,9 +1,10 @@
-use registry_service::{CapacityMetrics, NodeRecord, Registry};
+use registry_service::{NodeRecord, OperationalStatus, Registry};
 
-#[derive(Debug, Clone)]
-pub struct WorkloadProfile {
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct AllocationRequest {
     pub required_compute_cores: u32,
     pub required_memory_bytes: u64,
+    pub required_capabilities: Vec<String>,
 }
 
 #[derive(Debug, Clone)]
@@ -18,22 +19,37 @@ pub struct ResourceAllocator;
 impl ResourceAllocator {
     pub fn find_candidates(
         registry: &Registry,
-        workload: &WorkloadProfile,
+        request: &AllocationRequest,
     ) -> Vec<PlacementCandidate> {
-        let mut candidates = registry
-            .list_nodes()
+        Self::find_candidates_from_nodes(registry.list_nodes(), request)
+    }
+
+    pub fn find_candidates_from_nodes(
+        nodes: Vec<NodeRecord>,
+        request: &AllocationRequest,
+    ) -> Vec<PlacementCandidate> {
+        let mut candidates = nodes
             .into_iter()
+            .filter(|node| node.status == OperationalStatus::Active)
+            .filter(|node| {
+                request
+                    .required_capabilities
+                    .iter()
+                    .all(|required| node.capabilities.contains(required))
+            })
             .filter_map(|node| {
-                let metrics: &CapacityMetrics = &node.metrics;
+                let available_compute = node
+                    .metrics
+                    .total_compute_cores
+                    .saturating_sub(node.metrics.allocated_compute_cores);
 
-                let available_compute =
-                    metrics.total_compute_cores.saturating_sub(metrics.allocated_compute_cores);
+                let available_memory = node
+                    .metrics
+                    .total_memory_bytes
+                    .saturating_sub(node.metrics.allocated_memory_bytes);
 
-                let available_memory =
-                    metrics.total_memory_bytes.saturating_sub(metrics.allocated_memory_bytes);
-
-                if available_compute >= workload.required_compute_cores
-                    && available_memory >= workload.required_memory_bytes
+                if available_compute >= request.required_compute_cores
+                    && available_memory >= request.required_memory_bytes
                 {
                     Some(PlacementCandidate {
                         node,
@@ -49,10 +65,7 @@ impl ResourceAllocator {
         candidates.sort_by(|a, b| {
             b.available_compute_cores
                 .cmp(&a.available_compute_cores)
-                .then(
-                    b.available_memory_bytes
-                        .cmp(&a.available_memory_bytes),
-                )
+                .then(b.available_memory_bytes.cmp(&a.available_memory_bytes))
         });
 
         candidates
