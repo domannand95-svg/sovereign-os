@@ -55,3 +55,46 @@ impl Registry {
         Ok(self.log.replay()?)
     }
 }
+
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub enum RegistryEvent {
+    /// Commits a newly materialized NodeRecord to the topology.
+    NodeRegistered {
+        record: NodeRecord,
+    },
+    /// Mutates the active lifecycle state of a target node.
+    StatusUpdated {
+        node_id: Uuid,
+        new_status: OperationalStatus,
+    },
+    /// Updates resource allocation ceilings.
+    MetricsUpdated {
+        node_id: Uuid,
+        metrics: CapacityMetrics,
+    },
+    /// Deregisters or halts an unmapped node boundary.
+    NodeTerminated {
+        node_id: Uuid,
+    },
+}
+
+impl RegistryEvent {
+    pub fn to_active_event(&self) -> Result<active_memory::ActiveEvent, serde_json::Error> {
+        let action = match self {
+            RegistryEvent::NodeRegistered { .. } => "NODE_REGISTERED",
+            RegistryEvent::StatusUpdated { .. } => "STATUS_UPDATED",
+            RegistryEvent::MetricsUpdated { .. } => "METRICS_UPDATED",
+            RegistryEvent::NodeTerminated { .. } => "NODE_TERMINATED",
+        };
+
+        let payload = serde_json::to_value(self)?;
+        Ok(active_memory::ActiveEvent::new(action, payload))
+    }
+
+    pub fn from_active_event(
+        active_event: &active_memory::ActiveEvent,
+    ) -> Result<Self, serde_json::Error> {
+        serde_json::from_value(active_event.payload.clone())
+    }
+}

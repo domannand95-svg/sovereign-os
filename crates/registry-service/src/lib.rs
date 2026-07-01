@@ -7,4 +7,5 @@ pub use registry::{
     NodeRecord,
     OperationalStatus,
     Registry,
+    RegistryEvent,
 };
