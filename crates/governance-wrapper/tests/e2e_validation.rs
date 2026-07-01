@@ -24,8 +24,13 @@ fn governance_to_storage_end_to_end_loop() {
     );
 
     assert!(
-        raw.contains("registry-service"),
-        "ledger does not contain registry source"
+        raw.contains("NodeRegistered"),
+        "ledger does not contain typed registry event"
+    );
+
+    assert!(
+        raw.contains("validator"),
+        "ledger does not contain registered capability"
     );
 
     let _ = std::fs::remove_file(ledger_path);

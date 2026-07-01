@@ -1,6 +1,7 @@
 use event_log::EventLog;
 use serde::{Deserialize, Serialize};
-use serde_json::json;
+use std::cell::RefCell;
+use std::collections::HashMap;
 use std::path::PathBuf;
 use uuid::Uuid;
 
@@ -30,53 +31,87 @@ pub struct NodeRecord {
     pub metrics: CapacityMetrics,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub enum RegistryEvent {
+    NodeRegistered { record: NodeRecord },
+    StatusUpdated { node_id: Uuid, new_status: OperationalStatus },
+    MetricsUpdated { node_id: Uuid, metrics: CapacityMetrics },
+    NodeTerminated { node_id: Uuid },
+}
+
 pub struct Registry {
     log: EventLog,
+    nodes: RefCell<HashMap<Uuid, NodeRecord>>,
 }
 
 impl Registry {
     pub fn open(path: impl Into<PathBuf>) -> Result<Self, RegistryError> {
-        Ok(Self {
+        let registry = Self {
             log: EventLog::open(path)?,
-        })
+            nodes: RefCell::new(HashMap::new()),
+        };
+
+        for active_event in registry.log.replay()? {
+            let registry_event = RegistryEvent::from_active_event(&active_event)
+                .map_err(|err| RegistryError::General(format!("event replay corruption: {err}")))?;
+
+            registry.apply_event(registry_event);
+        }
+
+        Ok(registry)
     }
 
     pub fn register_node(&self, node: NodeRecord) -> Result<(), RegistryError> {
-        self.log.record_transition(
-            "NODE_REGISTERED",
-            "registry-service",
-            node.node_id.to_string(),
-        )?;
-
-        Ok(())
+        self.record_event(RegistryEvent::NodeRegistered { record: node })
     }
 
     pub fn history(&self) -> Result<Vec<active_memory::ActiveEvent>, RegistryError> {
         Ok(self.log.replay()?)
     }
-}
 
+    pub fn get_node(&self, node_id: &Uuid) -> Option<NodeRecord> {
+        self.nodes.borrow().get(node_id).cloned()
+    }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
-pub enum RegistryEvent {
-    /// Commits a newly materialized NodeRecord to the topology.
-    NodeRegistered {
-        record: NodeRecord,
-    },
-    /// Mutates the active lifecycle state of a target node.
-    StatusUpdated {
-        node_id: Uuid,
-        new_status: OperationalStatus,
-    },
-    /// Updates resource allocation ceilings.
-    MetricsUpdated {
-        node_id: Uuid,
-        metrics: CapacityMetrics,
-    },
-    /// Deregisters or halts an unmapped node boundary.
-    NodeTerminated {
-        node_id: Uuid,
-    },
+    pub fn active_node_count(&self) -> usize {
+        self.nodes.borrow().len()
+    }
+
+    fn record_event(&self, event: RegistryEvent) -> Result<(), RegistryError> {
+        let active_event = event
+            .to_active_event()
+            .map_err(|err| RegistryError::General(format!("event serialization failed: {err}")))?;
+
+        self.log.append_active_event(&active_event)?;
+        self.apply_event(event);
+
+        Ok(())
+    }
+
+    fn apply_event(&self, event: RegistryEvent) {
+        let mut nodes = self.nodes.borrow_mut();
+
+        match event {
+            RegistryEvent::NodeRegistered { record } => {
+                nodes.insert(record.node_id, record);
+            }
+            RegistryEvent::StatusUpdated { node_id, new_status } => {
+                if let Some(node) = nodes.get_mut(&node_id) {
+                    node.status = new_status;
+                }
+            }
+            RegistryEvent::MetricsUpdated { node_id, metrics } => {
+                if let Some(node) = nodes.get_mut(&node_id) {
+                    node.metrics = metrics;
+                }
+            }
+            RegistryEvent::NodeTerminated { node_id } => {
+                if let Some(node) = nodes.get_mut(&node_id) {
+                    node.status = OperationalStatus::Terminated;
+                }
+            }
+        }
+    }
 }
 
 impl RegistryEvent {

@@ -33,8 +33,17 @@ fn registry_registers_node_into_event_log() {
 
     assert_eq!(history.len(), 1);
     assert_eq!(history[0].action, "NODE_REGISTERED");
-    assert_eq!(history[0].payload["source"], "registry-service");
-    assert_eq!(history[0].payload["target"], node_id.to_string());
+    assert_eq!(
+        history[0].payload["NodeRegistered"]["record"]["node_id"],
+        node_id.to_string()
+    );
+    assert_eq!(
+        history[0].payload["NodeRegistered"]["record"]["capabilities"][0],
+        "validator"
+    );
+
+    assert_eq!(registry.active_node_count(), 1);
+    assert!(registry.get_node(&node_id).is_some());
 
     let _ = std::fs::remove_file(path);
 }

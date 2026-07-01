@@ -33,6 +33,11 @@ impl EventLog {
         Ok(())
     }
 
+    pub fn append_active_event(&self, event: &ActiveEvent) -> Result<(), EventLogError> {
+        self.memory.record(event)?;
+        Ok(())
+    }
+
     pub fn replay(&self) -> Result<Vec<ActiveEvent>, EventLogError> {
         Ok(self.memory.history()?)
     }
