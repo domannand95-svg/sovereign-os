@@ -92,6 +92,23 @@ impl GovernanceEngine {
         Ok(())
     }
 
+    pub fn terminate_node(&self, node_id: Uuid) -> Result<(), GovernanceError> {
+        self.validate_node_exists(&node_id)?;
+
+        let current_record = self
+            .registry
+            .get_node(&node_id)
+            .ok_or(GovernanceError::NodeNotFound(node_id))?;
+
+        self.validate_transition(current_record.status, OperationalStatus::Terminated)?;
+
+        self.registry.append_registry_event(
+            registry_service::RegistryEvent::NodeTerminated { node_id },
+        )?;
+
+        Ok(())
+    }
+
     fn validate_node_exists(&self, node_id: &Uuid) -> Result<(), GovernanceError> {
         if self.registry.get_node(node_id).is_none() {
             return Err(GovernanceError::NodeNotFound(*node_id));
