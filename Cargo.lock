@@ -124,6 +124,12 @@ dependencies = [
 [[package]]
 name = "governance-wrapper"
 version = "0.1.0"
+dependencies = [
+ "registry-service",
+ "serde",
+ "serde_json",
+ "thiserror",
+]
 
 [[package]]
 name = "iana-time-zone"
