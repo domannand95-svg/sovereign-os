@@ -9,3 +9,7 @@ pub use registry::{
 
 pub mod allocation;
 pub use allocation::AllocationRequest;
+
+pub mod snapshot;
+
+pub use snapshot::{LogicalSequenceNumber, RegistrySnapshot, SnapshotMetadata};
