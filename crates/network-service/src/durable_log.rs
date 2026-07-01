@@ -25,10 +25,7 @@ impl DurableLog {
             fs::create_dir_all(parent)?;
         }
 
-        OpenOptions::new()
-            .create(true)
-            .append(true)
-            .open(&path)?;
+        OpenOptions::new().create(true).append(true).open(&path)?;
 
         Ok(Self { path })
     }
@@ -50,10 +47,7 @@ impl DurableLog {
         Ok(())
     }
 
-    pub fn append_many(
-        &self,
-        entries: &[LogEntry],
-    ) -> Result<(), DurableLogError> {
+    pub fn append_many(&self, entries: &[LogEntry]) -> Result<(), DurableLogError> {
         let mut file = OpenOptions::new()
             .create(true)
             .append(true)
@@ -66,7 +60,8 @@ impl DurableLog {
 
         file.flush()?;
         Ok(())
-    }    pub fn load(&self) -> Result<Vec<LogEntry>, DurableLogError> {
+    }
+    pub fn load(&self) -> Result<Vec<LogEntry>, DurableLogError> {
         let file = File::open(&self.path)?;
         let reader = BufReader::new(file);
 
@@ -86,10 +81,7 @@ impl DurableLog {
         Ok(entries)
     }
 
-    pub fn rewrite(
-        &self,
-        entries: &[LogEntry],
-    ) -> Result<(), DurableLogError> {
+    pub fn rewrite(&self, entries: &[LogEntry]) -> Result<(), DurableLogError> {
         let mut file = OpenOptions::new()
             .create(true)
             .write(true)
@@ -105,10 +97,7 @@ impl DurableLog {
         Ok(())
     }
 
-    pub fn truncate_after(
-        &self,
-        index: u64,
-    ) -> Result<Vec<LogEntry>, DurableLogError> {
+    pub fn truncate_after(&self, index: u64) -> Result<Vec<LogEntry>, DurableLogError> {
         let retained: Vec<LogEntry> = self
             .load()?
             .into_iter()
@@ -126,11 +115,9 @@ mod tests {
     use uuid::Uuid;
 
     fn temp_log_path(name: &str) -> PathBuf {
-        std::env::temp_dir().join(format!(
-            "sovereign-os-{name}-{}.jsonl",
-            Uuid::new_v4()
-        ))
-    }    #[test]
+        std::env::temp_dir().join(format!("sovereign-os-{name}-{}.jsonl", Uuid::new_v4()))
+    }
+    #[test]
     fn test_durable_log_append_and_load() {
         let path = temp_log_path("append-load");
         let log = DurableLog::open(&path).unwrap();
@@ -189,7 +176,8 @@ mod tests {
             index: 1,
             term: 1,
             command: "old".to_string(),
-        }).unwrap();
+        })
+        .unwrap();
 
         let replacement = vec![LogEntry {
             index: 1,

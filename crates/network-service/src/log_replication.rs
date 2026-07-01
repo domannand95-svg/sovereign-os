@@ -1,14 +1,14 @@
 use std::collections::HashMap;
 use uuid::Uuid;
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize, PartialEq, Eq)]
 pub struct LogEntry {
     pub index: u64,
     pub term: u64,
     pub command: String,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize, PartialEq, Eq)]
 pub struct AppendEntriesRequest {
     pub term: u64,
     pub leader_id: Uuid,
@@ -18,7 +18,7 @@ pub struct AppendEntriesRequest {
     pub leader_commit: u64,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize, PartialEq, Eq)]
 pub struct AppendEntriesResponse {
     pub term: u64,
     pub follower_id: Uuid,
