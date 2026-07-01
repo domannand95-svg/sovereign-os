@@ -18,3 +18,5 @@ pub mod install_snapshot;
 pub mod snapshot_storage;
 
 pub mod state_machine;
+
+pub mod commit_index;
