@@ -5,6 +5,6 @@ members = [
         "crates/active-memory",
             "crates/event-log",
                 "crates/registry-service",
-                    "crates/governance-wrapper",
+                    "crates/governance-wrapper", "crates/network-service",
 ]
 
