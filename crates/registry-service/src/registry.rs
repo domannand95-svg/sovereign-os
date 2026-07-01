@@ -65,6 +65,10 @@ impl Registry {
         self.record_event(RegistryEvent::NodeRegistered { record: node })
     }
 
+    pub fn append_registry_event(&self, event: RegistryEvent) -> Result<(), RegistryError> {
+        self.record_event(event)
+    }
+
     pub fn history(&self) -> Result<Vec<active_memory::ActiveEvent>, RegistryError> {
         Ok(self.log.replay()?)
     }

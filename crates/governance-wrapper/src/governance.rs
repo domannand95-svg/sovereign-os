@@ -67,6 +67,62 @@ impl GovernanceEngine {
         Ok(())
     }
 
+    pub fn update_status(
+        &self,
+        node_id: Uuid,
+        new_status: OperationalStatus,
+    ) -> Result<(), GovernanceError> {
+        self.validate_node_exists(&node_id)?;
+
+        let current_record = self
+            .registry
+            .get_node(&node_id)
+            .ok_or(GovernanceError::NodeNotFound(node_id))?;
+
+        self.validate_transition(current_record.status, new_status)?;
+
+        self.registry.append_registry_event(
+            registry_service::RegistryEvent::StatusUpdated {
+                node_id,
+                new_status,
+            },
+        )?;
+
+        Ok(())
+    }
+
+    fn validate_node_exists(&self, node_id: &Uuid) -> Result<(), GovernanceError> {
+        if self.registry.get_node(node_id).is_none() {
+            return Err(GovernanceError::NodeNotFound(*node_id));
+        }
+
+        Ok(())
+    }
+
+    fn validate_transition(
+        &self,
+        current: OperationalStatus,
+        next: OperationalStatus,
+    ) -> Result<(), GovernanceError> {
+        use OperationalStatus::*;
+
+        match (current, next) {
+            (Initializing, Active) => Ok(()),
+            (Active, Dormant) => Ok(()),
+            (Dormant, Active) => Ok(()),
+            (Active, Terminated) => Ok(()),
+
+            (Terminated, _) => Err(GovernanceError::IllegalTransition(
+                "terminated nodes cannot transition".to_string(),
+            )),
+
+            _ => Err(GovernanceError::IllegalTransition(
+                format!("illegal transition: {:?} -> {:?}", current, next),
+            )),
+        }
+    }
+
+
     fn validate_capacity(metrics: &CapacityMetrics) -> Result<(), GovernanceError> {
         if metrics.allocated_compute_cores > metrics.total_compute_cores {
             return Err(GovernanceError::InvalidCapacity(
