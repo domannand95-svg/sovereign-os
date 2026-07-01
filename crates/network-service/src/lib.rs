@@ -16,3 +16,5 @@ pub use messaging::{MessageTransport, MessagingError, NetworkMessage};
 pub mod install_snapshot;
 
 pub mod snapshot_storage;
+
+pub mod state_machine;
