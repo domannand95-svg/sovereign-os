@@ -39,6 +39,21 @@ pub enum NetworkMessage {
         node_id: Uuid,
         sequence: u64,
     },
+    InstallSnapshotRequest {
+        term: u64,
+        leader_id: Uuid,
+        last_included_index: u64,
+        last_included_term: u64,
+        offset: u64,
+        data: Vec<u8>,
+        done: bool,
+    },
+    InstallSnapshotResponse {
+        term: u64,
+        follower_id: Uuid,
+        bytes_stored: u64,
+        success: bool,
+    },
     WorkloadProposal {
         transaction_id: Uuid,
         workload_id: Uuid,
