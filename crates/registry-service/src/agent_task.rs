@@ -18,9 +18,19 @@ pub enum AgentTaskKind {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum AgentTaskStatus {
     Pending,
+    Validated,
+    Queued,
     Running,
     Completed,
     Failed,
+    Cancelled,
+}
+
+/// Error returned when an invalid lifecycle transition is attempted.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct AgentTaskTransitionError {
+    pub from: AgentTaskStatus,
+    pub to: AgentTaskStatus,
 }
 
 /// Registry-owned model for an agent task.
@@ -52,16 +62,57 @@ impl AgentTask {
         }
     }
 
-    pub fn mark_running(&mut self) {
-        self.status = AgentTaskStatus::Running;
+    pub fn validate(&mut self) -> Result<(), AgentTaskTransitionError> {
+        self.transition_to(AgentTaskStatus::Validated)
     }
 
-    pub fn mark_completed(&mut self) {
-        self.status = AgentTaskStatus::Completed;
+    pub fn queue(&mut self) -> Result<(), AgentTaskTransitionError> {
+        self.transition_to(AgentTaskStatus::Queued)
     }
 
-    pub fn mark_failed(&mut self) {
-        self.status = AgentTaskStatus::Failed;
+    pub fn mark_running(&mut self) -> Result<(), AgentTaskTransitionError> {
+        self.transition_to(AgentTaskStatus::Running)
+    }
+
+    pub fn mark_completed(&mut self) -> Result<(), AgentTaskTransitionError> {
+        self.transition_to(AgentTaskStatus::Completed)
+    }
+
+    pub fn mark_failed(&mut self) -> Result<(), AgentTaskTransitionError> {
+        self.transition_to(AgentTaskStatus::Failed)
+    }
+
+    pub fn cancel(&mut self) -> Result<(), AgentTaskTransitionError> {
+        self.transition_to(AgentTaskStatus::Cancelled)
+    }
+
+    fn transition_to(&mut self, next: AgentTaskStatus) -> Result<(), AgentTaskTransitionError> {
+        if Self::can_transition(&self.status, &next) {
+            self.status = next;
+            Ok(())
+        } else {
+            Err(AgentTaskTransitionError {
+                from: self.status.clone(),
+                to: next,
+            })
+        }
+    }
+
+    fn can_transition(current: &AgentTaskStatus, next: &AgentTaskStatus) -> bool {
+        use AgentTaskStatus::*;
+
+        matches!(
+            (current, next),
+            (Pending, Validated)
+                | (Validated, Queued)
+                | (Queued, Running)
+                | (Running, Completed)
+                | (Running, Failed)
+                | (Pending, Cancelled)
+                | (Validated, Cancelled)
+                | (Queued, Cancelled)
+                | (Running, Cancelled)
+        )
     }
 }
 
@@ -69,14 +120,18 @@ impl AgentTask {
 mod tests {
     use super::*;
 
-    #[test]
-    fn new_task_starts_pending() {
-        let task = AgentTask::new(
+    fn task() -> AgentTask {
+        AgentTask::new(
             "task-1",
             AgentTaskKind::Calculation,
             "agent-alpha",
             "sum:1,2,3",
-        );
+        )
+    }
+
+    #[test]
+    fn new_task_starts_pending() {
+        let task = task();
 
         assert_eq!(task.id, AgentTaskId("task-1".to_string()));
         assert_eq!(task.kind, AgentTaskKind::Calculation);
@@ -86,21 +141,56 @@ mod tests {
     }
 
     #[test]
-    fn task_status_transitions() {
-        let mut task = AgentTask::new(
-            "task-2",
-            AgentTaskKind::DataProcessing,
-            "agent-beta",
-            "normalize-dataset",
-        );
+    fn task_follows_valid_lifecycle() {
+        let mut task = task();
 
-        task.mark_running();
+        task.validate().unwrap();
+        assert_eq!(task.status, AgentTaskStatus::Validated);
+
+        task.queue().unwrap();
+        assert_eq!(task.status, AgentTaskStatus::Queued);
+
+        task.mark_running().unwrap();
         assert_eq!(task.status, AgentTaskStatus::Running);
 
-        task.mark_completed();
+        task.mark_completed().unwrap();
         assert_eq!(task.status, AgentTaskStatus::Completed);
+    }
 
-        task.mark_failed();
-        assert_eq!(task.status, AgentTaskStatus::Failed);
+    #[test]
+    fn task_cannot_skip_validation() {
+        let mut task = task();
+
+        let error = task.mark_running().unwrap_err();
+
+        assert_eq!(error.from, AgentTaskStatus::Pending);
+        assert_eq!(error.to, AgentTaskStatus::Running);
+        assert_eq!(task.status, AgentTaskStatus::Pending);
+    }
+
+    #[test]
+    fn terminal_states_do_not_transition() {
+        let mut task = task();
+
+        task.validate().unwrap();
+        task.queue().unwrap();
+        task.mark_running().unwrap();
+        task.mark_completed().unwrap();
+
+        let error = task.cancel().unwrap_err();
+
+        assert_eq!(error.from, AgentTaskStatus::Completed);
+        assert_eq!(error.to, AgentTaskStatus::Cancelled);
+        assert_eq!(task.status, AgentTaskStatus::Completed);
+    }
+
+    #[test]
+    fn task_can_cancel_before_terminal_state() {
+        let mut task = task();
+
+        task.validate().unwrap();
+        task.cancel().unwrap();
+
+        assert_eq!(task.status, AgentTaskStatus::Cancelled);
     }
 }
