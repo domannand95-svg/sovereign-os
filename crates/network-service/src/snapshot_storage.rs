@@ -22,7 +22,11 @@ impl SnapshotStorage {
         let bytes =
             serde_json::to_vec(snapshot).map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
 
-        fs::write(path, bytes)
+        let path_ref = path.as_ref();
+        let tmp_path = path_ref.with_extension("tmp");
+
+        fs::write(&tmp_path, bytes)?;
+        fs::rename(tmp_path, path_ref)
     }
     pub fn load<P: AsRef<Path>>(path: P) -> io::Result<Snapshot> {
         let bytes = fs::read(path)?;
