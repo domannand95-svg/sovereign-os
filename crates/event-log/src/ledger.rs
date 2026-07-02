@@ -49,6 +49,10 @@ impl EventLog {
         Ok(self.memory.history()?.len())
     }
 
+    pub fn is_empty(&self) -> Result<bool, EventLogError> {
+        Ok(self.len()? == 0)
+    }
+
     pub fn path(&self) -> &std::path::Path {
         &self.path
     }

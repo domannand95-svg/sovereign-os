@@ -132,7 +132,7 @@ impl Registry {
 
         let file = std::fs::File::create(path)?;
         serde_json::to_writer_pretty(file, &snapshot)
-            .map_err(|err| std::io::Error::new(std::io::ErrorKind::Other, err.to_string()))?;
+            .map_err(|err| std::io::Error::other(err.to_string()))?;
 
         Ok(())
     }
@@ -140,8 +140,8 @@ impl Registry {
     pub fn load_snapshot(&self, path: impl AsRef<std::path::Path>) -> std::io::Result<u64> {
         let file = std::fs::File::open(path)?;
 
-        let snapshot: crate::snapshot::RegistrySnapshot = serde_json::from_reader(file)
-            .map_err(|err| std::io::Error::new(std::io::ErrorKind::Other, err.to_string()))?;
+        let snapshot: crate::snapshot::RegistrySnapshot =
+            serde_json::from_reader(file).map_err(|err| std::io::Error::other(err.to_string()))?;
 
         *self.nodes.borrow_mut() = snapshot.nodes;
         *self.workloads.borrow_mut() = snapshot.workloads;

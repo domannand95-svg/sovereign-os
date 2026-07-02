@@ -83,6 +83,356 @@ pub fn apply_snapshot_indices(
 mod tests {
 
     #[test]
+    fn handler_rejects_gap_during_snapshot_stream() {
+        let mut handler = InstallSnapshotHandler::new();
+
+        let first = InstallSnapshotRequest {
+            term: 2,
+            leader_id: "leader-a".to_string(),
+            last_included_index: 10,
+            last_included_term: 2,
+            offset: 0,
+            data: vec![1, 2, 3],
+            done: false,
+        };
+
+        let gap = InstallSnapshotRequest {
+            offset: 6,
+            data: vec![7, 8, 9],
+            ..first.clone()
+        };
+
+        let (_, first_snapshot) = handler.handle(&first, 2);
+        let (gap_response, gap_snapshot) = handler.handle(&gap, 2);
+
+        assert!(first_snapshot.is_none());
+        assert!(!gap_response.success);
+        assert!(gap_snapshot.is_none());
+        assert_eq!(handler.last_confirmed_offset, 3);
+    }
+
+    #[test]
+    fn handler_resumes_from_last_confirmed_offset() {
+        let mut handler = InstallSnapshotHandler::new();
+
+        let first = InstallSnapshotRequest {
+            term: 2,
+            leader_id: "leader-a".to_string(),
+            last_included_index: 10,
+            last_included_term: 2,
+            offset: 0,
+            data: vec![1, 2, 3],
+            done: false,
+        };
+
+        let second = InstallSnapshotRequest {
+            offset: 3,
+            data: vec![4, 5, 6],
+            done: true,
+            ..first.clone()
+        };
+
+        handler.handle(&first, 2);
+        let (response, snapshot) = handler.handle(&second, 2);
+
+        assert!(response.success);
+        assert_eq!(snapshot, Some(vec![1, 2, 3, 4, 5, 6]));
+        assert_eq!(handler.last_confirmed_offset, 6);
+    }
+
+    #[test]
+    fn handler_ignores_duplicate_chunk_after_resume() {
+        let mut handler = InstallSnapshotHandler::new();
+
+        let first = InstallSnapshotRequest {
+            term: 2,
+            leader_id: "leader-a".to_string(),
+            last_included_index: 10,
+            last_included_term: 2,
+            offset: 0,
+            data: vec![1, 2, 3],
+            done: false,
+        };
+
+        handler.handle(&first, 2);
+        let (response, snapshot) = handler.handle(&first, 2);
+
+        assert!(response.success);
+        assert!(snapshot.is_none());
+        assert_eq!(handler.last_confirmed_offset, 3);
+    }
+
+    #[test]
+    fn handler_replicates_chunked_snapshot_to_multiple_followers() {
+        let first = InstallSnapshotRequest {
+            term: 4,
+            leader_id: "leader-a".to_string(),
+            last_included_index: 256,
+            last_included_term: 4,
+            offset: 0,
+            data: vec![1, 2, 3],
+            done: false,
+        };
+
+        let second = InstallSnapshotRequest {
+            term: 4,
+            leader_id: "leader-a".to_string(),
+            last_included_index: 256,
+            last_included_term: 4,
+            offset: 3,
+            data: vec![4, 5, 6],
+            done: true,
+        };
+
+        let mut follower_a = InstallSnapshotHandler::new();
+        let mut follower_b = InstallSnapshotHandler::new();
+
+        let (a_first_response, a_first_snapshot) = follower_a.handle(&first, 4);
+        let (b_first_response, b_first_snapshot) = follower_b.handle(&first, 4);
+
+        assert!(a_first_response.success);
+        assert!(b_first_response.success);
+        assert!(a_first_snapshot.is_none());
+        assert!(b_first_snapshot.is_none());
+
+        let (a_second_response, a_snapshot) = follower_a.handle(&second, 4);
+        let (b_second_response, b_snapshot) = follower_b.handle(&second, 4);
+
+        assert!(a_second_response.success);
+        assert!(b_second_response.success);
+        assert_eq!(a_snapshot, Some(vec![1, 2, 3, 4, 5, 6]));
+        assert_eq!(b_snapshot, Some(vec![1, 2, 3, 4, 5, 6]));
+    }
+
+    #[test]
+    fn handler_replicates_snapshot_across_multiple_followers() {
+        let request = InstallSnapshotRequest {
+            term: 3,
+            leader_id: "leader-a".to_string(),
+            last_included_index: 64,
+            last_included_term: 3,
+            offset: 0,
+            data: vec![10, 20, 30, 40],
+            done: true,
+        };
+
+        let mut follower_a = InstallSnapshotHandler::new();
+        let mut follower_b = InstallSnapshotHandler::new();
+
+        let (response_a, snapshot_a) = follower_a.handle(&request, 3);
+        let (response_b, snapshot_b) = follower_b.handle(&request, 3);
+
+        assert!(response_a.success);
+        assert!(response_b.success);
+        assert_eq!(snapshot_a, Some(vec![10, 20, 30, 40]));
+        assert_eq!(snapshot_b, Some(vec![10, 20, 30, 40]));
+    }
+
+    #[test]
+    fn apply_snapshot_accepts_non_empty_payload() {
+        let mut handler = InstallSnapshotHandler::new();
+
+        assert!(handler.apply_snapshot(vec![1, 2, 3]).is_ok());
+    }
+
+    #[test]
+    fn apply_snapshot_rejects_empty_payload() {
+        let mut handler = InstallSnapshotHandler::new();
+
+        assert!(handler.apply_snapshot(Vec::new()).is_err());
+    }
+
+    use super::*;
+    #[test]
+    fn request_serializes_and_deserializes() {
+        let request = InstallSnapshotRequest {
+            term: 5,
+            leader_id: "leader-a".to_string(),
+            last_included_index: 128,
+            last_included_term: 4,
+            offset: 0,
+            data: vec![1, 2, 3, 4],
+            done: false,
+        };
+
+        let encoded = serde_json::to_string(&request).unwrap();
+        let decoded: InstallSnapshotRequest = serde_json::from_str(&encoded).unwrap();
+
+        assert_eq!(request, decoded);
+    }
+
+    #[test]
+    fn response_serializes_and_deserializes() {
+        let response = InstallSnapshotResponse {
+            term: 6,
+            success: true,
+        };
+
+        let encoded = serde_json::to_string(&response).unwrap();
+        let decoded: InstallSnapshotResponse = serde_json::from_str(&encoded).unwrap();
+
+        assert_eq!(response, decoded);
+    }
+
+    #[test]
+    fn assembler_collects_multiple_chunks() {
+        let mut assembler = SnapshotAssembler::new();
+
+        let first = InstallSnapshotRequest {
+            term: 1,
+            leader_id: "leader".into(),
+            last_included_index: 32,
+            last_included_term: 1,
+            offset: 0,
+            data: vec![1, 2, 3],
+            done: false,
+        };
+
+        let second = InstallSnapshotRequest {
+            term: 1,
+            leader_id: "leader".into(),
+            last_included_index: 32,
+            last_included_term: 1,
+            offset: 3,
+            data: vec![4, 5, 6],
+            done: true,
+        };
+
+        assert!(assembler.append(&first).is_none());
+
+        let snapshot = assembler.append(&second).unwrap();
+
+        assert_eq!(snapshot, vec![1, 2, 3, 4, 5, 6]);
+    }
+
+    #[test]
+    fn handler_returns_snapshot_after_final_chunk() {
+        let mut handler = InstallSnapshotHandler::new();
+
+        let first = InstallSnapshotRequest {
+            term: 2,
+            leader_id: "leader".into(),
+            last_included_index: 10,
+            last_included_term: 2,
+            offset: 0,
+            data: vec![1, 2, 3],
+            done: false,
+        };
+
+        let second = InstallSnapshotRequest {
+            term: 2,
+            leader_id: "leader".into(),
+            last_included_index: 10,
+            last_included_term: 2,
+            offset: 3,
+            data: vec![4, 5, 6],
+            done: true,
+        };
+
+        let (_, snapshot) = handler.handle(&first, 1);
+        assert!(snapshot.is_none());
+
+        let (_, snapshot) = handler.handle(&second, 1);
+        assert_eq!(snapshot.unwrap(), vec![1, 2, 3, 4, 5, 6]);
+    }
+
+    #[test]
+    fn assembler_clear_discards_buffer() {
+        let mut assembler = SnapshotAssembler::new();
+
+        assembler.buffer.extend_from_slice(&[9, 9, 9]);
+
+        assembler.clear();
+
+        assert!(assembler.buffer.is_empty());
+    }
+}
+
+/// Handles InstallSnapshot request validation and chunk assembly.
+#[cfg(test)]
+mod stream_resumption_tests {
+
+    #[test]
+    fn handler_rejects_gap_during_snapshot_stream() {
+        let mut handler = InstallSnapshotHandler::new();
+
+        let first = InstallSnapshotRequest {
+            term: 2,
+            leader_id: "leader-a".to_string(),
+            last_included_index: 10,
+            last_included_term: 2,
+            offset: 0,
+            data: vec![1, 2, 3],
+            done: false,
+        };
+
+        let gap = InstallSnapshotRequest {
+            offset: 6,
+            data: vec![7, 8, 9],
+            ..first.clone()
+        };
+
+        let (_, first_snapshot) = handler.handle(&first, 2);
+        let (gap_response, gap_snapshot) = handler.handle(&gap, 2);
+
+        assert!(first_snapshot.is_none());
+        assert!(!gap_response.success);
+        assert!(gap_snapshot.is_none());
+        assert_eq!(handler.last_confirmed_offset, 3);
+    }
+
+    #[test]
+    fn handler_resumes_from_last_confirmed_offset() {
+        let mut handler = InstallSnapshotHandler::new();
+
+        let first = InstallSnapshotRequest {
+            term: 2,
+            leader_id: "leader-a".to_string(),
+            last_included_index: 10,
+            last_included_term: 2,
+            offset: 0,
+            data: vec![1, 2, 3],
+            done: false,
+        };
+
+        let second = InstallSnapshotRequest {
+            offset: 3,
+            data: vec![4, 5, 6],
+            done: true,
+            ..first.clone()
+        };
+
+        handler.handle(&first, 2);
+        let (response, snapshot) = handler.handle(&second, 2);
+
+        assert!(response.success);
+        assert_eq!(snapshot, Some(vec![1, 2, 3, 4, 5, 6]));
+        assert_eq!(handler.last_confirmed_offset, 6);
+    }
+
+    #[test]
+    fn handler_ignores_duplicate_chunk_after_resume() {
+        let mut handler = InstallSnapshotHandler::new();
+
+        let first = InstallSnapshotRequest {
+            term: 2,
+            leader_id: "leader-a".to_string(),
+            last_included_index: 10,
+            last_included_term: 2,
+            offset: 0,
+            data: vec![1, 2, 3],
+            done: false,
+        };
+
+        handler.handle(&first, 2);
+        let (response, snapshot) = handler.handle(&first, 2);
+
+        assert!(response.success);
+        assert!(snapshot.is_none());
+        assert_eq!(handler.last_confirmed_offset, 3);
+    }
+
+    #[test]
     fn handler_replicates_chunked_snapshot_to_multiple_followers() {
         let first = InstallSnapshotRequest {
             term: 4,
@@ -271,12 +621,14 @@ mod tests {
 /// Handles InstallSnapshot request validation and chunk assembly.
 pub struct InstallSnapshotHandler {
     assembler: SnapshotAssembler,
+    pub last_confirmed_offset: u64,
 }
 
 impl InstallSnapshotHandler {
     pub fn new() -> Self {
         Self {
             assembler: SnapshotAssembler::new(),
+            last_confirmed_offset: 0,
         }
     }
 
@@ -303,7 +655,28 @@ impl InstallSnapshotHandler {
             );
         }
 
+        if request.offset < self.last_confirmed_offset {
+            return (
+                InstallSnapshotResponse {
+                    term: request.term,
+                    success: true,
+                },
+                None,
+            );
+        }
+
+        if request.offset > self.last_confirmed_offset {
+            return (
+                InstallSnapshotResponse {
+                    term: request.term,
+                    success: false,
+                },
+                None,
+            );
+        }
+
         let completed_snapshot = self.assembler.append(request);
+        self.last_confirmed_offset += request.data.len() as u64;
 
         (
             InstallSnapshotResponse {
@@ -312,5 +685,11 @@ impl InstallSnapshotHandler {
             },
             completed_snapshot,
         )
+    }
+}
+
+impl Default for InstallSnapshotHandler {
+    fn default() -> Self {
+        Self::new()
     }
 }
