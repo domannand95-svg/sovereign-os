@@ -617,6 +617,80 @@ mod stream_resumption_tests {
 
         assert!(assembler.buffer.is_empty());
     }
+    #[test]
+    fn handler_rejects_stale_term_without_snapshot() {
+        let mut handler = InstallSnapshotHandler::new();
+
+        let request = InstallSnapshotRequest {
+            term: 2,
+            leader_id: "leader-a".to_string(),
+            last_included_index: 10,
+            last_included_term: 1,
+            offset: 0,
+            data: vec![1, 2, 3],
+            done: true,
+        };
+
+        let (response, snapshot) = handler.handle(&request, 5);
+
+        assert_eq!(response.term, 5);
+        assert!(!response.success);
+        assert!(snapshot.is_none());
+    }
+
+    #[test]
+    fn handler_accepts_partial_snapshot_without_completion() {
+        let mut handler = InstallSnapshotHandler::new();
+
+        let request = InstallSnapshotRequest {
+            term: 5,
+            leader_id: "leader-a".to_string(),
+            last_included_index: 42,
+            last_included_term: 4,
+            offset: 0,
+            data: vec![1, 2, 3],
+            done: false,
+        };
+
+        let (response, snapshot) = handler.handle(&request, 5);
+
+        assert_eq!(response.term, 5);
+        assert!(response.success);
+        assert!(snapshot.is_none());
+    }
+
+    #[test]
+    fn handler_completes_multi_chunk_snapshot() {
+        let mut handler = InstallSnapshotHandler::new();
+
+        let first = InstallSnapshotRequest {
+            term: 7,
+            leader_id: "leader-a".to_string(),
+            last_included_index: 128,
+            last_included_term: 6,
+            offset: 0,
+            data: vec![10, 20],
+            done: false,
+        };
+
+        let second = InstallSnapshotRequest {
+            term: 7,
+            leader_id: "leader-a".to_string(),
+            last_included_index: 128,
+            last_included_term: 6,
+            offset: 2,
+            data: vec![30, 40],
+            done: true,
+        };
+
+        let (first_response, first_snapshot) = handler.handle(&first, 7);
+        assert!(first_response.success);
+        assert!(first_snapshot.is_none());
+
+        let (second_response, completed_snapshot) = handler.handle(&second, 7);
+        assert!(second_response.success);
+        assert_eq!(completed_snapshot, Some(vec![10, 20, 30, 40]));
+    }
 }
 
 /// Handles InstallSnapshot request validation and chunk assembly.
