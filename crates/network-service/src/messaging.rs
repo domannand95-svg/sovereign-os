@@ -170,5 +170,6 @@ mod tests {
         MessageTransport::send(&mut client_stream, &outbound_message).unwrap();
 
         server_handle.join().unwrap();
-    }
+    
+}
 }
