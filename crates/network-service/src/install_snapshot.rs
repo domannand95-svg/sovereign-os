@@ -619,7 +619,7 @@ mod stream_resumption_tests {
     }
     #[test]
     fn handler_rejects_stale_term_without_snapshot() {
-        let mut handler = InstallSnapshotHandler::new();
+        let mut handler = InstallSnapshotHandler::new_with_last_confirmed_offset(0);
 
         let request = InstallSnapshotRequest {
             term: 2,
@@ -640,7 +640,7 @@ mod stream_resumption_tests {
 
     #[test]
     fn handler_accepts_partial_snapshot_without_completion() {
-        let mut handler = InstallSnapshotHandler::new();
+        let mut handler = InstallSnapshotHandler::new_with_last_confirmed_offset(0);
 
         let request = InstallSnapshotRequest {
             term: 5,
@@ -661,7 +661,7 @@ mod stream_resumption_tests {
 
     #[test]
     fn handler_completes_multi_chunk_snapshot() {
-        let mut handler = InstallSnapshotHandler::new();
+        let mut handler = InstallSnapshotHandler::new_with_last_confirmed_offset(0);
 
         let first = InstallSnapshotRequest {
             term: 7,
