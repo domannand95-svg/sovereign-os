@@ -19,6 +19,10 @@ impl CommitIndexManager {
         self.commit_index
     }
 
+    pub fn force_reset(&mut self, index: u64) {
+        self.commit_index = index;
+    }
+
     pub fn quorum(&self) -> usize {
         (self.total_nodes / 2) + 1
     }
