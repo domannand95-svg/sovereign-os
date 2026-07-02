@@ -1,3 +1,4 @@
+use crate::snapshot_metadata::DurableSnapshotMetadata;
 use serde::{Deserialize, Serialize};
 
 /// Snapshot installation request as defined by the Raft protocol.
@@ -84,7 +85,7 @@ mod tests {
 
     #[test]
     fn handler_rejects_gap_during_snapshot_stream() {
-        let mut handler = InstallSnapshotHandler::new();
+        let mut handler = InstallSnapshotHandler::new_with_last_confirmed_offset(0);
 
         let first = InstallSnapshotRequest {
             term: 2,
@@ -113,7 +114,7 @@ mod tests {
 
     #[test]
     fn handler_resumes_from_last_confirmed_offset() {
-        let mut handler = InstallSnapshotHandler::new();
+        let mut handler = InstallSnapshotHandler::new_with_last_confirmed_offset(0);
 
         let first = InstallSnapshotRequest {
             term: 2,
@@ -142,7 +143,7 @@ mod tests {
 
     #[test]
     fn handler_ignores_duplicate_chunk_after_resume() {
-        let mut handler = InstallSnapshotHandler::new();
+        let mut handler = InstallSnapshotHandler::new_with_last_confirmed_offset(0);
 
         let first = InstallSnapshotRequest {
             term: 2,
@@ -184,8 +185,8 @@ mod tests {
             done: true,
         };
 
-        let mut follower_a = InstallSnapshotHandler::new();
-        let mut follower_b = InstallSnapshotHandler::new();
+        let mut follower_a = InstallSnapshotHandler::new_with_last_confirmed_offset(0);
+        let mut follower_b = InstallSnapshotHandler::new_with_last_confirmed_offset(0);
 
         let (a_first_response, a_first_snapshot) = follower_a.handle(&first, 4);
         let (b_first_response, b_first_snapshot) = follower_b.handle(&first, 4);
@@ -216,8 +217,8 @@ mod tests {
             done: true,
         };
 
-        let mut follower_a = InstallSnapshotHandler::new();
-        let mut follower_b = InstallSnapshotHandler::new();
+        let mut follower_a = InstallSnapshotHandler::new_with_last_confirmed_offset(0);
+        let mut follower_b = InstallSnapshotHandler::new_with_last_confirmed_offset(0);
 
         let (response_a, snapshot_a) = follower_a.handle(&request, 3);
         let (response_b, snapshot_b) = follower_b.handle(&request, 3);
@@ -230,14 +231,14 @@ mod tests {
 
     #[test]
     fn apply_snapshot_accepts_non_empty_payload() {
-        let mut handler = InstallSnapshotHandler::new();
+        let mut handler = InstallSnapshotHandler::new_with_last_confirmed_offset(0);
 
         assert!(handler.apply_snapshot(vec![1, 2, 3]).is_ok());
     }
 
     #[test]
     fn apply_snapshot_rejects_empty_payload() {
-        let mut handler = InstallSnapshotHandler::new();
+        let mut handler = InstallSnapshotHandler::new_with_last_confirmed_offset(0);
 
         assert!(handler.apply_snapshot(Vec::new()).is_err());
     }
@@ -307,7 +308,7 @@ mod tests {
 
     #[test]
     fn handler_returns_snapshot_after_final_chunk() {
-        let mut handler = InstallSnapshotHandler::new();
+        let mut handler = InstallSnapshotHandler::new_with_last_confirmed_offset(0);
 
         let first = InstallSnapshotRequest {
             term: 2,
@@ -354,7 +355,7 @@ mod stream_resumption_tests {
 
     #[test]
     fn handler_rejects_gap_during_snapshot_stream() {
-        let mut handler = InstallSnapshotHandler::new();
+        let mut handler = InstallSnapshotHandler::new_with_last_confirmed_offset(0);
 
         let first = InstallSnapshotRequest {
             term: 2,
@@ -383,7 +384,7 @@ mod stream_resumption_tests {
 
     #[test]
     fn handler_resumes_from_last_confirmed_offset() {
-        let mut handler = InstallSnapshotHandler::new();
+        let mut handler = InstallSnapshotHandler::new_with_last_confirmed_offset(0);
 
         let first = InstallSnapshotRequest {
             term: 2,
@@ -412,7 +413,7 @@ mod stream_resumption_tests {
 
     #[test]
     fn handler_ignores_duplicate_chunk_after_resume() {
-        let mut handler = InstallSnapshotHandler::new();
+        let mut handler = InstallSnapshotHandler::new_with_last_confirmed_offset(0);
 
         let first = InstallSnapshotRequest {
             term: 2,
@@ -454,8 +455,8 @@ mod stream_resumption_tests {
             done: true,
         };
 
-        let mut follower_a = InstallSnapshotHandler::new();
-        let mut follower_b = InstallSnapshotHandler::new();
+        let mut follower_a = InstallSnapshotHandler::new_with_last_confirmed_offset(0);
+        let mut follower_b = InstallSnapshotHandler::new_with_last_confirmed_offset(0);
 
         let (a_first_response, a_first_snapshot) = follower_a.handle(&first, 4);
         let (b_first_response, b_first_snapshot) = follower_b.handle(&first, 4);
@@ -486,8 +487,8 @@ mod stream_resumption_tests {
             done: true,
         };
 
-        let mut follower_a = InstallSnapshotHandler::new();
-        let mut follower_b = InstallSnapshotHandler::new();
+        let mut follower_a = InstallSnapshotHandler::new_with_last_confirmed_offset(0);
+        let mut follower_b = InstallSnapshotHandler::new_with_last_confirmed_offset(0);
 
         let (response_a, snapshot_a) = follower_a.handle(&request, 3);
         let (response_b, snapshot_b) = follower_b.handle(&request, 3);
@@ -500,14 +501,14 @@ mod stream_resumption_tests {
 
     #[test]
     fn apply_snapshot_accepts_non_empty_payload() {
-        let mut handler = InstallSnapshotHandler::new();
+        let mut handler = InstallSnapshotHandler::new_with_last_confirmed_offset(0);
 
         assert!(handler.apply_snapshot(vec![1, 2, 3]).is_ok());
     }
 
     #[test]
     fn apply_snapshot_rejects_empty_payload() {
-        let mut handler = InstallSnapshotHandler::new();
+        let mut handler = InstallSnapshotHandler::new_with_last_confirmed_offset(0);
 
         assert!(handler.apply_snapshot(Vec::new()).is_err());
     }
@@ -577,7 +578,7 @@ mod stream_resumption_tests {
 
     #[test]
     fn handler_returns_snapshot_after_final_chunk() {
-        let mut handler = InstallSnapshotHandler::new();
+        let mut handler = InstallSnapshotHandler::new_with_last_confirmed_offset(0);
 
         let first = InstallSnapshotRequest {
             term: 2,
@@ -626,9 +627,14 @@ pub struct InstallSnapshotHandler {
 
 impl InstallSnapshotHandler {
     pub fn new() -> Self {
+        let metadata = DurableSnapshotMetadata::load("snapshot_metadata.json").unwrap_or_default();
+        Self::new_with_last_confirmed_offset(metadata.last_confirmed_offset)
+    }
+
+    pub fn new_with_last_confirmed_offset(last_confirmed_offset: u64) -> Self {
         Self {
             assembler: SnapshotAssembler::new(),
-            last_confirmed_offset: 0,
+            last_confirmed_offset,
         }
     }
 
@@ -677,6 +683,11 @@ impl InstallSnapshotHandler {
 
         let completed_snapshot = self.assembler.append(request);
         self.last_confirmed_offset += request.data.len() as u64;
+
+        let _ = DurableSnapshotMetadata {
+            last_confirmed_offset: self.last_confirmed_offset,
+        }
+        .save("snapshot_metadata.json");
 
         (
             InstallSnapshotResponse {
