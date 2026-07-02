@@ -145,6 +145,37 @@ mod tests {
     }
 
     #[test]
+    fn handler_returns_snapshot_after_final_chunk() {
+        let mut handler = InstallSnapshotHandler::new();
+
+        let first = InstallSnapshotRequest {
+            term: 2,
+            leader_id: "leader".into(),
+            last_included_index: 10,
+            last_included_term: 2,
+            offset: 0,
+            data: vec![1, 2, 3],
+            done: false,
+        };
+
+        let second = InstallSnapshotRequest {
+            term: 2,
+            leader_id: "leader".into(),
+            last_included_index: 10,
+            last_included_term: 2,
+            offset: 3,
+            data: vec![4, 5, 6],
+            done: true,
+        };
+
+        let (_, snapshot) = handler.handle(&first, 1);
+        assert!(snapshot.is_none());
+
+        let (_, snapshot) = handler.handle(&second, 1);
+        assert_eq!(snapshot.unwrap(), vec![1, 2, 3, 4, 5, 6]);
+    }
+
+    #[test]
     fn assembler_clear_discards_buffer() {
         let mut assembler = SnapshotAssembler::new();
 
