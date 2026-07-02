@@ -145,3 +145,42 @@ mod tests {
         assert!(assembler.buffer.is_empty());
     }
 }
+
+/// Handles InstallSnapshot request validation and chunk assembly.
+pub struct InstallSnapshotHandler {
+    assembler: SnapshotAssembler,
+}
+
+impl InstallSnapshotHandler {
+    pub fn new() -> Self {
+        Self {
+            assembler: SnapshotAssembler::new(),
+        }
+    }
+
+    pub fn handle(
+        &mut self,
+        request: &InstallSnapshotRequest,
+        current_term: u64,
+    ) -> (InstallSnapshotResponse, Option<Vec<u8>>) {
+        if request.term < current_term {
+            return (
+                InstallSnapshotResponse {
+                    term: current_term,
+                    success: false,
+                },
+                None,
+            );
+        }
+
+        let completed_snapshot = self.assembler.append(request);
+
+        (
+            InstallSnapshotResponse {
+                term: request.term,
+                success: true,
+            },
+            completed_snapshot,
+        )
+    }
+}
