@@ -83,6 +83,30 @@ pub fn apply_snapshot_indices(
 mod tests {
 
     #[test]
+    fn handler_replicates_snapshot_across_multiple_followers() {
+        let request = InstallSnapshotRequest {
+            term: 3,
+            leader_id: "leader-a".to_string(),
+            last_included_index: 64,
+            last_included_term: 3,
+            offset: 0,
+            data: vec![10, 20, 30, 40],
+            done: true,
+        };
+
+        let mut follower_a = InstallSnapshotHandler::new();
+        let mut follower_b = InstallSnapshotHandler::new();
+
+        let (response_a, snapshot_a) = follower_a.handle(&request, 3);
+        let (response_b, snapshot_b) = follower_b.handle(&request, 3);
+
+        assert!(response_a.success);
+        assert!(response_b.success);
+        assert_eq!(snapshot_a, Some(vec![10, 20, 30, 40]));
+        assert_eq!(snapshot_b, Some(vec![10, 20, 30, 40]));
+    }
+
+    #[test]
     fn apply_snapshot_accepts_non_empty_payload() {
         let mut handler = InstallSnapshotHandler::new();
 
