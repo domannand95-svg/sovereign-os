@@ -83,6 +83,48 @@ pub fn apply_snapshot_indices(
 mod tests {
 
     #[test]
+    fn handler_replicates_chunked_snapshot_to_multiple_followers() {
+        let first = InstallSnapshotRequest {
+            term: 4,
+            leader_id: "leader-a".to_string(),
+            last_included_index: 256,
+            last_included_term: 4,
+            offset: 0,
+            data: vec![1, 2, 3],
+            done: false,
+        };
+
+        let second = InstallSnapshotRequest {
+            term: 4,
+            leader_id: "leader-a".to_string(),
+            last_included_index: 256,
+            last_included_term: 4,
+            offset: 3,
+            data: vec![4, 5, 6],
+            done: true,
+        };
+
+        let mut follower_a = InstallSnapshotHandler::new();
+        let mut follower_b = InstallSnapshotHandler::new();
+
+        let (a_first_response, a_first_snapshot) = follower_a.handle(&first, 4);
+        let (b_first_response, b_first_snapshot) = follower_b.handle(&first, 4);
+
+        assert!(a_first_response.success);
+        assert!(b_first_response.success);
+        assert!(a_first_snapshot.is_none());
+        assert!(b_first_snapshot.is_none());
+
+        let (a_second_response, a_snapshot) = follower_a.handle(&second, 4);
+        let (b_second_response, b_snapshot) = follower_b.handle(&second, 4);
+
+        assert!(a_second_response.success);
+        assert!(b_second_response.success);
+        assert_eq!(a_snapshot, Some(vec![1, 2, 3, 4, 5, 6]));
+        assert_eq!(b_snapshot, Some(vec![1, 2, 3, 4, 5, 6]));
+    }
+
+    #[test]
     fn handler_replicates_snapshot_across_multiple_followers() {
         let request = InstallSnapshotRequest {
             term: 3,
@@ -236,6 +278,14 @@ impl InstallSnapshotHandler {
         Self {
             assembler: SnapshotAssembler::new(),
         }
+    }
+
+    pub fn apply_snapshot(&mut self, snapshot: Vec<u8>) -> Result<(), String> {
+        if snapshot.is_empty() {
+            return Err("snapshot payload is empty".to_string());
+        }
+
+        Ok(())
     }
 
     pub fn handle(
