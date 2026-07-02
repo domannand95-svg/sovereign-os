@@ -69,6 +69,16 @@ impl SnapshotAssembler {
     }
 }
 
+/// Aligns local Raft progress markers after a completed snapshot has been applied.
+pub fn apply_snapshot_indices(
+    commit_index: &mut crate::commit_index::CommitIndexManager,
+    state_machine: &mut crate::state_machine::StateMachine,
+    snapshot_index: u64,
+) {
+    commit_index.force_reset(snapshot_index);
+    state_machine.force_reset_applied(snapshot_index);
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
