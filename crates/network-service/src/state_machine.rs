@@ -32,6 +32,10 @@ impl StateMachine {
         self.last_applied_index
     }
 
+    pub fn force_reset_applied(&mut self, index: u64) {
+        self.last_applied_index = index;
+    }
+
     pub fn applied_entries(&self) -> &[AppliedCommand] {
         &self.applied
     }
