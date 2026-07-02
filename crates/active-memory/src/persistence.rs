@@ -14,10 +14,10 @@ impl StorageEngine {
     pub fn new(path: impl Into<PathBuf>) -> Result<Self, ActiveMemoryError> {
         let path = path.into();
 
-        if let Some(parent) = path.parent() {
-            if !parent.as_os_str().is_empty() {
-                std::fs::create_dir_all(parent)?;
-            }
+        if let Some(parent) = path.parent()
+            && !parent.as_os_str().is_empty()
+        {
+            std::fs::create_dir_all(parent)?;
         }
 
         OpenOptions::new().create(true).append(true).open(&path)?;

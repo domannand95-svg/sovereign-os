@@ -19,8 +19,7 @@ pub struct SnapshotStorage;
 
 impl SnapshotStorage {
     pub fn save<P: AsRef<Path>>(path: P, snapshot: &Snapshot) -> io::Result<()> {
-        let bytes =
-            serde_json::to_vec(snapshot).map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
+        let bytes = serde_json::to_vec(snapshot).map_err(io::Error::other)?;
 
         let path_ref = path.as_ref();
         let tmp_path = path_ref.with_extension("tmp");
@@ -31,8 +30,7 @@ impl SnapshotStorage {
     pub fn load<P: AsRef<Path>>(path: P) -> io::Result<Snapshot> {
         let bytes = fs::read(path)?;
 
-        let snapshot =
-            serde_json::from_slice(&bytes).map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
+        let snapshot = serde_json::from_slice(&bytes).map_err(io::Error::other)?;
 
         Ok(snapshot)
     }
