@@ -81,6 +81,21 @@ pub fn apply_snapshot_indices(
 
 #[cfg(test)]
 mod tests {
+
+    #[test]
+    fn apply_snapshot_accepts_non_empty_payload() {
+        let mut handler = InstallSnapshotHandler::new();
+
+        assert!(handler.apply_snapshot(vec![1, 2, 3]).is_ok());
+    }
+
+    #[test]
+    fn apply_snapshot_rejects_empty_payload() {
+        let mut handler = InstallSnapshotHandler::new();
+
+        assert!(handler.apply_snapshot(Vec::new()).is_err());
+    }
+
     use super::*;
     #[test]
     fn request_serializes_and_deserializes() {
