@@ -49,3 +49,8 @@ pub mod consensus_engine;
 pub use consensus_engine::{
     ConsensusRole, ConsensusState, LogEntry,
 };
+
+pub mod event_ledger;
+pub use event_ledger::{
+    compute_entry_hash, EventLedger, LedgerEntry, LedgerError, LedgerEvent, LedgerHeader,
+};
