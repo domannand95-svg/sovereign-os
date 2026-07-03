@@ -182,6 +182,10 @@ impl Registry {
         self.nodes.borrow().get(node_id).cloned()
     }
 
+    pub fn list_agents(&self) -> Vec<NodeRecord> {
+        self.nodes.borrow().values().cloned().collect()
+    }
+
     pub fn list_nodes(&self) -> Vec<NodeRecord> {
         self.nodes.borrow().values().cloned().collect()
     }

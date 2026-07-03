@@ -1,5 +1,8 @@
+use std::path::PathBuf;
+
 use crate::{
-    AgentRegistry, AgentTaskScheduler, ConsensusState, EventLedger, GovernanceEngine,
+    AgentTaskQueue, Registry,
+    AgentRecord, AgentRegistry, AgentTaskScheduler, CapabilityTier, ConsensusState, EventLedger, GovernanceEngine,
     LedgerEntry, LedgerEvent, LedgerHeader, Proposal, VerificationEngine, VoteType,
 };
 
@@ -60,6 +63,47 @@ impl RuntimeOrchestrator {
             ledger,
             command_sequence: 0,
         }
+    }
+
+    pub fn boot(path: impl Into<PathBuf>) -> Result<Self, OrchestratorError> {
+        let registry = AgentRegistry::new(100, -50);
+        let scheduler = AgentTaskScheduler::new(AgentTaskQueue::new(10));
+        let verification = VerificationEngine::new(10, true);
+        let governance =
+            GovernanceEngine::new(3, 6_600, 100).map_err(|_| OrchestratorError::LedgerAppendFailed)?;
+        let consensus = ConsensusState::new();
+        let ledger = EventLedger::new();
+
+        let mut orchestrator = Self::new(
+            registry,
+            scheduler,
+            verification,
+            governance,
+            consensus,
+            ledger,
+        );
+
+        let rebuilt = Registry::open(path).map_err(|_| OrchestratorError::LedgerAppendFailed)?;
+        orchestrator.registry = AgentRegistry::new(100, -50);
+orchestrator.registry.agents = rebuilt
+            .list_agents()
+            .into_iter()
+            .map(|node| {
+                let agent_id = *node.node_id.as_bytes();
+                (
+                    agent_id,
+                    AgentRecord {
+                        agent_id,
+                        tier: CapabilityTier::Tier0Sandbox,
+                        performance_points: 0,
+                        total_tasks_completed: 0,
+                        is_isolated: false,
+                    },
+                )
+            })
+            .collect();
+
+        Ok(orchestrator)
     }
 
     pub fn execute(

@@ -1,0 +1,62 @@
+[1mdiff --git a/crates/registry-service/src/runtime_orchestrator.rs b/crates/registry-service/src/runtime_orchestrator.rs[m
+[1mindex 56a51ce..8843e65 100644[m
+[1m--- a/crates/registry-service/src/runtime_orchestrator.rs[m
+[1m+++ b/crates/registry-service/src/runtime_orchestrator.rs[m
+[36m@@ -1,5 +1,8 @@[m
+[32m+[m[32muse std::path::PathBuf;[m
+[32m+[m
+ use crate::{[m
+[31m-    AgentRegistry, AgentTaskScheduler, ConsensusState, EventLedger, GovernanceEngine,[m
+[32m+[m[32m    AgentTaskQueue, Registry,[m
+[32m+[m[32m    AgentRecord, AgentRegistry, AgentTaskScheduler, CapabilityTier, ConsensusState, EventLedger, GovernanceEngine,[m
+     LedgerEntry, LedgerEvent, LedgerHeader, Proposal, VerificationEngine, VoteType,[m
+ };[m
+ [m
+[36m@@ -62,6 +65,47 @@[m [mimpl RuntimeOrchestrator {[m
+         }[m
+     }[m
+ [m
+[32m+[m[32m    pub fn boot(path: impl Into<PathBuf>) -> Result<Self, OrchestratorError> {[m
+[32m+[m[32m        let registry = AgentRegistry::new(100, -50);[m
+[32m+[m[32m        let scheduler = AgentTaskScheduler::new(AgentTaskQueue::new(10));[m
+[32m+[m[32m        let verification = VerificationEngine::new(10, true);[m
+[32m+[m[32m        let governance =[m
+[32m+[m[32m            GovernanceEngine::new(3, 6_600, 100).map_err(|_| OrchestratorError::LedgerAppendFailed)?;[m
+[32m+[m[32m        let consensus = ConsensusState::new();[m
+[32m+[m[32m        let ledger = EventLedger::new();[m
+[32m+[m
+[32m+[m[32m        let mut orchestrator = Self::new([m
+[32m+[m[32m            registry,[m
+[32m+[m[32m            scheduler,[m
+[32m+[m[32m            verification,[m
+[32m+[m[32m            governance,[m
+[32m+[m[32m            consensus,[m
+[32m+[m[32m            ledger,[m
+[32m+[m[32m        );[m
+[32m+[m
+[32m+[m[32m        let rebuilt = Registry::open(path).map_err(|_| OrchestratorError::LedgerAppendFailed)?;[m
+[32m+[m[32m        orchestrator.registry = AgentRegistry::new(100, -50);[m
+[32m+[m[32morchestrator.registry.agents = rebuilt[m
+[32m+[m[32m            .list_agents()[m
+[32m+[m[32m            .into_iter()[m
+[32m+[m[32m            .map(|node| {[m
+[32m+[m[32m                let agent_id = *node.node_id.as_bytes();[m
+[32m+[m[32m                ([m
+[32m+[m[32m                    agent_id,[m
+[32m+[m[32m                    AgentRecord {[m
+[32m+[m[32m                        agent_id,[m
+[32m+[m[32m                        tier: CapabilityTier::Tier0Sandbox,[m
+[32m+[m[32m                        performance_points: 0,[m
+[32m+[m[32m                        total_tasks_completed: 0,[m
+[32m+[m[32m                        is_isolated: false,[m
+[32m+[m[32m                    },[m
+[32m+[m[32m                )[m
+[32m+[m[32m            })[m
+[32m+[m[32m            .collect();[m
+[32m+[m
+[32m+[m[32m        Ok(orchestrator)[m
+[32m+[m[32m    }[m
+[32m+[m
+     pub fn execute([m
+         &mut self,[m
+         command: OrchestratorCommand,[m
