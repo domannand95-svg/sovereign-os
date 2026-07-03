@@ -143,7 +143,36 @@ impl PersistenceEngine for JsonFilePersistence {
     }
 
     fn load(&self) -> Result<Vec<LedgerEntry>, Self::Error> {
-        Ok(Vec::new())
+        use std::fs::File;
+        use std::io::{BufRead, BufReader};
+
+            if !self.storage_path.exists() {
+            return Ok(Vec::new());
+        }
+
+        let file = File::open(&self.storage_path)
+            .map_err(|_| PersistenceError::Storage)?;
+
+        if file.metadata().map(|m| m.len()).unwrap_or(0) == 0 {
+            return Ok(Vec::new());
+        }
+
+        let reader = BufReader::new(file);
+        let mut entries = Vec::new();
+
+        for line_result in reader.lines() {
+            let line = line_result.map_err(|_| PersistenceError::Storage)?;
+            if line.trim().is_empty() {
+                continue;
+            }
+
+            let entry: LedgerEntry = serde_json::from_str(&line)
+                .map_err(|_| PersistenceError::CorruptedData)?;
+
+            entries.push(entry);
+        }
+
+        Ok(entries)
     }
 
     fn flush(&mut self) -> Result<(), Self::Error> {
