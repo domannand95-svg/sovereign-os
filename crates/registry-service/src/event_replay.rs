@@ -6,7 +6,8 @@ impl EventReplayService {
     pub fn replay<P: PersistenceEngine>(
         engine: &P,
     ) -> Result<Vec<LedgerEntry>, P::Error> {
-        engine.load()
+        let entries = engine.load()?;
+        Ok(entries)
     }
 }
 
@@ -43,4 +44,5 @@ mod tests {
         assert_eq!(replayed[0].header.index, 1);
         assert_eq!(replayed[1].header.index, 2);
     }
+
 }
