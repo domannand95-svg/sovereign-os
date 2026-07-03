@@ -39,3 +39,8 @@ pub mod verification_engine;
 pub use verification_engine::{
     ValidationError, VerificationEngine, VerificationMetrics,
 };
+
+pub mod governance_engine;
+pub use governance_engine::{
+    GovernanceEngine, GovernanceError, Proposal, ProposalStatus, VoteType,
+};
