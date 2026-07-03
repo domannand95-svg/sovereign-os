@@ -64,3 +64,5 @@ pub mod persistence;
 pub use persistence::{
     MemoryPersistence, PersistenceEngine, PersistenceError,
 };
+
+pub mod event_replay;
