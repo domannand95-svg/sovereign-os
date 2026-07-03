@@ -34,3 +34,8 @@ pub mod agent_registry;
 pub use agent_registry::{
     AgentRecord, AgentRegistry, AgentRegistryError, CapabilityTier,
 };
+
+pub mod verification_engine;
+pub use verification_engine::{
+    ValidationError, VerificationEngine, VerificationMetrics,
+};
