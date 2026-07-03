@@ -17,3 +17,10 @@ pub use allocation::AllocationRequest;
 pub mod snapshot;
 
 pub use snapshot::{LogicalSequenceNumber, RegistrySnapshot, SnapshotMetadata};
+
+pub mod agent_task_queue;
+pub mod agent_task_scheduler;
+pub use agent_task_queue::{
+    AgentTaskQueue, QueueError, QueuePriority, QueuedTaskItem,
+};
+pub use agent_task_scheduler::AgentTaskScheduler;
