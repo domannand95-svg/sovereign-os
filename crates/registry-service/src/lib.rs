@@ -24,3 +24,8 @@ pub use agent_task_queue::{
     AgentTaskQueue, QueueError, QueuePriority, QueuedTaskItem,
 };
 pub use agent_task_scheduler::AgentTaskScheduler;
+
+pub mod agent_task_executor;
+pub use agent_task_executor::{
+    AgentTaskExecutor, ExecutionOutcome, ExecutorError, VerificationProof,
+};
