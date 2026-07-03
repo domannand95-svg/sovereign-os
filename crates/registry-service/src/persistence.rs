@@ -120,8 +120,26 @@ impl JsonFilePersistence {
 impl PersistenceEngine for JsonFilePersistence {
     type Error = PersistenceError;
 
-    fn append(&mut self, _entry: &LedgerEntry) -> Result<(), Self::Error> {
-        Err(PersistenceError::Storage)
+    fn append(&mut self, entry: &LedgerEntry) -> Result<(), Self::Error> {
+        use std::fs::OpenOptions;
+        use std::io::Write;
+
+        let mut file = OpenOptions::new()
+            .create(true)
+            .append(true)
+            .open(&self.storage_path)
+            .map_err(|_| PersistenceError::Storage)?;
+
+        let json_line = serde_json::to_string(entry)
+            .map_err(|_| PersistenceError::Serialization)?;
+
+        writeln!(file, "{}", json_line)
+            .map_err(|_| PersistenceError::Storage)?;
+
+        file.flush()
+            .map_err(|_| PersistenceError::Storage)?;
+
+        Ok(())
     }
 
     fn load(&self) -> Result<Vec<LedgerEntry>, Self::Error> {
