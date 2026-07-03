@@ -44,3 +44,8 @@ pub mod governance_engine;
 pub use governance_engine::{
     GovernanceEngine, GovernanceError, Proposal, ProposalStatus, VoteType,
 };
+
+pub mod consensus_engine;
+pub use consensus_engine::{
+    ConsensusRole, ConsensusState, LogEntry,
+};
