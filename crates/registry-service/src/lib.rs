@@ -54,3 +54,8 @@ pub mod event_ledger;
 pub use event_ledger::{
     compute_entry_hash, EventLedger, LedgerEntry, LedgerError, LedgerEvent, LedgerHeader,
 };
+
+pub mod runtime_orchestrator;
+pub use runtime_orchestrator::{
+    OrchestratorCommand, OrchestratorError, OrchestratorEvent, RuntimeOrchestrator,
+};
