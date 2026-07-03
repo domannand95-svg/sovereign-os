@@ -103,3 +103,32 @@ mod tests {
         assert_eq!(store.flush(), Ok(()));
     }
 }
+
+
+pub struct JsonFilePersistence {
+    pub storage_path: std::path::PathBuf,
+}
+
+impl JsonFilePersistence {
+    pub fn new<P: AsRef<std::path::Path>>(path: P) -> Self {
+        Self {
+            storage_path: path.as_ref().to_path_buf(),
+        }
+    }
+}
+
+impl PersistenceEngine for JsonFilePersistence {
+    type Error = PersistenceError;
+
+    fn append(&mut self, _entry: &LedgerEntry) -> Result<(), Self::Error> {
+        Err(PersistenceError::Storage)
+    }
+
+    fn load(&self) -> Result<Vec<LedgerEntry>, Self::Error> {
+        Ok(Vec::new())
+    }
+
+    fn flush(&mut self) -> Result<(), Self::Error> {
+        Ok(())
+    }
+}
