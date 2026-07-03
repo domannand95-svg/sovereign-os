@@ -85,9 +85,11 @@ impl RuntimeOrchestrator {
             ledger,
         );
 
-        let rebuilt = Registry::open(path.clone()).map_err(|_| OrchestratorError::LedgerAppendFailed)?;
+        let rebuilt = Registry::open(path.clone())
+            .map_err(|_| OrchestratorError::LedgerAppendFailed)?;
+
         orchestrator.registry = AgentRegistry::new(100, -50);
-orchestrator.registry.agents = rebuilt
+        orchestrator.registry.agents = rebuilt
             .list_agents()
             .into_iter()
             .map(|node| {
@@ -104,6 +106,35 @@ orchestrator.registry.agents = rebuilt
                 )
             })
             .collect();
+
+        let persistence = crate::persistence::JsonFilePersistence::new(path);
+
+        if let Ok(historical_entries) =
+            crate::event_replay::EventReplayService::replay(&persistence)
+        {
+            for entry in historical_entries {
+                if entry.header.index <= rebuilt.snapshot_lsn {
+                    continue;
+                }
+
+                match entry.event {
+                    LedgerEvent::CapabilityTierUpdated { agent_id, new_tier } => {
+                        if let Some(agent) = orchestrator.registry.agents.get_mut(&agent_id) {
+                            agent.tier = new_tier;
+                        }
+                    }
+                    LedgerEvent::AgentIsolationChanged {
+                        agent_id,
+                        is_isolated,
+                    } => {
+                        if let Some(agent) = orchestrator.registry.agents.get_mut(&agent_id) {
+                            agent.is_isolated = is_isolated;
+                        }
+                    }
+                    _ => {}
+                }
+            }
+        }
 
         Ok(orchestrator)
     }
