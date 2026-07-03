@@ -102,6 +102,85 @@ mod tests {
 
         assert_eq!(store.flush(), Ok(()));
     }
+
+    fn get_unique_json_test_path(suffix: &str) -> std::path::PathBuf {
+        std::env::temp_dir().join(format!(
+            "sovereign_test_{}_{}.json",
+            suffix,
+            std::process::id()
+        ))
+    }
+
+    #[test]
+    fn test_json_persistence_missing_file() {
+        let temp_path = get_unique_json_test_path("missing");
+        let _ = std::fs::remove_file(&temp_path);
+
+        let adapter = JsonFilePersistence::new(&temp_path);
+        let result = adapter.load();
+
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap().len(), 0);
+    }
+
+    #[test]
+    fn test_json_persistence_round_trip() {
+        let temp_path = get_unique_json_test_path("round_trip");
+        let _ = std::fs::remove_file(&temp_path);
+
+        let mut adapter = JsonFilePersistence::new(&temp_path);
+        let test_entry = entry(1);
+
+        adapter.append(&test_entry).unwrap();
+
+        let loaded = adapter.load().unwrap();
+        assert_eq!(loaded.len(), 1);
+        assert_eq!(loaded[0], test_entry);
+
+        let _ = std::fs::remove_file(&temp_path);
+    }
+
+    #[test]
+    fn test_json_persistence_fifo_ordering() {
+        let temp_path = get_unique_json_test_path("fifo");
+        let _ = std::fs::remove_file(&temp_path);
+
+        let mut adapter = JsonFilePersistence::new(&temp_path);
+        let entry1 = entry(1);
+        let entry2 = entry(2);
+
+        adapter.append(&entry1).unwrap();
+        adapter.append(&entry2).unwrap();
+
+        let loaded = adapter.load().unwrap();
+        assert_eq!(loaded, vec![entry1, entry2]);
+
+        let _ = std::fs::remove_file(&temp_path);
+    }
+
+    #[test]
+    fn test_json_persistence_corruption_halt() {
+        use std::io::Write;
+
+        let temp_path = get_unique_json_test_path("corruption");
+        let _ = std::fs::remove_file(&temp_path);
+
+        let mut adapter = JsonFilePersistence::new(&temp_path);
+        adapter.append(&entry(1)).unwrap();
+
+        let mut file = std::fs::OpenOptions::new()
+            .append(true)
+            .open(&temp_path)
+            .unwrap();
+
+        writeln!(file, "INVALID NON-JSON NOISE LINE").unwrap();
+
+        let result = adapter.load();
+        assert!(matches!(result, Err(PersistenceError::CorruptedData)));
+
+        let _ = std::fs::remove_file(&temp_path);
+    }
+
 }
 
 
