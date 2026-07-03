@@ -83,6 +83,7 @@ pub struct Registry {
     log: EventLog,
     nodes: RefCell<HashMap<Uuid, NodeRecord>>,
     workloads: RefCell<HashMap<Uuid, Workload>>,
+    pub snapshot_lsn: u64,
 }
 
 impl Registry {
@@ -150,16 +151,36 @@ impl Registry {
     }
 
     pub fn open(path: impl Into<PathBuf>) -> Result<Self, RegistryError> {
-        let registry = Self {
-            log: EventLog::open(path)?,
+        let path_buf: PathBuf = path.into();
+
+        let mut registry = Self {
+            log: EventLog::open(path_buf.clone())?,
             nodes: RefCell::new(HashMap::new()),
             workloads: RefCell::new(HashMap::new()),
+            snapshot_lsn: 0,
         };
 
+        let snap_path = snapshot_path(&path_buf);
+        let mut loaded_lsn = 0u64;
+
+        if snap_path.exists() {
+            if let Ok(lsn) = registry.load_snapshot(&snap_path) {
+                loaded_lsn = lsn;
+                registry.snapshot_lsn = lsn;
+            }
+        }
+
+        let mut current_event_lsn = 0u64;
+
         for active_event in registry.log.replay()? {
+            current_event_lsn += 1;
+
+            if current_event_lsn <= loaded_lsn {
+                continue;
+            }
+
             let registry_event = RegistryEvent::from_active_event(&active_event)
                 .map_err(|err| RegistryError::General(format!("event replay corruption: {err}")))?;
-
             registry.apply_event(registry_event);
         }
 
@@ -330,5 +351,84 @@ impl RegistryEvent {
         active_event: &active_memory::ActiveEvent,
     ) -> Result<Self, serde_json::Error> {
         serde_json::from_value(active_event.payload.clone())
+    }
+}
+
+
+#[cfg(test)]
+mod compaction_validation_tests {
+    use super::*;
+    use uuid::Uuid;
+
+    fn test_node(id: Uuid, capability: &str) -> NodeRecord {
+        NodeRecord {
+            node_id: id,
+            status: OperationalStatus::Active,
+            capabilities: vec![capability.to_string()],
+            metrics: CapacityMetrics {
+                total_compute_cores: 4,
+                allocated_compute_cores: 0,
+                total_memory_bytes: 8_589_934_592,
+                allocated_memory_bytes: 0,
+            },
+        }
+    }
+
+    #[test]
+    fn snapshot_lsn_compaction_boundary_honored() -> std::io::Result<()> {
+        let test_id = Uuid::new_v4();
+        let mut log_path = std::env::temp_dir();
+        log_path.push(format!("sovereign_compaction_test_{}.log", test_id));
+
+        let snap_path = snapshot_path(&log_path);
+
+        let _ = std::fs::remove_file(&log_path);
+        let _ = std::fs::remove_file(&snap_path);
+
+        {
+            let mut registry = Registry::open(log_path.clone())
+                .map_err(|e| std::io::Error::other(format!("{:?}", e)))?;
+
+            for _ in 0..500 {
+                registry
+                    .append_governed_event(RegistryEvent::NodeRegistered {
+                        record: test_node(Uuid::new_v4(), "compute-core"),
+                    })
+                    .map_err(|e| std::io::Error::other(format!("{:?}", e)))?;
+            }
+        }
+
+        assert!(snap_path.exists(), "snapshot file was not created at LSN 500");
+
+        let post_snapshot_node_id = Uuid::new_v4();
+
+        {
+            let mut registry = Registry::open(log_path.clone())
+                .map_err(|e| std::io::Error::other(format!("{:?}", e)))?;
+
+            assert_eq!(registry.snapshot_lsn, 500);
+
+            registry
+                .append_governed_event(RegistryEvent::NodeRegistered {
+                    record: test_node(post_snapshot_node_id, "ternary-coprocessor"),
+                })
+                .map_err(|e| std::io::Error::other(format!("{:?}", e)))?;
+        }
+
+        {
+            let registry = Registry::open(log_path.clone())
+                .map_err(|e| std::io::Error::other(format!("{:?}", e)))?;
+
+            assert_eq!(registry.snapshot_lsn, 500);
+
+            let nodes = registry.list_nodes();
+            assert_eq!(nodes.len(), 501);
+            assert!(nodes.iter().any(|node| node.node_id == post_snapshot_node_id));
+        }
+
+        let _ = std::fs::remove_file(&log_path);
+        let _ = std::fs::remove_file(&snap_path);
+
+        Ok(())
     }
 }
