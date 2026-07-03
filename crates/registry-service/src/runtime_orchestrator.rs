@@ -66,6 +66,8 @@ impl RuntimeOrchestrator {
     }
 
     pub fn boot(path: impl Into<PathBuf>) -> Result<Self, OrchestratorError> {
+        let path: PathBuf = path.into();
+
         let registry = AgentRegistry::new(100, -50);
         let scheduler = AgentTaskScheduler::new(AgentTaskQueue::new(10));
         let verification = VerificationEngine::new(10, true);
@@ -83,7 +85,7 @@ impl RuntimeOrchestrator {
             ledger,
         );
 
-        let rebuilt = Registry::open(path).map_err(|_| OrchestratorError::LedgerAppendFailed)?;
+        let rebuilt = Registry::open(path.clone()).map_err(|_| OrchestratorError::LedgerAppendFailed)?;
         orchestrator.registry = AgentRegistry::new(100, -50);
 orchestrator.registry.agents = rebuilt
             .list_agents()

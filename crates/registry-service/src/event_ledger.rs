@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use crate::CapabilityTier;
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum LedgerEvent {
@@ -6,6 +7,8 @@ pub enum LedgerEvent {
     AgentRegistered { agent_id: [u8; 16] },
     AgentSlashingRecorded { agent_id: [u8; 16], penalty: u32 },
     ProposalCommitted { proposal_id: [u8; 16], status: String },
+    CapabilityTierUpdated { agent_id: [u8; 16], new_tier: CapabilityTier },
+    AgentIsolationChanged { agent_id: [u8; 16], is_isolated: bool },
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -157,6 +160,14 @@ fn mix_event(hash: &mut [u8; 32], event: &LedgerEvent) {
         LedgerEvent::ProposalCommitted { proposal_id, status } => {
             mix_bytes(hash, proposal_id);
             mix_bytes(hash, status.as_bytes());
+        }
+        LedgerEvent::CapabilityTierUpdated { agent_id, new_tier } => {
+            mix_bytes(hash, agent_id);
+            mix_u64(hash, *new_tier as u64);
+        }
+        LedgerEvent::AgentIsolationChanged { agent_id, is_isolated } => {
+            mix_bytes(hash, agent_id);
+            mix_u64(hash, *is_isolated as u64);
         }
     }
 }
