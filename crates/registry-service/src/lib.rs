@@ -59,3 +59,8 @@ pub mod runtime_orchestrator;
 pub use runtime_orchestrator::{
     OrchestratorCommand, OrchestratorError, OrchestratorEvent, RuntimeOrchestrator,
 };
+
+pub mod persistence;
+pub use persistence::{
+    MemoryPersistence, PersistenceEngine, PersistenceError,
+};
