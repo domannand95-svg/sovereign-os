@@ -124,12 +124,13 @@ impl Registry {
             .unwrap()
             .as_millis() as u64;
 
-        let snapshot = crate::snapshot::RegistrySnapshot::new(
+        let mut snapshot = crate::snapshot::RegistrySnapshot::new(
             lsn,
             created_at_unix_ms,
             self.nodes.borrow().clone(),
             self.workloads.borrow().clone(),
         );
+        snapshot.refresh_checksum();
 
         let file = std::fs::File::create(path)?;
         serde_json::to_writer_pretty(file, &snapshot)
@@ -354,7 +355,6 @@ impl RegistryEvent {
     }
 }
 
-
 #[cfg(test)]
 mod compaction_validation_tests {
     use super::*;
@@ -398,7 +398,10 @@ mod compaction_validation_tests {
             }
         }
 
-        assert!(snap_path.exists(), "snapshot file was not created at LSN 500");
+        assert!(
+            snap_path.exists(),
+            "snapshot file was not created at LSN 500"
+        );
 
         let post_snapshot_node_id = Uuid::new_v4();
 
@@ -423,7 +426,11 @@ mod compaction_validation_tests {
 
             let nodes = registry.list_nodes();
             assert_eq!(nodes.len(), 501);
-            assert!(nodes.iter().any(|node| node.node_id == post_snapshot_node_id));
+            assert!(
+                nodes
+                    .iter()
+                    .any(|node| node.node_id == post_snapshot_node_id)
+            );
         }
 
         let _ = std::fs::remove_file(&log_path);
