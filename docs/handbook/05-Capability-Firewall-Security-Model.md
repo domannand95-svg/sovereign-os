@@ -170,3 +170,196 @@ These objectives constitute constitutional security properties independent of im
 ---
 
 **End of HB-CH05 — Repository Edition — Part A**
+---
+
+## 5.6 Capability Invocation
+
+The Capability Firewall SHALL govern every invocation crossing architectural authority boundaries.
+
+Execution requests SHALL be evaluated according to the requesting capability's current epistemic state, granted authority, and applicable governance policy.
+
+Successful invocation SHALL NOT imply permanent authority elevation.
+
+Authority SHALL remain bounded to the specific execution context for which approval has been granted.
+
+---
+
+### 5.6.1 Invocation Validation
+
+Before permitting execution across the Capability Firewall, implementations SHALL verify:
+
+- capability identity;
+- current epistemic state;
+- governance authorization;
+- execution context;
+- interface compatibility;
+- required privileges; and
+- policy compliance.
+
+Failure of any mandatory validation SHALL result in immediate denial of the request.
+
+---
+
+### 5.6.2 Context Preservation
+
+Invocation SHALL preserve execution context without implicitly transferring authority.
+
+Execution context MAY include configuration, runtime parameters, input datasets, and environmental metadata, provided such information does not modify the authoritative governance state.
+
+---
+
+## 5.7 Authority Domains
+
+The Capability Firewall partitions authority into explicitly governed domains.
+
+Each domain SHALL possess independent authority boundaries and explicitly defined responsibilities.
+
+---
+
+### 5.7.1 Discovery Authority
+
+Discovery capabilities SHALL possess authority only within approved exploratory environments.
+
+Discovery authority SHALL NOT extend to production-authoritative interfaces.
+
+---
+
+### 5.7.2 Verification Authority
+
+Verification capabilities MAY evaluate, inspect, simulate, and validate governed artifacts.
+
+Verification authority SHALL NOT independently authorize production deployment.
+
+---
+
+### 5.7.3 Production Authority
+
+Production authority SHALL be restricted exclusively to capabilities satisfying the governance requirements defined by HB-CH04.
+
+Production-authoritative capabilities SHALL operate only within approved execution boundaries.
+
+---
+
+## 5.8 Boundary Crossing
+
+Cross-domain communication SHALL occur only through explicitly governed interfaces.
+
+Boundary crossings SHALL preserve:
+
+- authority separation;
+- traceability;
+- deterministic behaviour;
+- auditability; and
+- governance compliance.
+
+No implicit authority transfer SHALL occur as a consequence of data exchange.
+
+---
+
+### 5.8.1 Information Transfer
+
+Information MAY cross architectural boundaries where explicitly permitted.
+
+Transferred information SHALL retain sufficient provenance to support reconstruction and auditing.
+
+Information transfer SHALL NOT itself constitute authority transfer.
+
+---
+
+### 5.8.2 Capability Promotion Boundary
+
+Promotion across epistemic boundaries SHALL occur only through the governance mechanisms defined in HB-CH04.
+
+The Capability Firewall SHALL enforce governance decisions but SHALL NOT independently determine capability eligibility for promotion.
+
+---
+
+## 5.9 Failure Behaviour
+
+The Capability Firewall SHALL exhibit fail-closed behaviour.
+
+Whenever authorization, capability identity, governance state, interface integrity, or execution context cannot be established with sufficient confidence, execution SHALL be denied.
+
+Fail-open behaviour SHALL NOT be permitted.
+
+---
+
+### 5.9.1 Isolation Failure
+
+If isolation guarantees cannot be maintained, affected capabilities SHALL immediately lose access to production-authoritative execution interfaces.
+
+The resulting system state SHALL remain deterministic and auditable.
+
+---
+
+### 5.9.2 Authority Failure
+
+If authoritative status cannot be verified, implementations SHALL treat the capability as non-authoritative until governance verification has been successfully re-established.
+
+---
+
+## 5.10 Architectural Invariants
+
+The following invariants govern the Capability Firewall.
+
+### CF-001 — Authority Separation
+
+Speculative execution SHALL remain architecturally separated from production-authoritative execution.
+
+---
+
+### CF-002 — Explicit Trust
+
+Authority SHALL never emerge implicitly.
+
+Every increase in authority SHALL be explicitly governed.
+
+---
+
+### CF-003 — Least Authority
+
+Capabilities SHALL receive only the minimum authority necessary to perform their approved responsibilities.
+
+---
+
+### CF-004 — Fail Closed
+
+Uncertainty SHALL reduce authority rather than expand it.
+
+---
+
+### CF-005 — Boundary Integrity
+
+Every architectural boundary SHALL remain independently enforceable.
+
+Compromise of one execution domain SHALL NOT implicitly compromise another.
+
+---
+
+### CF-006 — Traceable Authority
+
+Every authoritative action SHALL remain attributable to a governed capability possessing verified production authority.
+
+---
+
+## 5.11 Security Considerations
+
+The Capability Firewall provides constitutional enforcement of authority separation rather than implementation-specific security controls.
+
+Conforming implementations MAY employ operating system isolation, virtualization, capability-based security, hardware protection mechanisms, or equivalent technologies to realize these architectural guarantees.
+
+The constitutional requirements defined by this chapter SHALL remain independent of implementation technology.
+
+---
+
+## 5.12 Summary
+
+This chapter establishes the Capability Firewall as the constitutional enforcement boundary separating governed authority from execution.
+
+It defines the architectural rules governing authority domains, boundary crossings, capability invocation, isolation guarantees, and fail-closed behaviour.
+
+These guarantees preserve the integrity of authoritative system state while allowing speculative computation, verification activities, and production execution to coexist without compromising architectural governance.
+
+---
+
+**End of HB-CH05 — Repository Edition — Part B**
