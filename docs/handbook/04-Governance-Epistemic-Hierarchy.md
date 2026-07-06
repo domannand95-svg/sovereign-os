@@ -168,3 +168,180 @@ Every transition between epistemic states SHALL satisfy the following architectu
 Capabilities SHALL progress only through adjacent epistemic states.
 
 Promotion operations SHALL NOT skip intermediate verification stages under
+---
+
+## 4.6 Governance Authority
+
+The governance subsystem separates authority from execution.
+
+Execution determines **what a capability does**.
+
+Governance determines **whether the capability is permitted to execute**.
+
+No capability SHALL acquire production authority solely through successful execution, elapsed runtime, performance optimization, or operational longevity.
+
+Production authority SHALL be granted only through successful completion of the epistemic promotion process defined by this specification.
+
+---
+
+### 4.6.1 Separation of Responsibilities
+
+Conforming implementations SHALL maintain architectural separation between:
+
+- capability execution,
+- capability verification,
+- capability promotion,
+- capability governance, and
+- capability revocation.
+
+No single subsystem SHALL possess unilateral authority to verify, approve, and deploy itself.
+
+---
+
+### 4.6.2 Governance Independence
+
+Verification evidence SHALL be generated independently from the capability under evaluation.
+
+Implementations SHALL prevent capabilities from producing or modifying their own authoritative approval records.
+
+This separation preserves audit integrity and prevents self-certification.
+
+---
+
+## 4.7 Governance Events
+
+Changes to epistemic state SHALL themselves be represented as governed events.
+
+Promotion, revocation, suspension, reinstatement, and retirement SHALL generate immutable governance records that become part of the permanent system history.
+
+Governance events SHALL include sufficient metadata to reconstruct:
+
+- initiating authority,
+- affected capability,
+- originating epistemic state,
+- resulting epistemic state,
+- supporting evidence,
+- timestamp,
+- unique event identifier, and
+- verification outcome.
+
+---
+
+### 4.7.1 Auditability
+
+Every governance decision SHALL be reproducible using its associated evidence record.
+
+Independent reviewers SHALL be capable of reconstructing the complete promotion history without requiring undocumented institutional knowledge.
+
+---
+
+## 4.8 Failure Handling
+
+Failure to satisfy any required governance constraint SHALL result in immediate promotion denial.
+
+The system SHALL fail closed whenever governance state cannot be established with sufficient confidence.
+
+Examples include:
+
+- incomplete evidence,
+- missing verification artifacts,
+- invalid signatures,
+- inconsistent lineage,
+- corrupted metadata,
+- unresolved policy conflicts, or
+- unverifiable capability identity.
+
+In such circumstances the capability SHALL remain non-authoritative.
+
+---
+
+### 4.8.1 Partial Verification
+
+Partial completion of verification activities SHALL NOT constitute successful promotion.
+
+Evidence SHALL satisfy every mandatory requirement associated with the applicable epistemic transition.
+
+---
+
+### 4.8.2 Governance Recovery
+
+Recovery following governance failure SHALL require re-evaluation using valid evidence.
+
+Implementations SHALL NOT infer successful verification from previous incomplete promotion attempts.
+
+---
+
+## 4.9 Architectural Invariants
+
+The following architectural invariants apply throughout the governance subsystem.
+
+### GI-001 — Authority Follows Evidence
+
+Production authority SHALL always be derived from verified evidence.
+
+---
+
+### GI-002 — Evidence Precedes Promotion
+
+Verification SHALL occur before promotion.
+
+Promotion SHALL NOT occur before verification.
+
+---
+
+### GI-003 — Traceability
+
+Every production-authoritative capability SHALL possess complete and reconstructible provenance.
+
+---
+
+### GI-004 — Independent Verification
+
+Verification evidence SHALL originate from governance processes independent of the capability under evaluation.
+
+---
+
+### GI-005 — Fail Closed
+
+When governance state cannot be established with sufficient confidence, implementations SHALL deny promotion.
+
+---
+
+### GI-006 — Representation Independence
+
+The behavioural guarantees defined by this chapter SHALL remain valid regardless of the implementation technology used to realize the governance subsystem.
+
+---
+
+## 4.10 Security Considerations
+
+The governance architecture reduces systemic risk by ensuring that authority cannot emerge through accidental execution.
+
+Instead, authority is explicitly granted through governed promotion supported by verifiable evidence.
+
+This approach limits the impact of:
+
+- software defects,
+- speculative algorithms,
+- experimental optimization,
+- configuration errors,
+- compromised development workflows, and
+- incomplete verification activities.
+
+Governance therefore functions as a structural safety boundary rather than a runtime optimization mechanism.
+
+---
+
+## 4.11 Summary
+
+This chapter establishes the governance constitution of Sovereign OS.
+
+It defines how computational capabilities progress from speculative concepts to production-authoritative execution through an immutable sequence of evidence-based promotion stages.
+
+The chapter deliberately specifies behavioural guarantees rather than implementation techniques, allowing future implementations to employ different governance technologies while preserving identical architectural semantics.
+
+Subsequent chapters build upon these governance guarantees to define capability isolation, registry services, discovery workflows, verification methodologies, and reference implementation requirements.
+
+---
+
+**End of HB-CH04 — Repository Edition — Part B**
