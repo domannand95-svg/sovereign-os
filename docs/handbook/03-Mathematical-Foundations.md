@@ -414,3 +414,104 @@ replay(S, ⟨E₁, E₂, …, Eₙ⟩)
         ---
 
         **End of HB-CH03 — Repository Edition — Part B**
+        ---
+
+        ## 3.12 Verification Status Matrix
+
+        The mathematical foundations defined within this chapter establish the constitutional behavioural requirements governing authoritative state evolution. Individual implementation maturity SHALL be assessed independently of architectural completeness.
+
+        | Mathematical Component | Architectural Status | Implementation Status | Verification Status |
+        |------------------------|----------------------|-----------------------|---------------------|
+        | Abstract State Machine Model | Defined | Planned | Pending |
+        | State Transition Function | Defined | Planned | Pending |
+        | Deterministic Replay | Defined | Partially Implemented | Ongoing |
+        | Replay Equivalence | Defined | Partially Implemented | Ongoing |
+        | Event Ordering | Defined | Planned | Pending |
+        | Snapshot Semantics | Defined | Partially Implemented | Ongoing |
+        | LSN Invariants | Defined | Planned | Pending |
+        | Traceability & Provenance | Defined | Planned | Pending |
+        | Representation Independence | Defined | Constitutional | Complete |
+
+        Architectural completeness SHALL NOT be interpreted as implementation completeness.
+
+        ---
+
+        ## 3.13 Cross References
+
+        ### Upstream Dependencies
+
+        - HB-CH01 — System Overview
+        - HB-CH02 — System Architecture
+
+        ### Downstream Dependencies
+
+        - HB-CH04 — Governance & Epistemic Hierarchy
+        - HB-CH05 — Capability Firewall & Security Model
+        - HB-CH06 — Registry & Identity Services
+        - HB-CH07 — Discovery Layer
+        - HB-CH08 — Verification Framework
+        - HB-CH09 — Reference Implementation Methodology
+
+        The behavioural properties established in this chapter SHALL remain authoritative for all downstream specifications.
+
+        ---
+
+        ## 3.14 Glossary
+
+        **Abstract State Machine (ASM)**
+
+        A formal computational model representing system behaviour as a sequence of discrete state transitions.
+
+        ---
+
+        **Authoritative State**
+
+        The definitive system state obtained exclusively through deterministic application of validated events.
+
+        ---
+
+        **Derived State**
+
+        Any computational representation generated from authoritative state that does not itself become an authoritative source of truth.
+
+        ---
+
+        **Deterministic Replay**
+
+        The property whereby identical initial conditions and identical validated event histories always produce identical authoritative states.
+
+        ---
+
+        **Event History**
+
+        The ordered sequence of validated events forming the authoritative chronological record of system evolution.
+
+        ---
+
+        **Log Sequence Number (LSN)**
+
+        A unique, strictly ordered identifier assigned to committed events for the purpose of deterministic replay and historical reconstruction.
+
+        ---
+
+        **Replay Equivalence**
+
+        The guarantee that restoring a validated snapshot followed by replaying subsequent events produces the same authoritative state as replaying the complete event history from genesis.
+
+        ---
+
+        **Representation Independence**
+
+        The constitutional principle permitting any mathematically sound formalism provided the behavioural properties defined by this chapter are preserved.
+
+        ---
+
+        ## 3.15 Revision History
+
+        | Version | Date | Description |
+        |----------|------------|--------------------------------------------|
+        | 1.0 | 2026-07-07 | Initial Repository Edition of HB-CH03. |
+
+        ---
+
+        **End of HB-CH03 — Repository Edition**
