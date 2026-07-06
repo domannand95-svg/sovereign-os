@@ -1,5 +1,5 @@
 ---
-Document: Research Portfolio Overview
+Document: Research Portfolio Index
 ID: RES-INDEX-001
 Version: 1.0
 Status: Research
@@ -12,40 +12,36 @@ Depends On:
 Supersedes: None
 ---
 
-# Sovereign OS Research Portfolio
+# Research Portfolio
 
 ## Purpose
 
-This directory contains research documents, conceptual designs, and exploratory engineering proposals.
+This directory contains research documentation, exploratory designs, and candidate concepts.
 
-These documents are intentionally separated from the production architecture.
+Research documents are intentionally separated from production architecture.
 
 ## Research Principles
 
-Research documents:
+- Research is exploratory.
+- Research is not implementation.
+- Research is not evidence of production capability.
+- Production architecture must be independently specified and reviewed.
 
-- describe objectives and investigations
-- may evolve substantially over time
-- are not production specifications
-- do not imply implementation
-- require independent validation before influencing production architecture
+## Current Research Documents
 
-## Current Research Areas
+- RES-GUSA-001 — GUSA Research Foundation
 
-- GUSA
-- TCF-01A
-- Indra's Net
-- Sovereign Stack
-- Future research topics
+## Promotion Criteria
 
-## Relationship to Production
+Research may be promoted only after:
 
-Production documentation describes implemented or approved architecture.
-
-Research documentation describes candidate ideas and future investigations.
-
-No research document should be interpreted as evidence that a feature exists in the production codebase.
+1. Formal specification
+2. Technical review
+3. Validation
+4. Governance approval
+5. Implementation
+6. Testing
 
 ## Changelog
 
-- **v1.0 (2026-07-07):** Initialized research portfolio overview.
+- **v1.0 (2026-07-07):** Created research portfolio index.
