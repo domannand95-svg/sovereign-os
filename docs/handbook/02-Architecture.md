@@ -241,3 +241,103 @@ Trade-offs SHALL be explicitly documented whenever one quality attribute is prio
 ---
 
 **End of HB-CH02 — Repository Edition — Part B**
+---
+
+## 2.12 Architectural Views
+
+Sovereign OS SHALL support multiple architectural views for analysis, verification, and implementation planning.
+
+### Logical View
+
+Defines conceptual subsystem relationships and responsibility boundaries.
+
+### Runtime View
+
+Defines execution domains, authority boundaries, and operational communication paths.
+
+### Persistence View
+
+Defines event storage, snapshot derivation, replay semantics, and long-term archival guarantees.
+
+### Security View
+
+Defines trust boundaries, authorization controls, identity relationships, and governed authority transitions.
+
+### Verification View
+
+Defines how architectural claims, implementation behaviour, and scientific capability promotion are tested, audited, and validated.
+
+---
+
+## 2.13 Verification Status Matrix
+
+| Architectural Element | Verification Status | Notes |
+|-----------------------|--------------------|-------|
+| Layered architectural topology | Defined | Constitutional structure established in HB-CH02. |
+| Governance Layer | Planned | Detailed specification deferred to HB-CH04. |
+| Event Infrastructure Layer | Partially Implemented | Detailed specification deferred to HB-CH03. |
+| Registry & Identity Layer | Partially Implemented | Detailed specification deferred to HB-CH06. |
+| Discovery Layer | Planned | Detailed specification deferred to HB-CH07. |
+| Production Execution Layer | Planned | Domain-specific behaviour deferred to subordinate volumes and reference implementations. |
+| Verification Layer | Planned | Detailed specification deferred to HB-CH08. |
+| Communication model | Defined | Interface-level specification required in downstream chapters. |
+| Authority boundary model | Defined | Capability Firewall details deferred to HB-CH05. |
+
+---
+
+## 2.14 Cross References
+
+### Upstream
+
+- HB-CH01 — System Overview
+
+### Downstream
+
+- HB-CH03 — Event Sourcing & State Model
+- HB-CH04 — Governance & Epistemic Hierarchy
+- HB-CH05 — Capability Firewall & Security Model
+- HB-CH06 — Registry & Identity Services
+- HB-CH07 — Discovery Layer
+- HB-CH08 — Verification Framework
+- HB-CH09 — Reference Implementation Methodology
+- HB-CH10 — Repository Governance
+
+---
+
+## 2.15 Glossary
+
+**Architectural Layer**
+
+A bounded system region with defined responsibilities, interfaces, and authority constraints.
+
+**Authority Boundary**
+
+A formal separation between domains with different levels of operational privilege or epistemic maturity.
+
+**Communication Contract**
+
+A documented interface defining permissible interactions between subsystems.
+
+**Dependency Rule**
+
+A constraint governing which subsystems may rely upon other subsystems.
+
+**Layer Isolation**
+
+The architectural property that allows one layer to evolve without forcing unrelated changes into other layers.
+
+**Runtime View**
+
+An architectural representation focused on execution domains, operational flows, and authority relationships.
+
+---
+
+## 2.16 Revision History
+
+| Version | Date | Description |
+|----------|------------|--------------------------------------------|
+| 1.0 | 2026-07-07 | Initial Repository Edition of HB-CH02. |
+
+---
+
+**End of HB-CH02 — Repository Edition**
