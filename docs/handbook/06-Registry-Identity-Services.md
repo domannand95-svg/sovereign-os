@@ -171,3 +171,126 @@ Informatively, a simplified conceptual relationship is illustrated below.
                                                                                                                                                                        ---
 
                                                                                                                                                                        **End of HB-CH06 — Repository Edition — Part A**
+                                                                                                                                                                       ## 6.5.1 Uniform Object Schema
+
+                                                                                                                                                                       Regardless of implementation details or underlying artifact classification, every governed registry object SHALL expose a consistent logical metadata model.
+
+                                                                                                                                                                       The registry schema establishes the minimum architectural information required to support identity management, provenance reconstruction, dependency analysis, verification, and governance.
+
+                                                                                                                                                                       Representative metadata fields include:
+
+                                                                                                                                                                       | Field | Purpose |
+                                                                                                                                                                       |------|---------|
+                                                                                                                                                                       | `caid` | Authoritative content-derived identifier for the governed object. |
+                                                                                                                                                                       | `object_class` | Registry classification describing the governed artifact type. |
+                                                                                                                                                                       | `epistemic_state` | Current governance state as defined by HB-CH04. |
+                                                                                                                                                                       | `provenance` | Immutable lineage describing the origin and historical evolution of the object. |
+                                                                                                                                                                       | `relations` | Explicit architectural relationships linking dependent and related registry objects. |
+                                                                                                                                                                       | `created_at` | Creation timestamp or equivalent implementation-defined temporal marker. |
+                                                                                                                                                                       | `version` | Logical version information where applicable. |
+
+                                                                                                                                                                       Implementations MAY extend this metadata model with additional fields provided such extensions do not weaken interoperability or violate the normative identity guarantees defined within this chapter.
+
+                                                                                                                                                                       ---
+
+                                                                                                                                                                       ## 6.5.2 Representation Independence
+
+                                                                                                                                                                       Registry identity defines architectural behaviour rather than implementation technology.
+
+                                                                                                                                                                       Conforming implementations MAY employ different storage engines, serialization formats, indexing strategies, hashing algorithms, database architectures, or distributed synchronization mechanisms provided that they preserve the behavioural properties defined within this specification.
+
+                                                                                                                                                                       Equivalent implementations SHALL preserve:
+
+                                                                                                                                                                       - deterministic identity derivation;
+                                                                                                                                                                       - object uniqueness;
+                                                                                                                                                                       - immutable authoritative identity;
+                                                                                                                                                                       - reconstructible provenance;
+                                                                                                                                                                       - explicit relationship semantics; and
+                                                                                                                                                                       - complete traceability across governed artifacts.
+
+                                                                                                                                                                       Physical storage organization SHALL remain an implementation concern and SHALL NOT alter the architectural meaning of registry identities.
+
+                                                                                                                                                                       ---
+
+                                                                                                                                                                       ## 6.6 Registry Identity Invariants
+
+                                                                                                                                                                       Every conforming registry implementation SHALL preserve the following behavioural properties.
+
+                                                                                                                                                                       ### 6.6.1 Identity Uniqueness
+
+                                                                                                                                                                       No two distinct governed artifacts SHALL share the same authoritative registry identity.
+
+                                                                                                                                                                       ---
+
+                                                                                                                                                                       ### 6.6.2 Identity Stability
+
+                                                                                                                                                                       The authoritative identity assigned to a governed artifact SHALL remain unchanged throughout the lifetime of that artifact.
+
+                                                                                                                                                                       Any substantive modification SHALL result in the creation of a new governed identity.
+
+                                                                                                                                                                       ---
+
+                                                                                                                                                                       ### 6.6.3 Provenance Preservation
+
+                                                                                                                                                                       Every registry object SHALL maintain sufficient metadata to reconstruct its architectural lineage.
+
+                                                                                                                                                                       Loss of provenance SHALL constitute loss of registry integrity.
+
+                                                                                                                                                                       ---
+
+                                                                                                                                                                       ### 6.6.4 Relationship Integrity
+
+                                                                                                                                                                       Relationships between governed artifacts SHALL remain internally consistent.
+
+                                                                                                                                                                       Implementations SHALL detect and reject invalid, circular, or structurally inconsistent dependency relationships where such relationships violate architectural constraints.
+
+                                                                                                                                                                       ---
+
+                                                                                                                                                                       ### 6.6.5 Referential Integrity
+
+                                                                                                                                                                       References between registry objects SHALL resolve to valid governed identities.
+
+                                                                                                                                                                       Broken or unresolved references SHALL be treated as verification failures until corrected through approved governance procedures.
+
+                                                                                                                                                                       ---
+
+                                                                                                                                                                       ## 6.7 Registry Operations
+
+                                                                                                                                                                       The registry provides the authoritative interface for governed identity management.
+
+                                                                                                                                                                       Representative operations include:
+
+                                                                                                                                                                       - object registration;
+                                                                                                                                                                       - identity resolution;
+                                                                                                                                                                       - relationship discovery;
+                                                                                                                                                                       - provenance reconstruction;
+                                                                                                                                                                       - dependency traversal;
+                                                                                                                                                                       - metadata inspection;
+                                                                                                                                                                       - governance state lookup; and
+                                                                                                                                                                       - verification evidence association.
+
+                                                                                                                                                                       The specific programming interfaces used to realize these operations are implementation-defined.
+
+                                                                                                                                                                       ---
+
+                                                                                                                                                                       ## 6.8 Failure Behaviour
+
+                                                                                                                                                                       Registry integrity SHALL take precedence over service availability.
+
+                                                                                                                                                                       If the registry detects identity corruption, provenance inconsistency, unresolved dependencies, duplicate authoritative identities, or structural violations, affected registry operations SHALL fail in a controlled manner.
+
+                                                                                                                                                                       Conforming implementations SHALL prevent compromised registry state from being promoted into authoritative execution domains until corrective governance actions have restored architectural integrity.
+
+                                                                                                                                                                       ---
+
+                                                                                                                                                                       ## 6.9 Summary
+
+                                                                                                                                                                       This chapter establishes the architectural identity model for Sovereign OS.
+
+                                                                                                                                                                       By defining governed artifacts through immutable identities, explicit relationships, deterministic provenance, and implementation-independent behavioural guarantees, the registry becomes the authoritative foundation supporting governance, verification, discovery, and execution throughout the platform.
+
+                                                                                                                                                                       Subsequent chapters build upon these identity services to describe discovery workflows, verification methodologies, and implementation conformance while preserving the architectural invariants established herein.
+
+                                                                                                                                                                       ---
+
+                                                                                                                                                                       **End of HB-CH06 — Repository Edition — Part B**
