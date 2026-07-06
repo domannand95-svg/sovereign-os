@@ -1,34 +1,48 @@
-# Sovereign OS — Core Architecture Blueprint
+---
+Document: Top-Level Architecture Mapping
+ID: ARCH-INDEX-001
+Version: 1.0
+Status: Design Specification
+Owner: Repository Maintainer
+Reviewers:
+  - Core Reviewers
+Last Updated: 2026-07-07
+Evidence:
+  Specifications:
+    - GUSA-MRD-100-V1.0
+  PRs:
+    - PR-070
+    - PR-071
+    - PR-072
+Depends On:
+  - GOV-CORE-001
+Supersedes: None
+---
 
-## 1. Multi-Crate Workspace Layout
+# GUSA Technical Architecture Mapping
 
-The workspace uses a strict one-way dependency graph:
+This document maps the active production substrate, planned architecture layers, and segregated research areas.
 
-governance-wrapper
-  -> registry-service
-  -> event-log
-  -> active-memory
+## 1. Active Production Substrates
 
-## 2. Event Flow
+- **Registry Service:** Manages primary structural records and baseline state validation.
+- **Event Log:** Maintains append-only governance logging and chronological state-transition records.
+- **Snapshot System:** Provides snapshot integrity, versioning, checksum validation, and fallback recovery.
 
-State-changing commands move through the system in this order:
+## 2. Planned Architecture Layers
 
-1. governance-wrapper validates the command.
-2. registry-service converts it into a typed RegistryEvent.
-3. event-log records the transition.
-4. active-memory persists the event as JSONL.
+- **Active Memory Layer:** Planned volatile state and telemetry buffer layer.
+- **Governance Wrapper:** Planned promotion-boundary validation layer.
+- **Runtime Orchestrator:** Planned deterministic execution coordination layer.
 
-## 3. Event Sourcing
+## 3. Research Extensions
 
-The JSONL ledger is the source of truth.
+The research documents describe objectives, candidate models, and future investigation areas. They are not implemented production claims.
 
-When Registry::open() runs, it replays the event log from disk and rebuilds the in-memory node map.
+- **TCF-01A:** Future ternary/memristive-photonic research specification.
+- **Indra's Net:** Future distributed sensing and mesh-network research concept.
+- **Sovereign Stack Matrix:** Exploratory research area outside the current production baseline.
 
-## 4. Governance Invariants
+## Changelog
 
-The governance layer enforces:
-
-- duplicate node rejection
-- node existence checks
-- lifecycle transition checks
-- resource capacity checks
+- **v1.0 (2026-07-07):** Initialized architecture map under PR #73.
