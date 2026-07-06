@@ -230,3 +230,187 @@ replay(S, ⟨E₁, E₂, …, Eₙ⟩)
         ---
 
         **End of HB-CH03 — Repository Edition — Part A**
+        ---
+
+        ## 3.7 State Derivation
+
+        The authoritative system state SHALL be derived exclusively through the deterministic application of validated events to a verified initial state or an equivalent validated snapshot.
+
+        Authoritative state SHALL NOT be treated as mutable storage. Rather, it SHALL represent the deterministic outcome of the system's event history evaluated according to the transition function defined within this chapter.
+
+        Implementations MAY expose optimized representations of state for performance purposes, provided such representations remain mathematically equivalent to the authoritative state derived through event replay.
+
+        ### 3.7.1 Authoritative State
+
+        Authoritative state constitutes the definitive representation of the operating system at a given logical point in the event history.
+
+        Only validated events SHALL contribute to authoritative state evolution.
+
+        Informatively:
+
+        ```text
+        Sₙ = replay(S₀, H)
+        ```
+
+        where:
+
+        ```text
+        H = ⟨E₁, E₂, …, Eₙ⟩
+        ```
+
+        The authoritative state SHALL remain reproducible across all conforming implementations.
+
+        ---
+
+        ### 3.7.2 Derived State
+
+        Derived state represents any computationally generated view, cache, index, or projection produced from the authoritative state.
+
+        Derived state MAY be regenerated at any time from authoritative information.
+
+        Loss of derived state SHALL NOT result in loss of authoritative information.
+
+        ---
+
+        ### 3.7.3 Derived Views
+
+        Implementations MAY expose specialized views for querying, indexing, monitoring, analytics, or optimization.
+
+        Derived views SHALL remain observationally equivalent to the authoritative state.
+
+        No derived view SHALL become an independent source of truth.
+
+        ---
+
+        ## 3.8 Snapshot Semantics
+
+        Snapshots provide execution optimizations by recording validated checkpoints of authoritative state.
+
+        Snapshots SHALL remain subordinate to the immutable event ledger.
+
+        A snapshot SHALL NOT replace, redefine, truncate, or supersede the authoritative event history.
+
+        ---
+
+        ### 3.8.1 Snapshot Identity
+
+        A snapshot SHALL represent the complete authoritative state corresponding to a specific Log Sequence Number.
+
+        Informatively:
+
+        ```text
+        snapshot(Sₖ) ↔ LSN(Eₖ)
+        ```
+
+        Each snapshot SHALL possess an unambiguous association with the event history from which it was derived.
+
+        ---
+
+        ### 3.8.2 Snapshot Validity
+
+        A snapshot SHALL be considered valid only if:
+
+        - its originating event history is valid;
+        - its associated Log Sequence Number is valid;
+        - integrity verification succeeds; and
+        - no corruption or inconsistency is detected.
+
+        Invalid snapshots SHALL NOT become authoritative.
+
+        ---
+
+        ### 3.8.3 Snapshot Restoration
+
+        Restoring a snapshot SHALL reconstruct the authoritative state existing at the associated checkpoint.
+
+        Subsequent authoritative state SHALL be reconstructed solely through replay of validated events occurring after that checkpoint.
+
+        Snapshot restoration SHALL preserve replay equivalence as defined in Section 3.6.
+
+        ---
+
+        ## 3.9 Log Sequence Number Invariants
+
+        Log Sequence Numbers provide the canonical ordering relation for authoritative history.
+
+        Every committed event SHALL possess exactly one valid Log Sequence Number.
+
+        ---
+
+        ### 3.9.1 Monotonicity
+
+        Each newly committed event SHALL receive a Log Sequence Number greater than every previously committed event within the same ledger epoch.
+
+        ---
+
+        ### 3.9.2 Uniqueness
+
+        No two committed events SHALL share the same Log Sequence Number.
+
+        Uniqueness SHALL remain preserved throughout the lifetime of the ledger.
+
+        ---
+
+        ### 3.9.3 Density
+
+        Within an active ledger epoch, valid Log Sequence Numbers SHALL form a contiguous sequence.
+
+        Implementations SHALL detect and report unexpected discontinuities.
+
+        ---
+
+        ### 3.9.4 Watermark Semantics
+
+        Snapshots SHALL reference the highest validated Log Sequence Number included within the checkpoint.
+
+        The snapshot watermark SHALL define the precise boundary between restored state and subsequent replay.
+
+        ---
+
+        ## 3.10 Traceability and Provenance
+
+        Every authoritative state SHALL possess a complete chain of reconstructible provenance.
+
+        Traceability SHALL extend from current authoritative state through every contributing event back to the verified genesis state.
+
+        ---
+
+        ### 3.10.1 Event Provenance
+
+        Each committed event SHALL remain attributable to its authenticated origin and associated validation process.
+
+        Event provenance SHALL remain immutable following commitment.
+
+        ---
+
+        ### 3.10.2 Reconstruction Chain
+
+        Implementations SHALL preserve sufficient information to reconstruct every authoritative state represented within the event history.
+
+        The reconstruction chain SHALL remain complete and free from ambiguity.
+
+        ---
+
+        ### 3.10.3 Auditability
+
+        Conforming implementations SHALL support independent verification of authoritative state reconstruction.
+
+        Auditing SHALL NOT require privileged implementation knowledge beyond documented architectural interfaces.
+
+        ---
+
+        ## 3.11 Representation Independence
+
+        The behavioural properties defined within this chapter constitute the constitutional mathematical requirements of Sovereign OS.
+
+        These properties SHALL remain independent of any particular mathematical formalism, implementation language, execution model, or verification framework.
+
+        Implementations MAY employ Abstract State Machines, set theory, relational algebra, TLA+, Alloy, Coq, Lean, Z notation, or any other mathematically sound formalism capable of demonstrating preservation of the normative behavioural properties defined herein.
+
+        Alternative representations SHALL be considered equivalent only if they preserve deterministic replay, replay equivalence, event ordering, state validity, authoritative provenance, and the remaining constitutional invariants established by this chapter.
+
+        Normative behavioural requirements SHALL take precedence over any informative mathematical representation.
+
+        ---
+
+        **End of HB-CH03 — Repository Edition — Part B**
