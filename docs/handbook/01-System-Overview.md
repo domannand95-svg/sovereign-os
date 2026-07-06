@@ -286,3 +286,144 @@ If an explicit conflict or ambiguity arises between documentation artifacts, the
                                                                                                                                                                                                                                 ---
 
                                                                                                                                                                                                                                 **End of HB-CH01 – Repository Edition – Part B**
+                                                                                                                                                                                                                                ---
+
+                                                                                                                                                                                                                                ## 1.10 Foundational Architectural Primitives
+
+                                                                                                                                                                                                                                The following primitives constitute the minimum architectural building blocks required for every compliant Sovereign OS implementation.
+
+                                                                                                                                                                                                                                ### Event Ledger
+
+                                                                                                                                                                                                                                The immutable event ledger SHALL serve as the authoritative historical record of all validated system activity.
+
+                                                                                                                                                                                                                                ### Registry Service
+
+                                                                                                                                                                                                                                The Registry Service SHALL maintain the authoritative description of system topology, identities, authorized workloads, and operational configuration through deterministic event replay.
+
+                                                                                                                                                                                                                                ### Discovery Layer
+
+                                                                                                                                                                                                                                The Discovery Layer SHALL provide an isolated computational environment for simulation, experimentation, optimization, and inference without possessing direct authority over production state.
+
+                                                                                                                                                                                                                                ### Capability Firewall
+
+                                                                                                                                                                                                                                The Capability Firewall SHALL enforce all authority transitions between isolated execution domains through authenticated, validated, and governed interfaces.
+
+                                                                                                                                                                                                                                ### Snapshot Layer
+
+                                                                                                                                                                                                                                Snapshot mechanisms MAY accelerate initialization and recovery but SHALL always remain derived artifacts subordinate to the immutable event ledger.
+
+                                                                                                                                                                                                                                ---
+
+                                                                                                                                                                                                                                ## 1.11 Authority Hierarchy
+
+                                                                                                                                                                                                                                Authority SHALL increase only through explicitly governed transitions.
+
+                                                                                                                                                                                                                                1. Research
+                                                                                                                                                                                                                                2. Design Specification
+                                                                                                                                                                                                                                3. Simulation
+                                                                                                                                                                                                                                4. Experimental Validation
+                                                                                                                                                                                                                                5. Verified Production
+
+                                                                                                                                                                                                                                Each transition SHALL require evidence appropriate to the destination level.
+
+                                                                                                                                                                                                                                No implementation SHALL bypass mandatory governance stages.
+
+                                                                                                                                                                                                                                ---
+
+                                                                                                                                                                                                                                ## 1.12 Execution Architecture
+
+                                                                                                                                                                                                                                Sovereign OS separates execution into distinct architectural domains.
+
+                                                                                                                                                                                                                                - Infrastructure Layer
+                                                                                                                                                                                                                                - Governance Layer
+                                                                                                                                                                                                                                - Discovery Layer
+                                                                                                                                                                                                                                - Production Layer
+                                                                                                                                                                                                                                - Verification Layer
+
+                                                                                                                                                                                                                                Each layer SHALL expose only documented interfaces and SHALL remain independently evolvable.
+
+                                                                                                                                                                                                                                ---
+
+                                                                                                                                                                                                                                ## 1.13 Future Roadmap
+
+                                                                                                                                                                                                                                Future handbook chapters SHALL elaborate on:
+
+                                                                                                                                                                                                                                - System Architecture
+                                                                                                                                                                                                                                - Event Sourcing
+                                                                                                                                                                                                                                - Registry Services
+                                                                                                                                                                                                                                - Capability Firewall
+                                                                                                                                                                                                                                - Discovery Layer
+                                                                                                                                                                                                                                - Verification Framework
+                                                                                                                                                                                                                                - Reference Implementation Methodology
+                                                                                                                                                                                                                                - Repository Governance
+
+                                                                                                                                                                                                                                This chapter establishes only the constitutional engineering baseline.
+
+                                                                                                                                                                                                                                ---
+
+                                                                                                                                                                                                                                ## 1.14 Verification Status
+
+                                                                                                                                                                                                                                | Component | Status |
+                                                                                                                                                                                                                                |-----------|--------|
+                                                                                                                                                                                                                                | Constitutional Architecture | Defined |
+                                                                                                                                                                                                                                | Core Principles | Defined |
+                                                                                                                                                                                                                                | Architectural Invariants | Defined |
+                                                                                                                                                                                                                                | Reference Boundaries | Defined |
+                                                                                                                                                                                                                                | Domain Implementations | Planned |
+                                                                                                                                                                                                                                | Experimental Validation | Ongoing |
+
+                                                                                                                                                                                                                                ---
+
+                                                                                                                                                                                                                                ## 1.15 Cross References
+
+                                                                                                                                                                                                                                ### Upstream
+
+                                                                                                                                                                                                                                None.
+
+                                                                                                                                                                                                                                ### Downstream
+
+                                                                                                                                                                                                                                - HB-CH02 — System Architecture
+                                                                                                                                                                                                                                - HB-CH03 — Event Sourcing & State Model
+                                                                                                                                                                                                                                - HB-CH04 — Governance & Epistemic Hierarchy
+                                                                                                                                                                                                                                - HB-CH05 — Capability Firewall & Security Model
+                                                                                                                                                                                                                                - HB-CH06 — Registry & Identity Services
+                                                                                                                                                                                                                                - HB-CH07 — Discovery Layer
+                                                                                                                                                                                                                                - HB-CH08 — Verification Framework
+                                                                                                                                                                                                                                - HB-CH09 — Reference Implementation Methodology
+                                                                                                                                                                                                                                - HB-CH10 — Repository Governance
+
+                                                                                                                                                                                                                                ---
+
+                                                                                                                                                                                                                                ## 1.16 Glossary
+
+                                                                                                                                                                                                                                **Architectural Invariant**
+
+                                                                                                                                                                                                                                A constitutional engineering requirement that SHALL remain unchanged across all compliant implementations.
+
+                                                                                                                                                                                                                                **Capability Firewall**
+
+                                                                                                                                                                                                                                The governed boundary separating speculative computation from production authority.
+
+                                                                                                                                                                                                                                **Discovery Layer**
+
+                                                                                                                                                                                                                                The isolated execution environment supporting research, simulation, and experimental computation.
+
+                                                                                                                                                                                                                                **Event Ledger**
+
+                                                                                                                                                                                                                                The immutable chronological record from which authoritative state is reconstructed.
+
+                                                                                                                                                                                                                                **Reference Implementation**
+
+                                                                                                                                                                                                                                A practical realization of the architecture intended to demonstrate compliance without redefining architectural principles.
+
+                                                                                                                                                                                                                                ---
+
+                                                                                                                                                                                                                                ## 1.17 Revision History
+
+                                                                                                                                                                                                                                | Version | Date | Description |
+                                                                                                                                                                                                                                |----------|------------|--------------------------------------------|
+                                                                                                                                                                                                                                | 1.0 | 2026-07-07 | Initial Repository Edition of HB-CH01. |
+
+                                                                                                                                                                                                                                ---
+
+                                                                                                                                                                                                                                **End of HB-CH01 — Repository Edition**
