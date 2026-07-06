@@ -1,55 +1,85 @@
 ---
-Document: GUSA Engineering Handbook Master Index
+Document: Engineering Handbook Index
 ID: DOC-INDEX-001
-Version: 1.0
+Version: 2.0
 Status: Stable
 Owner: Repository Maintainer
 Reviewers:
   - Core Reviewers
 Last Updated: 2026-07-07
-Evidence:
-  Specifications:
-    - GUSA-MRD-100-V1.0
 Depends On:
   - GOV-CORE-001
-  - ARCH-INDEX-001
-Supersedes: None
+Supersedes:
+  - DOC-INDEX-001 v1.0
 ---
 
-# GUSA Engineering Handbook Index
+# Sovereign OS Engineering Handbook
 
-## Core Repository Documents
+The Engineering Handbook is the authoritative documentation set describing the production architecture and documenting future engineering work.
 
-- `GOVERNANCE.md` — constitutional governance charter.
-- `ARCHITECTURE.md` — top-level architecture map.
-- `docs/START_HERE.md` — contributor onboarding guide.
+---
 
-## Architecture Documents
+# Volume I — Repository Governance
 
-- `docs/architecture/registry.md` — placeholder for registry architecture.
-- `docs/architecture/event-log.md` — placeholder for event-log architecture.
-- `docs/architecture/snapshots.md` — placeholder for snapshot architecture.
-- `docs/architecture/runtime.md` — placeholder for runtime architecture.
+- GOVERNANCE.md
+- ARCHITECTURE.md
+- START_HERE.md
 
-## ADRs
+---
 
-- `docs/adr/template.md` — Architecture Decision Record template.
+# Volume II — Production Architecture
 
-## RFCs
+- Registry Architecture
+- Event Log Architecture
+- Snapshot Architecture
+- Runtime Architecture
 
-- `docs/rfc/template.md` — Request for Comments template.
+---
 
-## Roadmap
+# Volume III — Engineering Process
 
-- `docs/roadmap/ROADMAP.md` — master software roadmap.
+- ADR Template
+- RFC Template
 
-## Research
+---
 
-- `docs/research/gusa.md` — placeholder for GUSA research framing.
-- `docs/research/tcf-01a.md` — placeholder for TCF-01A research.
-- `docs/research/indras-net.md` — placeholder for Indra's Net research.
-- `docs/research/sovereign-stack.md` — placeholder for Sovereign Stack research.
+# Volume IV — Planning
+
+- ROADMAP.md
+
+---
+
+# Volume V — Research Portfolio
+
+Research documentation is maintained separately from production architecture.
+
+Current research placeholders include:
+
+- GUSA
+- TCF-01A
+- Indra's Net
+- Sovereign Stack
+
+Research documentation is informational and shall not be interpreted as implemented production functionality.
+
+---
+
+# Documentation Principles
+
+Production documentation:
+
+- describes implemented architecture
+- uses present tense
+- reflects merged production work
+
+Research documentation:
+
+- describes objectives
+- uses future or objective tense
+- does not imply implementation
+
+---
 
 ## Changelog
 
-- **v1.0 (2026-07-07):** Initialized handbook index under PR #73.
+- **v2.0 (2026-07-07)** Handbook cross-linking and verification.
