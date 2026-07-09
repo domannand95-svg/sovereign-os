@@ -1,7 +1,7 @@
 //! The `sovereign-ledger` crate implements the absolute chronological sequence
-//! substrate for Sovereign OS. It guarantees absolute, deterministic persistence,
-//! linear sequence ordering, and out-of-band crash recovery.
+//! substrate for Sovereign OS.
 
+pub mod append;
 pub mod checksum;
 pub mod config;
 pub mod error;
@@ -9,6 +9,7 @@ pub mod lsn;
 pub mod record;
 pub mod segment;
 
+pub use append::LedgerAppendEngine;
 pub use checksum::crc32c;
 pub use config::LedgerConfig;
 pub use error::LedgerError;
