@@ -9,6 +9,7 @@ pub mod lsn;
 pub mod record;
 pub mod replay;
 pub mod segment;
+pub mod snapshot;
 
 pub use append::LedgerAppendEngine;
 pub use checksum::crc32c;
@@ -21,3 +22,5 @@ pub use record::{
 };
 pub use replay::ReplayIterator;
 pub use segment::LedgerSegment;
+
+pub use snapshot::{LedgerSnapshotManager, SnapshotHeader, SNAPSHOT_CHECKSUM_LEN, SNAPSHOT_HEADER_LEN};
