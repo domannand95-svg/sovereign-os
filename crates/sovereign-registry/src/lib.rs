@@ -5,8 +5,10 @@ pub mod caid;
 pub mod error;
 pub mod graph;
 pub mod node;
+pub mod sync;
 
 pub use caid::Caid;
 pub use error::RegistryError;
 pub use graph::RegistryGraph;
 pub use node::{RegistryNode, RegistryNodeType};
+pub use sync::RegistryLedgerSync;
