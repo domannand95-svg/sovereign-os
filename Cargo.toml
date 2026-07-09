@@ -1,10 +1,16 @@
 [workspace]
 resolver = "2"
-
 members = [
-        "crates/active-memory",
-            "crates/event-log",
-                "crates/registry-service",
-                    "crates/governance-wrapper", "crates/network-service",
+    "crates/sovereign-ledger",
+    "crates/sovereign-registry",
+    "crates/sovereign-core-asm",
+    "crates/sovereign-policy",
+    "crates/sovereign-audit",
+    "crates/sovereign-discovery",
 ]
 
+[workspace.dependencies]
+blake3 = { version = "1.5", features = ["simd"] }
+crc32c = "0.6"
+proptest = "1.4"
+tokio = { version = "1.35", features = ["sync", "rt"] }
