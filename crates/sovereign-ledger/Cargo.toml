@@ -4,5 +4,6 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+sovereign-core-asm = { path = "../sovereign-core-asm" }
 blake3.workspace = true
 crc32c.workspace = true
