@@ -1,12 +1,80 @@
 //! Replay mechanics for deterministic ledger reconstruction.
 
-use crate::record::{EventRecord, RECORD_CHECKSUM_LEN, RECORD_HEADER_LEN, PAYLOAD_LEN_OFFSET, PAYLOAD_OFFSET};
-use crate::{LedgerConfig, LedgerError, Lsn};
+use crate::record::{
+    EventRecord, PAYLOAD_LEN_OFFSET, PAYLOAD_OFFSET, RECORD_CHECKSUM_LEN, RECORD_HEADER_LEN,
+};
+use crate::{
+    domain_integration::{LedgerEventMapper, LedgerStateTransition, LedgerTransitionError},
+    LedgerConfig, LedgerError, Lsn,
+};
+use sovereign_core_asm::state::{StateTransition, StateVector};
 use std::ffi::OsStr;
 use std::fs;
 use std::path::PathBuf;
 
-#[derive(Debug)]
+/// Error returned while reconstructing state from validated ledger records.
+#[derive(Debug, PartialEq, Eq)]
+pub enum ReplayError<MapperError> {
+    /// Ledger decoding, integrity, or ordering failure.
+    Ledger(LedgerError),
+
+    /// Domain mapping rejected the record.
+    Mapping(MapperError),
+
+    /// The mapped transition could not be applied to the state vector.
+    StateApplication(LedgerTransitionError),
+}
+
+/// Summary returned only after the complete replay succeeds.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct ReplaySummary {
+    /// Number of transitions successfully applied.
+    pub records_applied: usize,
+}
+
+/// Coordinates deterministic reconstruction of state from ordered ledger data.
+pub struct LedgerStateReplayer<M> {
+    mapper: M,
+}
+
+impl<M> LedgerStateReplayer<M>
+where
+    M: LedgerEventMapper,
+{
+    /// Creates a replay coordinator using the supplied domain mapper.
+    pub const fn new(mapper: M) -> Self {
+        Self { mapper }
+    }
+
+    /// Applies every validated ledger record to `vector` in ledger order.
+    ///
+    /// Replay is fail-stop. On failure, transitions already applied remain in
+    /// `vector`. The caller must not treat the target as successfully
+    /// reconstructed unless this method returns `Ok`.
+    pub fn replay(
+        &self,
+        records: &mut ReplayIterator,
+        vector: &mut StateVector,
+    ) -> Result<ReplaySummary, ReplayError<M::Error>> {
+        let mut records_applied = 0;
+
+        while let Some(record_result) = records.next_record() {
+            let record = record_result.map_err(ReplayError::Ledger)?;
+
+            let transition = LedgerStateTransition::from_event(&record, &self.mapper)
+                .map_err(ReplayError::Mapping)?;
+
+            let _receipt = transition
+                .apply(vector)
+                .map_err(ReplayError::StateApplication)?;
+
+            records_applied += 1;
+        }
+
+        Ok(ReplaySummary { records_applied })
+    }
+}
+
 pub struct ReplayIterator {
     config: LedgerConfig,
     segment_paths: Vec<(Lsn, PathBuf)>,
@@ -23,7 +91,9 @@ impl ReplayIterator {
 
         let mut segment_paths = Vec::new();
 
-        for entry in fs::read_dir(&config.storage_root).map_err(|_| LedgerError::SegmentCorrupted)? {
+        for entry in
+            fs::read_dir(&config.storage_root).map_err(|_| LedgerError::SegmentCorrupted)?
+        {
             let path = entry.map_err(|_| LedgerError::SegmentCorrupted)?.path();
 
             if path.is_file() && path.extension() == Some(OsStr::new("seg")) {
@@ -103,7 +173,8 @@ impl ReplayIterator {
         }
 
         let payload_len = u32::from_be_bytes(
-            self.current_segment_bytes[self.offset + PAYLOAD_LEN_OFFSET..self.offset + PAYLOAD_OFFSET]
+            self.current_segment_bytes
+                [self.offset + PAYLOAD_LEN_OFFSET..self.offset + PAYLOAD_OFFSET]
                 .try_into()
                 .ok()?,
         ) as usize;
@@ -159,7 +230,8 @@ mod tests {
     use crate::{EventType, LedgerAppendEngine};
 
     fn test_config(name: &str) -> LedgerConfig {
-        let path = std::env::temp_dir().join(format!("sovereign_replay_{name}_{}", std::process::id()));
+        let path =
+            std::env::temp_dir().join(format!("sovereign_replay_{name}_{}", std::process::id()));
         let _ = fs::remove_dir_all(&path);
 
         let mut config = LedgerConfig::new(path);
@@ -174,8 +246,12 @@ mod tests {
 
         {
             let mut writer = LedgerAppendEngine::bootstrap(config.clone()).unwrap();
-            writer.append(EventType::KernelDirective, b"payload_0").unwrap();
-            writer.append(EventType::RegistryMutation, b"payload_1").unwrap();
+            writer
+                .append(EventType::KernelDirective, b"payload_0")
+                .unwrap();
+            writer
+                .append(EventType::RegistryMutation, b"payload_1")
+                .unwrap();
             writer.flush().unwrap();
         }
 
@@ -200,7 +276,9 @@ mod tests {
 
         {
             let mut writer = LedgerAppendEngine::bootstrap(config.clone()).unwrap();
-            writer.append(EventType::KernelDirective, b"payload").unwrap();
+            writer
+                .append(EventType::KernelDirective, b"payload")
+                .unwrap();
             writer.flush().unwrap();
         }
 
@@ -216,7 +294,10 @@ mod tests {
         }
 
         let mut replay = ReplayIterator::bootstrap(config.clone(), Lsn(0)).unwrap();
-        assert_eq!(replay.next_record().unwrap().unwrap_err(), LedgerError::SegmentCorrupted);
+        assert_eq!(
+            replay.next_record().unwrap().unwrap_err(),
+            LedgerError::SegmentCorrupted
+        );
 
         let _ = fs::remove_dir_all(&config.storage_root);
     }
@@ -227,7 +308,9 @@ mod tests {
 
         {
             let mut writer = LedgerAppendEngine::bootstrap(config.clone()).unwrap();
-            writer.append(EventType::KernelDirective, b"payload_0").unwrap();
+            writer
+                .append(EventType::KernelDirective, b"payload_0")
+                .unwrap();
             writer.flush().unwrap();
         }
 
@@ -246,7 +329,212 @@ mod tests {
         let mut replay = ReplayIterator::bootstrap(config.clone(), Lsn(0)).unwrap();
 
         assert_eq!(replay.next_record().unwrap().unwrap().lsn, Lsn(0));
-        assert_eq!(replay.next_record().unwrap().unwrap_err(), LedgerError::LsnSequenceGap);
+        assert_eq!(
+            replay.next_record().unwrap().unwrap_err(),
+            LedgerError::LsnSequenceGap
+        );
+
+        let _ = fs::remove_dir_all(&config.storage_root);
+    }
+
+    use crate::domain_integration::MappedLedgerWrite;
+    use sovereign_core_asm::state::StateCoordinate;
+    use std::cell::Cell;
+    use std::rc::Rc;
+
+    #[derive(Clone, Copy, Debug, PartialEq, Eq)]
+    enum ReplayTestMappingError {
+        Rejected,
+    }
+
+    struct ReplayTestMapper {
+        calls: Rc<Cell<usize>>,
+        coordinate: StateCoordinate,
+        fail_at: Option<usize>,
+    }
+
+    impl LedgerEventMapper for ReplayTestMapper {
+        type Error = ReplayTestMappingError;
+
+        fn map<'payload>(
+            &self,
+            event: &EventRecord<'payload>,
+        ) -> Result<MappedLedgerWrite<'payload>, Self::Error> {
+            let call = self.calls.get();
+            self.calls.set(call + 1);
+
+            if self.fail_at == Some(call) {
+                return Err(ReplayTestMappingError::Rejected);
+            }
+
+            Ok(MappedLedgerWrite::new(self.coordinate, event.payload))
+        }
+    }
+
+    #[test]
+    fn ordered_records_reconstruct_expected_state() {
+        let config = test_config("gate6_ordered");
+        let coordinate = StateCoordinate::new(10).unwrap();
+
+        {
+            let mut writer = LedgerAppendEngine::bootstrap(config.clone()).unwrap();
+            writer.append(EventType::KernelDirective, b"first").unwrap();
+            writer
+                .append(EventType::RegistryMutation, b"second")
+                .unwrap();
+            writer.flush().unwrap();
+        }
+
+        let calls = Rc::new(Cell::new(0));
+        let mapper = ReplayTestMapper {
+            calls: Rc::clone(&calls),
+            coordinate,
+            fail_at: None,
+        };
+        let replayer = LedgerStateReplayer::new(mapper);
+        let mut records = ReplayIterator::bootstrap(config.clone(), Lsn(0)).unwrap();
+        let mut vector = StateVector::default();
+
+        let summary = replayer.replay(&mut records, &mut vector).unwrap();
+
+        assert_eq!(summary.records_applied, 2);
+        assert_eq!(calls.get(), 2);
+        assert_eq!(vector.get(coordinate).read_bytes(), b"second");
+
+        let _ = fs::remove_dir_all(&config.storage_root);
+    }
+
+    #[test]
+    fn repeat_replay_produces_identical_state() {
+        let config = test_config("gate6_parity");
+        let coordinate = StateCoordinate::new(11).unwrap();
+
+        {
+            let mut writer = LedgerAppendEngine::bootstrap(config.clone()).unwrap();
+            writer.append(EventType::KernelDirective, b"alpha").unwrap();
+            writer
+                .append(EventType::RegistryMutation, b"omega")
+                .unwrap();
+            writer.flush().unwrap();
+        }
+
+        let calls_a = Rc::new(Cell::new(0));
+        let calls_b = Rc::new(Cell::new(0));
+
+        let replayer_a = LedgerStateReplayer::new(ReplayTestMapper {
+            calls: Rc::clone(&calls_a),
+            coordinate,
+            fail_at: None,
+        });
+        let replayer_b = LedgerStateReplayer::new(ReplayTestMapper {
+            calls: Rc::clone(&calls_b),
+            coordinate,
+            fail_at: None,
+        });
+
+        let mut records_a = ReplayIterator::bootstrap(config.clone(), Lsn(0)).unwrap();
+        let mut records_b = ReplayIterator::bootstrap(config.clone(), Lsn(0)).unwrap();
+        let mut vector_a = StateVector::default();
+        let mut vector_b = StateVector::default();
+
+        let summary_a = replayer_a.replay(&mut records_a, &mut vector_a).unwrap();
+        let summary_b = replayer_b.replay(&mut records_b, &mut vector_b).unwrap();
+
+        assert_eq!(summary_a, summary_b);
+        assert_eq!(summary_a.records_applied, 2);
+        assert_eq!(calls_a.get(), 2);
+        assert_eq!(calls_b.get(), 2);
+        assert_eq!(
+            vector_a.get(coordinate).read_bytes(),
+            vector_b.get(coordinate).read_bytes(),
+        );
+
+        let _ = fs::remove_dir_all(&config.storage_root);
+    }
+
+    #[test]
+    fn mapper_failure_preserves_earlier_write_and_stops() {
+        let config = test_config("gate6_mapper_failure");
+        let coordinate = StateCoordinate::new(12).unwrap();
+
+        {
+            let mut writer = LedgerAppendEngine::bootstrap(config.clone()).unwrap();
+            writer
+                .append(EventType::KernelDirective, b"committed")
+                .unwrap();
+            writer
+                .append(EventType::RegistryMutation, b"rejected")
+                .unwrap();
+            writer
+                .append(EventType::KernelDirective, b"unreached")
+                .unwrap();
+            writer.flush().unwrap();
+        }
+
+        let calls = Rc::new(Cell::new(0));
+        let mapper = ReplayTestMapper {
+            calls: Rc::clone(&calls),
+            coordinate,
+            fail_at: Some(1),
+        };
+        let replayer = LedgerStateReplayer::new(mapper);
+        let mut records = ReplayIterator::bootstrap(config.clone(), Lsn(0)).unwrap();
+        let mut vector = StateVector::default();
+
+        let result = replayer.replay(&mut records, &mut vector);
+
+        assert_eq!(
+            result,
+            Err(ReplayError::Mapping(ReplayTestMappingError::Rejected))
+        );
+        assert_eq!(calls.get(), 2);
+        assert_eq!(vector.get(coordinate).read_bytes(), b"committed");
+
+        let _ = fs::remove_dir_all(&config.storage_root);
+    }
+
+    #[test]
+    fn ledger_error_stops_before_mapping() {
+        let config = test_config("gate6_ledger_failure");
+        let coordinate = StateCoordinate::new(13).unwrap();
+
+        {
+            let mut writer = LedgerAppendEngine::bootstrap(config.clone()).unwrap();
+            writer
+                .append(EventType::KernelDirective, b"payload")
+                .unwrap();
+            writer.flush().unwrap();
+        }
+
+        for entry in fs::read_dir(&config.storage_root).unwrap().flatten() {
+            if entry.path().extension() == Some(OsStr::new("seg")) {
+                fs::OpenOptions::new()
+                    .write(true)
+                    .open(entry.path())
+                    .unwrap()
+                    .set_len(10)
+                    .unwrap();
+            }
+        }
+
+        let calls = Rc::new(Cell::new(0));
+        let mapper = ReplayTestMapper {
+            calls: Rc::clone(&calls),
+            coordinate,
+            fail_at: None,
+        };
+        let replayer = LedgerStateReplayer::new(mapper);
+        let mut records = ReplayIterator::bootstrap(config.clone(), Lsn(0)).unwrap();
+        let mut vector = StateVector::default();
+
+        let result = replayer.replay(&mut records, &mut vector);
+
+        assert!(matches!(
+            result,
+            Err(ReplayError::Ledger(LedgerError::SegmentCorrupted))
+        ));
+        assert_eq!(calls.get(), 0);
+        assert_eq!(vector.get(coordinate).read_bytes(), b"");
 
         let _ = fs::remove_dir_all(&config.storage_root);
     }
