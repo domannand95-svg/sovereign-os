@@ -151,6 +151,72 @@ impl StateRoot {
     }
 }
 
+/// Applies a deterministic state mutation and returns the data required to undo it.
+pub trait StateTransition {
+    /// The strongly typed execution error boundary.
+    type Error;
+
+    /// The fixed-size rollback receipt type.
+    type Receipt;
+
+    /// Applies the transition to the state vector.
+    fn apply(&self, vector: &mut StateVector) -> Result<Self::Receipt, Self::Error>;
+
+    /// Restores the exact prior state using the supplied receipt.
+    fn rollback(&self, vector: &mut StateVector, receipt: Self::Receipt)
+        -> Result<(), Self::Error>;
+}
+
+/// Errors produced by deterministic state transitions.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum TransitionError {
+    /// An underlying state-storage operation failed.
+    Storage(StateError),
+
+    /// The transition preconditions were not satisfied.
+    InvalidExecution,
+
+    /// The supplied rollback receipt does not belong to this transition.
+    ReceiptMismatch,
+}
+
+impl From<StateError> for TransitionError {
+    #[inline]
+    fn from(error: StateError) -> Self {
+        Self::Storage(error)
+    }
+}
+
+/// A fixed-size rollback receipt for a single-coordinate mutation.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct SlotReceipt {
+    coordinate: StateCoordinate,
+    previous: StateSlot,
+}
+
+impl SlotReceipt {
+    /// Creates a receipt containing the complete prior slot image.
+    #[inline]
+    pub const fn new(coordinate: StateCoordinate, previous: StateSlot) -> Self {
+        Self {
+            coordinate,
+            previous,
+        }
+    }
+
+    /// Returns the coordinate associated with this receipt.
+    #[inline]
+    pub const fn coordinate(self) -> StateCoordinate {
+        self.coordinate
+    }
+
+    /// Returns the complete prior slot image.
+    #[inline]
+    pub const fn previous(self) -> StateSlot {
+        self.previous
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -317,5 +383,174 @@ mod tests {
         root_b.hash(&mut hasher_b);
 
         assert_eq!(hasher_a.finish(), hasher_b.finish());
+    }
+
+    #[test]
+    fn transition_apply_and_rollback_with_receipt() {
+        struct MockReplaceTransition {
+            coordinate: StateCoordinate,
+            target_payload: [u8; 4],
+        }
+
+        impl StateTransition for MockReplaceTransition {
+            type Error = TransitionError;
+            type Receipt = SlotReceipt;
+
+            fn apply(&self, vector: &mut StateVector) -> Result<Self::Receipt, Self::Error> {
+                let previous = *vector.get(self.coordinate);
+
+                vector.write(self.coordinate, &self.target_payload)?;
+
+                Ok(SlotReceipt::new(self.coordinate, previous))
+            }
+
+            fn rollback(
+                &self,
+                vector: &mut StateVector,
+                receipt: Self::Receipt,
+            ) -> Result<(), Self::Error> {
+                if receipt.coordinate() != self.coordinate {
+                    return Err(TransitionError::ReceiptMismatch);
+                }
+
+                *vector.get_mut(self.coordinate) = receipt.previous();
+
+                Ok(())
+            }
+        }
+
+        let mut vector = StateVector::new();
+        let coordinate = StateCoordinate::new(100).unwrap();
+
+        vector.write(coordinate, &[1u8, 2u8, 3u8, 4u8]).unwrap();
+
+        let transition = MockReplaceTransition {
+            coordinate,
+            target_payload: [9u8, 9u8, 9u8, 9u8],
+        };
+
+        let receipt = transition.apply(&mut vector).unwrap();
+
+        assert_eq!(vector.get(coordinate).read_bytes(), &[9u8, 9u8, 9u8, 9u8]);
+
+        transition.rollback(&mut vector, receipt).unwrap();
+
+        assert_eq!(vector.get(coordinate).read_bytes(), &[1u8, 2u8, 3u8, 4u8]);
+    }
+
+    #[test]
+    fn transition_rejects_mismatched_receipt_coordinate() {
+        struct MockReplaceTransition {
+            coordinate: StateCoordinate,
+            target_payload: [u8; 4],
+        }
+
+        impl StateTransition for MockReplaceTransition {
+            type Error = TransitionError;
+            type Receipt = SlotReceipt;
+
+            fn apply(&self, vector: &mut StateVector) -> Result<Self::Receipt, Self::Error> {
+                let previous = *vector.get(self.coordinate);
+
+                vector.write(self.coordinate, &self.target_payload)?;
+
+                Ok(SlotReceipt::new(self.coordinate, previous))
+            }
+
+            fn rollback(
+                &self,
+                vector: &mut StateVector,
+                receipt: Self::Receipt,
+            ) -> Result<(), Self::Error> {
+                if receipt.coordinate() != self.coordinate {
+                    return Err(TransitionError::ReceiptMismatch);
+                }
+
+                *vector.get_mut(self.coordinate) = receipt.previous();
+
+                Ok(())
+            }
+        }
+
+        let coordinate_a = StateCoordinate::new(10).unwrap();
+        let coordinate_b = StateCoordinate::new(20).unwrap();
+
+        let transition = MockReplaceTransition {
+            coordinate: coordinate_a,
+            target_payload: [9u8, 9u8, 9u8, 9u8],
+        };
+
+        let receipt = SlotReceipt::new(coordinate_b, StateSlot::new());
+
+        let mut vector = StateVector::new();
+
+        assert!(vector.get(coordinate_a).is_empty());
+        assert!(vector.get(coordinate_b).is_empty());
+
+        assert_eq!(
+            transition.rollback(&mut vector, receipt),
+            Err(TransitionError::ReceiptMismatch)
+        );
+
+        assert!(vector.get(coordinate_a).is_empty());
+        assert!(vector.get(coordinate_b).is_empty());
+    }
+
+    #[test]
+    fn transition_fails_closed_on_precondition_violation() {
+        struct MockGuardedTransition {
+            coordinate: StateCoordinate,
+            magic_value: u8,
+        }
+
+        impl StateTransition for MockGuardedTransition {
+            type Error = TransitionError;
+            type Receipt = SlotReceipt;
+
+            fn apply(&self, vector: &mut StateVector) -> Result<Self::Receipt, Self::Error> {
+                let current = vector.get(self.coordinate);
+
+                if current.is_empty() || current.read_bytes()[0] != self.magic_value {
+                    return Err(TransitionError::InvalidExecution);
+                }
+
+                let previous = *current;
+
+                vector.write(self.coordinate, b"updated")?;
+
+                Ok(SlotReceipt::new(self.coordinate, previous))
+            }
+
+            fn rollback(
+                &self,
+                vector: &mut StateVector,
+                receipt: Self::Receipt,
+            ) -> Result<(), Self::Error> {
+                if receipt.coordinate() != self.coordinate {
+                    return Err(TransitionError::ReceiptMismatch);
+                }
+
+                *vector.get_mut(self.coordinate) = receipt.previous();
+
+                Ok(())
+            }
+        }
+
+        let mut vector = StateVector::new();
+        let coordinate = StateCoordinate::new(50).unwrap();
+
+        vector.write(coordinate, b"initial").unwrap();
+
+        let transition = MockGuardedTransition {
+            coordinate,
+            magic_value: 0xFF,
+        };
+
+        assert_eq!(
+            transition.apply(&mut vector),
+            Err(TransitionError::InvalidExecution)
+        );
+
+        assert_eq!(vector.get(coordinate).read_bytes(), b"initial");
     }
 }
