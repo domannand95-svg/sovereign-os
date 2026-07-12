@@ -133,6 +133,24 @@ pub enum StateError {
     PayloadTooLarge,
 }
 
+/// An opaque 32-byte commitment representing canonical state.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct StateRoot([u8; 32]);
+
+impl StateRoot {
+    /// Creates a state commitment from an existing 32-byte value.
+    #[inline]
+    pub const fn new(bytes: [u8; 32]) -> Self {
+        Self(bytes)
+    }
+
+    /// Returns the underlying commitment bytes.
+    #[inline]
+    pub const fn as_bytes(&self) -> &[u8; 32] {
+        &self.0
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -260,5 +278,44 @@ mod tests {
     #[test]
     fn default_vector_matches_new_vector() {
         assert_eq!(StateVector::default(), StateVector::new());
+    }
+
+    #[test]
+    fn root_construction_preserves_bytes() {
+        let bytes = [0xAAu8; 32];
+        let root = StateRoot::new(bytes);
+
+        assert_eq!(root.as_bytes(), &bytes);
+    }
+
+    #[test]
+    fn root_equality_and_ordering_are_structural() {
+        let root_a = StateRoot::new([0u8; 32]);
+        let root_b = StateRoot::new([0u8; 32]);
+
+        let mut larger_bytes = [0u8; 32];
+        larger_bytes[31] = 1;
+        let root_c = StateRoot::new(larger_bytes);
+
+        assert_eq!(root_a, root_b);
+        assert_ne!(root_a, root_c);
+        assert!(root_a < root_c);
+    }
+
+    #[test]
+    fn equal_roots_hash_identically() {
+        use std::collections::hash_map::DefaultHasher;
+        use std::hash::{Hash, Hasher};
+
+        let root_a = StateRoot::new([5u8; 32]);
+        let root_b = StateRoot::new([5u8; 32]);
+
+        let mut hasher_a = DefaultHasher::new();
+        let mut hasher_b = DefaultHasher::new();
+
+        root_a.hash(&mut hasher_a);
+        root_b.hash(&mut hasher_b);
+
+        assert_eq!(hasher_a.finish(), hasher_b.finish());
     }
 }
