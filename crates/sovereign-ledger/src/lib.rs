@@ -4,6 +4,7 @@
 pub mod append;
 pub mod checksum;
 pub mod config;
+pub mod domain_integration;
 pub mod error;
 pub mod lsn;
 pub mod record;
@@ -23,4 +24,6 @@ pub use record::{
 pub use replay::ReplayIterator;
 pub use segment::LedgerSegment;
 
-pub use snapshot::{LedgerSnapshotManager, SnapshotHeader, SNAPSHOT_CHECKSUM_LEN, SNAPSHOT_HEADER_LEN};
+pub use snapshot::{
+    LedgerSnapshotManager, SnapshotHeader, SNAPSHOT_CHECKSUM_LEN, SNAPSHOT_HEADER_LEN,
+};
