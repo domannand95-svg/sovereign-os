@@ -55,7 +55,7 @@ impl LedgerAppendEngine {
         let mut checksum_input = [0_u8; PAYLOAD_OFFSET];
         checksum_input.copy_from_slice(&header);
 
-        let checksum = crc32c::crc32c_append(crc32c(&checksum_input), payload);
+        let checksum = ::crc32c::crc32c_append(crc32c(&checksum_input), payload);
         let checksum_bytes = checksum.to_be_bytes();
 
         let segment = self
@@ -104,7 +104,8 @@ mod tests {
     use super::*;
 
     fn test_config(name: &str) -> LedgerConfig {
-        let path = std::env::temp_dir().join(format!("sovereign_append_{name}_{}", std::process::id()));
+        let path =
+            std::env::temp_dir().join(format!("sovereign_append_{name}_{}", std::process::id()));
         let _ = fs::remove_dir_all(&path);
 
         let mut config = LedgerConfig::new(path);
@@ -122,10 +123,16 @@ mod tests {
 
         let payload = b"sovereign_os_telemetry_payload_node_alpha";
 
-        assert_eq!(engine.append(EventType::KernelDirective, payload), Ok(Lsn(0)));
+        assert_eq!(
+            engine.append(EventType::KernelDirective, payload),
+            Ok(Lsn(0))
+        );
         assert_eq!(engine.next_lsn(), Lsn(1));
 
-        assert_eq!(engine.append(EventType::RegistryMutation, payload), Ok(Lsn(1)));
+        assert_eq!(
+            engine.append(EventType::RegistryMutation, payload),
+            Ok(Lsn(1))
+        );
         assert_eq!(engine.next_lsn(), Lsn(2));
 
         engine.flush().unwrap();
@@ -140,7 +147,9 @@ mod tests {
         let payload = [0x55_u8; 1024];
 
         for _ in 0..17 {
-            engine.append(EventType::CapabilityPromotion, &payload).unwrap();
+            engine
+                .append(EventType::CapabilityPromotion, &payload)
+                .unwrap();
         }
 
         let segment_count = fs::read_dir(&config.storage_root)
