@@ -217,6 +217,63 @@ impl SlotReceipt {
     }
 }
 
+/// The format version used by in-memory state snapshots.
+pub const STATE_SNAPSHOT_VERSION: u32 = 1;
+
+/// Interface for deterministic, fixed-capacity state snapshots.
+pub trait StateSnapshot {
+    /// The strongly typed snapshot restoration error.
+    type Error;
+
+    /// Restores the complete state vector from this snapshot.
+    fn restore(&self, vector: &mut StateVector) -> Result<(), Self::Error>;
+}
+
+/// Errors produced during snapshot restoration.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum SnapshotError {
+    /// The snapshot format version is not supported.
+    IncompatibleVersion,
+}
+
+/// A fixed-capacity, array-backed in-memory state snapshot.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct VectorSnapshot {
+    version: u32,
+    vector: StateVector,
+}
+
+impl VectorSnapshot {
+    /// Captures a complete copy of the current state vector.
+    #[inline]
+    pub fn capture(vector: &StateVector) -> Self {
+        Self {
+            version: STATE_SNAPSHOT_VERSION,
+            vector: vector.clone(),
+        }
+    }
+
+    /// Returns the snapshot format version.
+    #[inline]
+    pub const fn version(&self) -> u32 {
+        self.version
+    }
+}
+
+impl StateSnapshot for VectorSnapshot {
+    type Error = SnapshotError;
+
+    fn restore(&self, vector: &mut StateVector) -> Result<(), Self::Error> {
+        if self.version != STATE_SNAPSHOT_VERSION {
+            return Err(SnapshotError::IncompatibleVersion);
+        }
+
+        *vector = self.vector.clone();
+
+        Ok(())
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -494,6 +551,68 @@ mod tests {
 
         assert!(vector.get(coordinate_a).is_empty());
         assert!(vector.get(coordinate_b).is_empty());
+    }
+
+    #[test]
+    fn snapshot_capture_and_restore_round_trip() {
+        let mut vector = StateVector::new();
+        let coordinate = StateCoordinate::new(42).unwrap();
+
+        vector.write(coordinate, b"snapshot-payload").unwrap();
+
+        let snapshot = VectorSnapshot::capture(&vector);
+
+        assert_eq!(snapshot.version(), STATE_SNAPSHOT_VERSION);
+
+        vector.write(coordinate, b"mutated-payload").unwrap();
+
+        snapshot.restore(&mut vector).unwrap();
+
+        assert_eq!(vector.get(coordinate).read_bytes(), b"snapshot-payload");
+    }
+
+    #[test]
+    fn identical_snapshot_restoration_is_deterministic() {
+        let mut source = StateVector::new();
+        let mut vector_a = StateVector::new();
+        let mut vector_b = StateVector::new();
+        let coordinate = StateCoordinate::new(77).unwrap();
+
+        source.write(coordinate, b"common-state").unwrap();
+
+        let snapshot = VectorSnapshot::capture(&source);
+
+        vector_a.write(coordinate, b"diff-a").unwrap();
+        vector_b.write(coordinate, b"diff-b").unwrap();
+
+        snapshot.restore(&mut vector_a).unwrap();
+        snapshot.restore(&mut vector_b).unwrap();
+
+        assert_eq!(vector_a, vector_b);
+        assert_eq!(vector_a.get(coordinate).read_bytes(), b"common-state");
+    }
+
+    #[test]
+    fn incompatible_snapshot_fails_closed() {
+        let coordinate = StateCoordinate::new(99).unwrap();
+
+        let mut captured = StateVector::new();
+        captured.write(coordinate, b"snapshot-state").unwrap();
+
+        let invalid_snapshot = VectorSnapshot {
+            version: STATE_SNAPSHOT_VERSION + 1,
+            vector: captured,
+        };
+
+        let mut live = StateVector::new();
+        live.write(coordinate, b"live-state").unwrap();
+
+        assert_eq!(
+            invalid_snapshot.restore(&mut live),
+            Err(SnapshotError::IncompatibleVersion)
+        );
+
+        assert_eq!(live.get(coordinate).read_bytes(), b"live-state");
     }
 
     #[test]
