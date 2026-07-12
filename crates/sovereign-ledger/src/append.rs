@@ -39,7 +39,7 @@ impl LedgerAppendEngine {
         if self
             .active_segment
             .as_ref()
-            .map_or(true, |segment| !segment.has_capacity(total_record_size))
+            .is_none_or(|segment| !segment.has_capacity(total_record_size))
         {
             self.rotate_active_segment()?;
         }
@@ -155,7 +155,7 @@ mod tests {
         let segment_count = fs::read_dir(&config.storage_root)
             .unwrap()
             .flatten()
-            .filter(|entry| entry.path().extension().map_or(false, |ext| ext == "seg"))
+            .filter(|entry| entry.path().extension().is_some_and(|ext| ext == "seg"))
             .count();
 
         assert!(segment_count >= 2);

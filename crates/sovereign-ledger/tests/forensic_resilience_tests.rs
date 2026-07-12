@@ -27,12 +27,16 @@ fn first_segment_path(config: &LedgerConfig) -> PathBuf {
         .unwrap()
         .flatten()
         .map(|entry| entry.path())
-        .find(|path| path.extension().map_or(false, |ext| ext == "seg"))
+        .find(|path| path.extension().is_some_and(|ext| ext == "seg"))
         .unwrap()
 }
 
 fn flip_byte(path: &PathBuf, offset: u64) {
-    let mut file = OpenOptions::new().read(true).write(true).open(path).unwrap();
+    let mut file = OpenOptions::new()
+        .read(true)
+        .write(true)
+        .open(path)
+        .unwrap();
 
     file.seek(SeekFrom::Start(offset)).unwrap();
 
@@ -61,11 +65,7 @@ fn power_loss_partial_header_fails_closed() {
     let segment_path = first_segment_path(&config);
 
     {
-        let mut file = OpenOptions::new()
-            .write(true)
-            .append(true)
-            .open(&segment_path)
-            .unwrap();
+        let mut file = OpenOptions::new().append(true).open(&segment_path).unwrap();
 
         file.write_all(&[0, 0, 0, 0, 1]).unwrap();
         file.sync_all().unwrap();
@@ -93,6 +93,7 @@ fn power_loss_partial_payload_fails_closed() {
     {
         let mut file = OpenOptions::new()
             .create(true)
+            .truncate(true)
             .write(true)
             .open(&segment_path)
             .unwrap();
@@ -124,7 +125,10 @@ fn media_degradation_bit_flipped_payload_fails_closed() {
     {
         let mut engine = LedgerAppendEngine::bootstrap(config.clone()).unwrap();
         engine
-            .append(EventType::CapabilityPromotion, b"uncorrupted_payload_string")
+            .append(
+                EventType::CapabilityPromotion,
+                b"uncorrupted_payload_string",
+            )
             .unwrap();
         engine.flush().unwrap();
     }
@@ -149,7 +153,9 @@ fn media_degradation_bit_flipped_lsn_fails_closed() {
 
     {
         let mut engine = LedgerAppendEngine::bootstrap(config.clone()).unwrap();
-        engine.append(EventType::RegistryMutation, b"stable").unwrap();
+        engine
+            .append(EventType::RegistryMutation, b"stable")
+            .unwrap();
         engine.flush().unwrap();
     }
 
