@@ -42,7 +42,7 @@ impl LedgerSnapshotManager {
         header[8..40].copy_from_slice(&state_root_hash);
         header[40..44].copy_from_slice(&payload_len.to_be_bytes());
 
-        let checksum = crc32c::crc32c_append(crc32c(&header), payload);
+        let checksum = ::crc32c::crc32c_append(crc32c(&header), payload);
         let checksum_bytes = checksum.to_be_bytes();
 
         let mut file = OpenOptions::new()
@@ -52,9 +52,12 @@ impl LedgerSnapshotManager {
             .open(&path)
             .map_err(|_| LedgerError::WriteViolation)?;
 
-        file.write_all(&header).map_err(|_| LedgerError::StorageExhausted)?;
-        file.write_all(payload).map_err(|_| LedgerError::StorageExhausted)?;
-        file.write_all(&checksum_bytes).map_err(|_| LedgerError::StorageExhausted)?;
+        file.write_all(&header)
+            .map_err(|_| LedgerError::StorageExhausted)?;
+        file.write_all(payload)
+            .map_err(|_| LedgerError::StorageExhausted)?;
+        file.write_all(&checksum_bytes)
+            .map_err(|_| LedgerError::StorageExhausted)?;
         file.sync_all().map_err(|_| LedgerError::WriteViolation)?;
 
         Ok(path)
@@ -120,8 +123,10 @@ impl LedgerSnapshotManager {
                 .map_err(|_| LedgerError::SegmentCorrupted)?,
         );
 
-        let computed_checksum =
-            crc32c::crc32c_append(crc32c(&bytes[..SNAPSHOT_HEADER_LEN]), &bytes[payload_start..payload_end]);
+        let computed_checksum = ::crc32c::crc32c_append(
+            crc32c(&bytes[..SNAPSHOT_HEADER_LEN]),
+            &bytes[payload_start..payload_end],
+        );
 
         if computed_checksum != embedded_checksum {
             return Err(LedgerError::InvalidChecksum);
@@ -143,10 +148,8 @@ mod tests {
     use super::*;
 
     fn test_config(name: &str) -> LedgerConfig {
-        let path = std::env::temp_dir().join(format!(
-            "sovereign_snapshot_{name}_{}",
-            std::process::id()
-        ));
+        let path =
+            std::env::temp_dir().join(format!("sovereign_snapshot_{name}_{}", std::process::id()));
         let _ = fs::remove_dir_all(&path);
 
         let mut config = LedgerConfig::new(path);
@@ -163,8 +166,7 @@ mod tests {
 
         LedgerSnapshotManager::write_snapshot(&config, Lsn(10), hash, payload).unwrap();
 
-        let (header, restored) =
-            LedgerSnapshotManager::read_snapshot(&config, Lsn(10)).unwrap();
+        let (header, restored) = LedgerSnapshotManager::read_snapshot(&config, Lsn(10)).unwrap();
 
         assert_eq!(header.associated_lsn, Lsn(10));
         assert_eq!(header.state_root_hash, hash);
