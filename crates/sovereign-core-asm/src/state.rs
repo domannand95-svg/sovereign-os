@@ -85,6 +85,45 @@ impl StateSlot {
     }
 }
 
+/// A fixed-capacity, contiguous state storage vector.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct StateVector {
+    slots: [StateSlot; STATE_VECTOR_CAPACITY],
+}
+
+impl StateVector {
+    /// Creates a fully zero-initialized state vector.
+    #[inline]
+    pub const fn new() -> Self {
+        Self {
+            slots: [StateSlot::new(); STATE_VECTOR_CAPACITY],
+        }
+    }
+
+    /// Returns the slot at a checked coordinate.
+    #[inline]
+    pub fn get(&self, coordinate: StateCoordinate) -> &StateSlot {
+        &self.slots[coordinate.as_u32() as usize]
+    }
+
+    /// Returns mutable access to the slot at a checked coordinate.
+    #[inline]
+    pub fn get_mut(&mut self, coordinate: StateCoordinate) -> &mut StateSlot {
+        &mut self.slots[coordinate.as_u32() as usize]
+    }
+
+    /// Replaces the bytes at a checked coordinate.
+    pub fn write(&mut self, coordinate: StateCoordinate, data: &[u8]) -> Result<(), StateError> {
+        self.get_mut(coordinate).write_bytes(data)
+    }
+}
+
+impl Default for StateVector {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 /// Errors produced by static coordinate and storage primitives.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum StateError {
@@ -167,5 +206,59 @@ mod tests {
 
         assert!(slot.is_empty());
         assert_eq!(slot.read_bytes(), b"");
+    }
+
+    #[test]
+    fn vector_new_initializes_all_slots_empty() {
+        let vector = StateVector::new();
+
+        for index in 0..STATE_VECTOR_CAPACITY {
+            let coordinate = StateCoordinate::new(index as u32).unwrap();
+            assert!(vector.get(coordinate).is_empty());
+        }
+    }
+
+    #[test]
+    fn vector_write_and_get_round_trip() {
+        let mut vector = StateVector::new();
+        let coordinate = StateCoordinate::new(42).unwrap();
+        let data = b"vector-test";
+
+        assert_eq!(vector.write(coordinate, data), Ok(()));
+        assert_eq!(vector.get(coordinate).read_bytes(), data);
+    }
+
+    #[test]
+    fn mutations_at_distinct_coordinates_remain_isolated() {
+        let mut vector = StateVector::new();
+        let coordinate_a = StateCoordinate::new(10).unwrap();
+        let coordinate_b = StateCoordinate::new(20).unwrap();
+
+        vector.write(coordinate_a, b"payload-a").unwrap();
+        vector.write(coordinate_b, b"payload-b").unwrap();
+
+        assert_eq!(vector.get(coordinate_a).read_bytes(), b"payload-a");
+        assert_eq!(vector.get(coordinate_b).read_bytes(), b"payload-b");
+    }
+
+    #[test]
+    fn failed_oversized_write_preserves_existing_slot_value() {
+        let mut vector = StateVector::new();
+        let coordinate = StateCoordinate::new(7).unwrap();
+
+        vector.write(coordinate, b"initial").unwrap();
+
+        let oversized = [9u8; STATE_SLOT_CAPACITY + 1];
+
+        assert_eq!(
+            vector.write(coordinate, &oversized),
+            Err(StateError::PayloadTooLarge)
+        );
+        assert_eq!(vector.get(coordinate).read_bytes(), b"initial");
+    }
+
+    #[test]
+    fn default_vector_matches_new_vector() {
+        assert_eq!(StateVector::default(), StateVector::new());
     }
 }
