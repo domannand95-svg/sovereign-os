@@ -4,3 +4,5 @@
 //! Implementation must conform to the corresponding SPEC document.
 
 pub mod state;
+
+pub mod snapshot;
