@@ -92,11 +92,9 @@ impl SovereignEngine {
         RegistryLedgerSync::ingest_record(&mut staged_registry, &record)
             .map_err(DirectiveError::Registry)?;
 
-        let receipt = transition
-            .apply(&mut self.restoration.state)
-            .map_err(DirectiveError::StateApplication)?;
+        let mut staged_state = self.restoration.state.clone();
         transition
-            .rollback(&mut self.restoration.state, receipt)
+            .apply(&mut staged_state)
             .map_err(DirectiveError::StateApplication)?;
 
         let assigned = append
@@ -106,9 +104,7 @@ impl SovereignEngine {
             return Err(DirectiveError::Ledger(LedgerError::LsnSequenceGap));
         }
 
-        transition
-            .apply(&mut self.restoration.state)
-            .map_err(DirectiveError::StateApplication)?;
+        self.restoration.state = staged_state;
         self.registry = staged_registry;
         self.final_lsn = Some(lsn);
 
