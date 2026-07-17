@@ -24,6 +24,7 @@ pub struct SovereignEngine {
     restoration: Box<RestorationOutcome>,
     registry: RegistryGraph,
     final_lsn: Option<Lsn>,
+    requires_restart: bool,
 }
 
 impl SovereignEngine {
@@ -51,6 +52,7 @@ impl SovereignEngine {
             restoration: Box::new(restoration),
             registry,
             final_lsn,
+            requires_restart: false,
         })
     }
 
@@ -70,6 +72,10 @@ impl SovereignEngine {
         P: DirectivePolicy,
         M: LedgerEventMapper,
     {
+        if self.requires_restart {
+            return Err(DirectiveError::Ledger(LedgerError::CommitAmbiguous));
+        }
+
         match policy
             .evaluate(DirectiveRequest::new(event_type, payload))
             .map_err(DirectiveError::Policy)?
@@ -78,8 +84,8 @@ impl SovereignEngine {
             PolicyDecision::Deny(reason) => return Err(DirectiveError::Denied(reason)),
         }
 
-        let mut append = LedgerAppendEngine::bootstrap(self.config.clone())
-            .map_err(DirectiveError::Ledger)?;
+        let mut append =
+            LedgerAppendEngine::bootstrap(self.config.clone()).map_err(DirectiveError::Ledger)?;
         let lsn = append.next_lsn();
         let record = EventRecord {
             lsn,
@@ -99,8 +105,8 @@ impl SovereignEngine {
             .apply(&mut staged_state)
             .map_err(DirectiveError::StateApplication)?;
 
-        append
-            .append(event_type, payload)
+        let append_result = append.append(event_type, payload);
+        self.observe_append_result(append_result)
             .map_err(DirectiveError::Ledger)?;
 
         self.restoration.state = staged_state;
@@ -108,6 +114,16 @@ impl SovereignEngine {
         self.final_lsn = Some(lsn);
 
         Ok(DirectiveReceipt { lsn })
+    }
+
+    fn observe_append_result(
+        &mut self,
+        result: Result<Lsn, LedgerError>,
+    ) -> Result<Lsn, LedgerError> {
+        if let Err(LedgerError::CommitAmbiguous) = &result {
+            self.requires_restart = true;
+        }
+        result
     }
 
     /// Returns the current authoritative state.
@@ -372,12 +388,7 @@ mod tests {
         let mut engine = SovereignEngine::boot(&config, LsnMapper).unwrap();
 
         let receipt = engine
-            .submit_directive(
-                &policy,
-                &LsnMapper,
-                EventType::RegistryMutation,
-                &payload,
-            )
+            .submit_directive(&policy, &LsnMapper, EventType::RegistryMutation, &payload)
             .unwrap();
         assert_eq!(receipt.lsn, Lsn(0));
         assert_eq!(engine.final_lsn(), Some(Lsn(0)));
@@ -410,12 +421,7 @@ mod tests {
         let before = sovereign_ledger::compute_state_root(engine.state());
 
         let error = engine
-            .submit_directive(
-                &policy,
-                &LsnMapper,
-                EventType::RegistryMutation,
-                &payload,
-            )
+            .submit_directive(&policy, &LsnMapper, EventType::RegistryMutation, &payload)
             .unwrap_err();
         assert_eq!(error, DirectiveError::Denied(PolicyDenial::EventTypeDenied));
         assert_eq!(engine.final_lsn(), None);
@@ -508,12 +514,7 @@ mod tests {
         let oversized = vec![0xA5_u8; STATE_SLOT_CAPACITY + 1];
 
         let error = engine
-            .submit_directive(
-                &policy,
-                &LsnMapper,
-                EventType::KernelDirective,
-                &oversized,
-            )
+            .submit_directive(&policy, &LsnMapper, EventType::KernelDirective, &oversized)
             .unwrap_err();
         assert_eq!(
             error,
@@ -530,6 +531,41 @@ mod tests {
                 .tail_lsn,
             None
         );
+        let _ = fs::remove_dir_all(&config.storage_root);
+    }
+
+    #[test]
+    fn ambiguous_append_poison_blocks_further_directives_until_restart() {
+        let config = config("directive_ambiguous_append");
+        let policy = EventTypeAllowlist::new(&[EventType::KernelDirective]);
+        let mut engine = SovereignEngine::boot(&config, LsnMapper).unwrap();
+        let before = sovereign_ledger::compute_state_root(engine.state());
+
+        assert_eq!(
+            engine.observe_append_result(Err(LedgerError::CommitAmbiguous)),
+            Err(LedgerError::CommitAmbiguous)
+        );
+
+        let error = engine
+            .submit_directive(
+                &policy,
+                &LsnMapper,
+                EventType::KernelDirective,
+                b"must-not-persist",
+            )
+            .unwrap_err();
+
+        assert_eq!(error, DirectiveError::Ledger(LedgerError::CommitAmbiguous));
+        assert_eq!(engine.final_lsn(), None);
+        assert!(engine.registry().is_empty());
+        assert_eq!(sovereign_ledger::compute_state_root(engine.state()), before);
+        assert_eq!(
+            sovereign_ledger::discover_ledger_tail(&config)
+                .unwrap()
+                .tail_lsn,
+            None
+        );
+
         let _ = fs::remove_dir_all(&config.storage_root);
     }
 }

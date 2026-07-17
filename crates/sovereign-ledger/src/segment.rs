@@ -55,17 +55,40 @@ impl LedgerSegment {
         })
     }
 
-    /// Publishes one complete record through a synchronized pending file and atomic rename.
+    /// Publishes one complete record through a synchronized pending file and atomic no-clobber link.
     pub(crate) fn publish_atomic_record<P, F>(
         directory: P,
         base_lsn: Lsn,
         max_size: usize,
         bytes: &[u8],
-        mut observer: F,
+        observer: F,
     ) -> Result<(), LedgerError>
     where
         P: AsRef<Path>,
         F: FnMut(AtomicPublishStage),
+    {
+        Self::publish_atomic_record_with_directory_sync(
+            directory,
+            base_lsn,
+            max_size,
+            bytes,
+            observer,
+            |directory| File::open(directory).and_then(|handle| handle.sync_all()),
+        )
+    }
+
+    fn publish_atomic_record_with_directory_sync<P, F, S>(
+        directory: P,
+        base_lsn: Lsn,
+        max_size: usize,
+        bytes: &[u8],
+        mut observer: F,
+        mut sync_directory: S,
+    ) -> Result<(), LedgerError>
+    where
+        P: AsRef<Path>,
+        F: FnMut(AtomicPublishStage),
+        S: FnMut(&Path) -> std::io::Result<()>,
     {
         if bytes.is_empty() || bytes.len() > max_size {
             return Err(LedgerError::StorageExhausted);
@@ -92,6 +115,7 @@ impl LedgerSegment {
             }
         };
 
+        let mut canonical_published = false;
         let result = (|| {
             pending
                 .write_all(bytes)
@@ -107,19 +131,23 @@ impl LedgerSegment {
             // Linking the already-synchronized inode fails atomically if canonical exists.
             std::fs::hard_link(&pending_path, &canonical)
                 .map_err(|_| LedgerError::WriteViolation)?;
+            canonical_published = true;
+
             // Canonical now owns the durable inode; stale pending cleanup is best-effort.
             let _ = std::fs::remove_file(&pending_path);
             observer(AtomicPublishStage::Published);
 
-            File::open(directory)
-                .and_then(|handle| handle.sync_all())
-                .map_err(|_| LedgerError::WriteViolation)?;
+            sync_directory(directory).map_err(|_| LedgerError::CommitAmbiguous)?;
             observer(AtomicPublishStage::Durable);
             Ok(())
         })();
 
         if result.is_err() {
             let _ = std::fs::remove_file(&pending_path);
+            if canonical_published {
+                let _ = std::fs::remove_file(&canonical);
+                let _ = sync_directory(directory);
+            }
         }
         result
     }
@@ -328,6 +356,41 @@ mod tests {
         );
 
         drop(segment);
+        std::fs::remove_dir_all(&temp_dir).unwrap();
+    }
+
+    #[test]
+    fn post_publish_directory_sync_failure_is_ambiguous_and_rolls_back_visibility() {
+        let temp_dir = test_dir("seg_post_publish_sync_failure");
+        let base_lsn = Lsn(7);
+        let canonical = temp_dir.join(format!("{:016x}.seg", base_lsn.get()));
+        let mut sync_attempts = 0_u8;
+
+        let result = LedgerSegment::publish_atomic_record_with_directory_sync(
+            &temp_dir,
+            base_lsn,
+            1024,
+            b"complete-record",
+            |_| {},
+            |_| {
+                sync_attempts += 1;
+                if sync_attempts == 1 {
+                    Err(std::io::Error::other("injected directory sync failure"))
+                } else {
+                    Ok(())
+                }
+            },
+        );
+
+        assert_eq!(result, Err(LedgerError::CommitAmbiguous));
+        assert_eq!(sync_attempts, 2);
+        assert!(!canonical.exists());
+        assert!(std::fs::read_dir(&temp_dir).unwrap().all(|entry| !entry
+            .unwrap()
+            .file_name()
+            .to_string_lossy()
+            .ends_with(".pending")));
+
         std::fs::remove_dir_all(&temp_dir).unwrap();
     }
 }
