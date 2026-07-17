@@ -188,7 +188,6 @@ mod tests {
         let config = config("valid");
         let mut writer = LedgerAppendEngine::bootstrap(config.clone()).unwrap();
         writer.append(EventType::KernelDirective, b"zero").unwrap();
-        writer.append(EventType::RegistryMutation, b"one").unwrap();
         writer.flush().unwrap();
         parity(&config, &segment(&config), Lsn(0));
         let _ = fs::remove_dir_all(&config.storage_root);

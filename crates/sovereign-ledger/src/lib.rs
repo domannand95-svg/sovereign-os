@@ -12,7 +12,7 @@ pub mod replay;
 pub mod segment;
 pub mod snapshot;
 
-pub use append::LedgerAppendEngine;
+pub use append::{AppendCommitStage, LedgerAppendEngine};
 pub use checksum::crc32c;
 pub use config::LedgerConfig;
 pub use error::LedgerError;
