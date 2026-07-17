@@ -75,8 +75,8 @@ fn map_replay_error<MapperError>(error: ReplayError<MapperError>) -> Restoration
 
 /// Restores state from the newest valid snapshot, or replays from genesis.
 ///
-/// The coordinator owns `mapper` and moves it into exactly one replay attempt.
-/// Snapshot validation does not require the mapper. All mutation occurs on a
+/// The coordinator owns `mapper`. Snapshot validation does not require it;
+/// when replay is required, the mapper moves into exactly one replay attempt. All mutation occurs on a
 /// temporary state vector owned by this function, so an error never exposes a
 /// partially restored state.
 pub fn initialize_from_snapshot_or_replay<M>(
