@@ -25,5 +25,23 @@ pub use replay::ReplayIterator;
 pub use segment::LedgerSegment;
 
 pub use snapshot::{
-    LedgerSnapshotManager, SnapshotHeader, SNAPSHOT_CHECKSUM_LEN, SNAPSHOT_HEADER_LEN,
+    snapshot_candidates_descending, write_snapshot_with_root, LedgerSnapshotManager,
+    SnapshotCandidate, SnapshotDiscovery, SnapshotHeader, SNAPSHOT_CHECKSUM_LEN,
+    SNAPSHOT_HEADER_LEN,
 };
+
+pub use error::{
+    FallbackReason, RejectedSnapshot, RejectionReason, RestorationError, RestorationResult,
+};
+
+pub mod state_root;
+
+pub use state_root::{compute_state_root, compute_state_root_from_encoded, DOMAIN_SEPARATOR};
+mod restore;
+mod scan;
+mod tail;
+pub use restore::{
+    initialize_from_snapshot_or_replay, RestorationDiagnostics, RestorationOutcome,
+    RestorationSource, SnapshotValidationCounters,
+};
+pub use tail::{discover_ledger_tail, TailDiscovery};

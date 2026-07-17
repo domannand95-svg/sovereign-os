@@ -1,6 +1,12 @@
 //! Snapshot primitives for ledger checkpoint metadata.
 
-use crate::{checksum::crc32c, LedgerConfig, LedgerError, Lsn};
+use crate::{
+    checksum::crc32c,
+    error::{RejectedSnapshot, RejectionReason},
+    state_root::compute_state_root_from_encoded,
+    LedgerConfig, LedgerError, Lsn,
+};
+use sovereign_core_asm::state::StateVector;
 use std::fs::{self, OpenOptions};
 use std::io::{Read, Write};
 use std::path::PathBuf;
@@ -13,6 +19,35 @@ pub struct SnapshotHeader {
     pub associated_lsn: Lsn,
     pub state_root_hash: [u8; 32],
     pub payload_len: u32,
+}
+
+/// A snapshot that passed filename, envelope-length, and CRC validation.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct SnapshotCandidate {
+    pub lsn: Lsn,
+    pub header: SnapshotHeader,
+    pub payload: Vec<u8>,
+}
+
+/// Snapshot candidates and the recoverable rejections observed during discovery.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct SnapshotDiscovery {
+    pub candidates: Vec<SnapshotCandidate>,
+    pub rejected: Vec<RejectedSnapshot>,
+}
+
+impl SnapshotDiscovery {
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.candidates.is_empty()
+    }
+
+    pub fn len(&self) -> usize {
+        self.candidates.len()
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -143,6 +178,125 @@ impl LedgerSnapshotManager {
     }
 }
 
+/// Discovers snapshot envelopes newest-first without decoding state payloads.
+pub fn snapshot_candidates_descending(
+    config: &LedgerConfig,
+) -> Result<SnapshotDiscovery, LedgerError> {
+    config.validate()?;
+
+    if !config.storage_root.exists() {
+        return Ok(SnapshotDiscovery::new());
+    }
+
+    let mut discovery = SnapshotDiscovery::new();
+    let entries = fs::read_dir(&config.storage_root).map_err(|_| LedgerError::SegmentCorrupted)?;
+
+    for entry in entries {
+        let path = entry.map_err(|_| LedgerError::SegmentCorrupted)?.path();
+        if !path.is_file() {
+            continue;
+        }
+
+        let Some(filename) = path.file_name().and_then(|name| name.to_str()) else {
+            continue;
+        };
+
+        if !filename.to_ascii_lowercase().ends_with(".snap") {
+            continue;
+        }
+
+        let stem = match filename.strip_suffix(".snap") {
+            Some(stem)
+                if stem.len() == 16
+                    && stem
+                        .chars()
+                        .all(|character| matches!(character, '0'..='9' | 'a'..='f')) =>
+            {
+                stem
+            }
+            _ => {
+                discovery.rejected.push(RejectedSnapshot {
+                    lsn: None,
+                    reason: RejectionReason::FilenameMismatch,
+                });
+                continue;
+            }
+        };
+
+        let lsn = match u64::from_str_radix(stem, 16) {
+            Ok(value) => Lsn(value),
+            Err(_) => {
+                discovery.rejected.push(RejectedSnapshot {
+                    lsn: None,
+                    reason: RejectionReason::FilenameMismatch,
+                });
+                continue;
+            }
+        };
+
+        let embedded_lsn = match fs::read(&path) {
+            Ok(bytes) if bytes.len() >= 8 => Lsn(u64::from_be_bytes(
+                bytes[..8]
+                    .try_into()
+                    .map_err(|_| LedgerError::SegmentCorrupted)?,
+            )),
+            Ok(_) => {
+                discovery.rejected.push(RejectedSnapshot {
+                    lsn: Some(lsn),
+                    reason: RejectionReason::Malformed,
+                });
+                continue;
+            }
+            Err(_) => return Err(LedgerError::SegmentCorrupted),
+        };
+
+        if embedded_lsn != lsn {
+            discovery.rejected.push(RejectedSnapshot {
+                lsn: Some(lsn),
+                reason: RejectionReason::FilenameMismatch,
+            });
+            continue;
+        }
+
+        match LedgerSnapshotManager::read_snapshot(config, lsn) {
+            Ok((header, payload)) => discovery.candidates.push(SnapshotCandidate {
+                lsn,
+                header,
+                payload,
+            }),
+            Err(LedgerError::InvalidChecksum) => {
+                discovery.rejected.push(RejectedSnapshot {
+                    lsn: Some(lsn),
+                    reason: RejectionReason::ChecksumMismatch,
+                });
+            }
+            Err(LedgerError::SegmentCorrupted) => {
+                discovery.rejected.push(RejectedSnapshot {
+                    lsn: Some(lsn),
+                    reason: RejectionReason::Malformed,
+                });
+            }
+            Err(error) => return Err(error),
+        }
+    }
+
+    discovery
+        .candidates
+        .sort_by_key(|candidate| std::cmp::Reverse(candidate.lsn));
+    Ok(discovery)
+}
+
+/// Encodes a state vector, computes its ADR 0001 root, and writes the snapshot.
+pub fn write_snapshot_with_root(
+    config: &LedgerConfig,
+    associated_lsn: Lsn,
+    state: &StateVector,
+) -> Result<PathBuf, LedgerError> {
+    let payload = sovereign_core_asm::snapshot::encode(state);
+    let state_root_hash = compute_state_root_from_encoded(&payload);
+    LedgerSnapshotManager::write_snapshot(config, associated_lsn, state_root_hash, &payload)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -205,5 +359,102 @@ mod tests {
         );
 
         let _ = fs::remove_dir_all(&config.storage_root);
+    }
+
+    #[test]
+    fn discovery_returns_valid_candidates_newest_first() {
+        let config = test_config("discovery_order");
+        LedgerSnapshotManager::write_snapshot(&config, Lsn(2), [2; 32], b"two").unwrap();
+        LedgerSnapshotManager::write_snapshot(&config, Lsn(9), [9; 32], b"nine").unwrap();
+        fs::write(config.storage_root.join("notes.txt"), b"ignored").unwrap();
+
+        let discovery = snapshot_candidates_descending(&config).unwrap();
+
+        assert_eq!(discovery.len(), 2);
+        assert_eq!(discovery.candidates[0].lsn, Lsn(9));
+        assert_eq!(discovery.candidates[1].lsn, Lsn(2));
+        assert!(discovery.rejected.is_empty());
+
+        let _ = fs::remove_dir_all(&config.storage_root);
+    }
+
+    #[test]
+    fn discovery_records_filename_and_integrity_rejections() {
+        let config = test_config("discovery_rejections");
+        fs::create_dir_all(&config.storage_root).unwrap();
+        fs::write(
+            config.storage_root.join("0000000000000001.SNAP"),
+            b"bad name",
+        )
+        .unwrap();
+
+        let corrupt =
+            LedgerSnapshotManager::write_snapshot(&config, Lsn(7), [7; 32], b"payload").unwrap();
+        let mut bytes = fs::read(&corrupt).unwrap();
+        bytes[SNAPSHOT_HEADER_LEN] ^= 0xFF;
+        fs::write(&corrupt, bytes).unwrap();
+
+        fs::write(config.storage_root.join("0000000000000008.snap"), b"short").unwrap();
+
+        let discovery = snapshot_candidates_descending(&config).unwrap();
+
+        assert!(discovery.is_empty());
+        assert!(discovery.rejected.contains(&RejectedSnapshot {
+            lsn: None,
+            reason: RejectionReason::FilenameMismatch,
+        }));
+        assert!(discovery.rejected.contains(&RejectedSnapshot {
+            lsn: Some(Lsn(7)),
+            reason: RejectionReason::ChecksumMismatch,
+        }));
+        assert!(discovery.rejected.contains(&RejectedSnapshot {
+            lsn: Some(Lsn(8)),
+            reason: RejectionReason::Malformed,
+        }));
+
+        let _ = fs::remove_dir_all(&config.storage_root);
+    }
+
+    #[test]
+    fn discovery_missing_directory_is_empty() {
+        let config = test_config("discovery_missing");
+
+        let discovery = snapshot_candidates_descending(&config).unwrap();
+
+        assert!(discovery.is_empty());
+        assert!(discovery.rejected.is_empty());
+    }
+
+    #[test]
+    fn write_snapshot_with_root_uses_normative_hash() {
+        let config = test_config("with_root");
+        let state = StateVector::new();
+
+        write_snapshot_with_root(&config, Lsn(11), &state).unwrap();
+        let (header, payload) = LedgerSnapshotManager::read_snapshot(&config, Lsn(11)).unwrap();
+
+        assert_eq!(
+            header.state_root_hash,
+            compute_state_root_from_encoded(&payload)
+        );
+        assert_eq!(payload, sovereign_core_asm::snapshot::encode(&state));
+
+        let _ = fs::remove_dir_all(&config.storage_root);
+    }
+
+    #[test]
+    fn discovery_rejects_header_lsn_that_differs_from_filename() {
+        let config = test_config("header_filename_lsn_mismatch");
+        let state = StateVector::new();
+        let original = write_snapshot_with_root(&config, Lsn(5), &state).unwrap();
+        let renamed = config.storage_root.join(format!("{:016x}.snap", 7));
+        fs::rename(original, renamed).unwrap();
+
+        let discovery = snapshot_candidates_descending(&config).unwrap();
+
+        assert!(discovery.candidates.is_empty());
+        assert!(discovery.rejected.iter().any(|rejected| {
+            rejected.lsn == Some(Lsn(7)) && rejected.reason == RejectionReason::FilenameMismatch
+        }));
     }
 }
