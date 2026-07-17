@@ -1,33 +1,75 @@
-//! Single-writer append manager enforcing linear LSN progression and segment rollover.
+//! Single-writer append manager with crash-atomic record publication.
 
 use crate::config::{LedgerConfig, MAX_RECORD_OVERHEAD};
-use crate::record::{EventType, EVENT_TYPE_OFFSET, LSN_OFFSET, PAYLOAD_LEN_OFFSET, PAYLOAD_OFFSET};
-use crate::{checksum::crc32c, LedgerError, LedgerSegment, Lsn};
-use std::fs;
+use crate::record::{EventRecord, EventType};
+use crate::scan::enumerate_segments_strict;
+use crate::segment::AtomicPublishStage;
+use crate::tail::discover_ledger_tail;
+use crate::{LedgerError, LedgerSegment, Lsn};
+use std::fs::{self, File};
+
+/// Observable durability boundaries used by forensic crash tests and telemetry.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum AppendCommitStage {
+    /// The complete record exists only in a synchronized non-canonical pending file.
+    PendingSynced,
+    /// The complete record has been atomically published under its canonical name.
+    Published,
+    /// The containing directory has been synchronized and the append is durable.
+    Durable,
+}
 
 #[derive(Debug)]
 pub struct LedgerAppendEngine {
     config: LedgerConfig,
-    active_segment: Option<LedgerSegment>,
     next_lsn: Lsn,
 }
 
 impl LedgerAppendEngine {
     pub fn bootstrap(config: LedgerConfig) -> Result<Self, LedgerError> {
         config.validate()?;
-
         if !config.storage_root.exists() {
             fs::create_dir_all(&config.storage_root).map_err(|_| LedgerError::WriteViolation)?;
         }
+        Self::cleanup_pending_files(&config)?;
 
-        Ok(Self {
-            config,
-            active_segment: None,
-            next_lsn: Lsn::GENESIS,
-        })
+        let segments = enumerate_segments_strict(&config)?;
+        let discovery = discover_ledger_tail(&config)?;
+        let next_lsn = match discovery.tail_lsn {
+            Some(tail) => tail.next()?,
+            None => Lsn::GENESIS,
+        };
+
+        if let Some((base_lsn, path)) = segments.last() {
+            let is_empty_successor = *base_lsn == next_lsn
+                && path
+                    .metadata()
+                    .map_err(|_| LedgerError::SegmentCorrupted)?
+                    .len()
+                    == 0;
+            if is_empty_successor {
+                fs::remove_file(path).map_err(|_| LedgerError::WriteViolation)?;
+                Self::sync_storage_root(&config)?;
+            }
+        }
+
+        Ok(Self { config, next_lsn })
     }
 
     pub fn append(&mut self, event_type: EventType, payload: &[u8]) -> Result<Lsn, LedgerError> {
+        self.append_observed(event_type, payload, |_| {})
+    }
+
+    /// Appends one record while reporting the crash-relevant publication boundaries.
+    pub fn append_observed<F>(
+        &mut self,
+        event_type: EventType,
+        payload: &[u8],
+        mut observer: F,
+    ) -> Result<Lsn, LedgerError>
+    where
+        F: FnMut(AppendCommitStage),
+    {
         if payload.is_empty() || payload.len() > self.config.max_record_payload_size {
             return Err(LedgerError::WriteViolation);
         }
@@ -35,63 +77,81 @@ impl LedgerAppendEngine {
         let total_record_size = MAX_RECORD_OVERHEAD
             .checked_add(payload.len())
             .ok_or(LedgerError::StorageExhausted)?;
-
-        if self
-            .active_segment
-            .as_ref()
-            .is_none_or(|segment| !segment.has_capacity(total_record_size))
-        {
-            self.rotate_active_segment()?;
+        if total_record_size > self.config.max_segment_size {
+            return Err(LedgerError::StorageExhausted);
         }
 
         let assigned_lsn = self.next_lsn;
+        let record = EventRecord {
+            lsn: assigned_lsn,
+            event_type,
+            payload,
+            checksum: 0,
+        };
+        let mut encoded = vec![0_u8; total_record_size];
+        let written = record.encode_into(&mut encoded)?;
+        encoded.truncate(written);
 
-        let mut header = [0_u8; PAYLOAD_OFFSET];
-        header[LSN_OFFSET..EVENT_TYPE_OFFSET].copy_from_slice(&assigned_lsn.get().to_be_bytes());
-        header[EVENT_TYPE_OFFSET] = event_type.as_u8();
-        header[PAYLOAD_LEN_OFFSET..PAYLOAD_OFFSET]
-            .copy_from_slice(&(payload.len() as u32).to_be_bytes());
-
-        let mut checksum_input = [0_u8; PAYLOAD_OFFSET];
-        checksum_input.copy_from_slice(&header);
-
-        let checksum = ::crc32c::crc32c_append(crc32c(&checksum_input), payload);
-        let checksum_bytes = checksum.to_be_bytes();
-
-        let segment = self
-            .active_segment
-            .as_mut()
-            .ok_or(LedgerError::WriteViolation)?;
-
-        segment.write_raw(&header)?;
-        segment.write_raw(payload)?;
-        segment.write_raw(&checksum_bytes)?;
+        LedgerSegment::publish_atomic_record(
+            &self.config.storage_root,
+            assigned_lsn,
+            self.config.max_segment_size,
+            &encoded,
+            |stage| {
+                observer(match stage {
+                    AtomicPublishStage::PendingSynced => AppendCommitStage::PendingSynced,
+                    AtomicPublishStage::Published => AppendCommitStage::Published,
+                    AtomicPublishStage::Durable => AppendCommitStage::Durable,
+                });
+            },
+        )?;
 
         self.next_lsn = assigned_lsn.next()?;
-
         Ok(assigned_lsn)
     }
 
+    /// Re-synchronizes the ledger directory. Each successful append is already durable.
     pub fn flush(&self) -> Result<(), LedgerError> {
-        if let Some(segment) = &self.active_segment {
-            segment.synchronize()?;
+        Self::sync_storage_root(&self.config)
+    }
+
+    fn cleanup_pending_files(config: &LedgerConfig) -> Result<(), LedgerError> {
+        let mut removed = false;
+        for entry in fs::read_dir(&config.storage_root).map_err(|_| LedgerError::WriteViolation)? {
+            let path = entry.map_err(|_| LedgerError::WriteViolation)?.path();
+            let Some(name) = path.file_name().and_then(|value| value.to_str()) else {
+                continue;
+            };
+            if path.is_file() && Self::is_pending_filename(name) {
+                fs::remove_file(path).map_err(|_| LedgerError::WriteViolation)?;
+                removed = true;
+            }
+        }
+        if removed {
+            Self::sync_storage_root(config)?;
         }
         Ok(())
     }
 
-    fn rotate_active_segment(&mut self) -> Result<(), LedgerError> {
-        if let Some(mut old_segment) = self.active_segment.take() {
-            old_segment.freeze()?;
-        }
+    fn is_pending_filename(name: &str) -> bool {
+        let parts: Vec<_> = name.split('.').collect();
+        parts.len() == 5
+            && parts[0].is_empty()
+            && parts[1].len() == 16
+            && parts[1]
+                .chars()
+                .all(|value| matches!(value, '0'..='9' | 'a'..='f'))
+            && !parts[2].is_empty()
+            && parts[2].chars().all(|value| value.is_ascii_digit())
+            && !parts[3].is_empty()
+            && parts[3].chars().all(|value| value.is_ascii_digit())
+            && parts[4] == "pending"
+    }
 
-        let new_segment = LedgerSegment::create(
-            &self.config.storage_root,
-            self.next_lsn,
-            self.config.max_segment_size,
-        )?;
-
-        self.active_segment = Some(new_segment);
-        Ok(())
+    fn sync_storage_root(config: &LedgerConfig) -> Result<(), LedgerError> {
+        File::open(&config.storage_root)
+            .and_then(|handle| handle.sync_all())
+            .map_err(|_| LedgerError::WriteViolation)
     }
 
     pub const fn next_lsn(&self) -> Lsn {
@@ -175,6 +235,72 @@ mod tests {
             Err(LedgerError::WriteViolation)
         );
 
+        let _ = fs::remove_dir_all(&config.storage_root);
+    }
+    #[test]
+    fn bootstrap_resumes_after_existing_tail() {
+        let config = test_config("restart_tail");
+        let payload = b"sovereign_os_restart_payload";
+        {
+            let mut engine = LedgerAppendEngine::bootstrap(config.clone()).unwrap();
+            assert_eq!(
+                engine.append(EventType::KernelDirective, payload),
+                Ok(Lsn(0))
+            );
+            engine.flush().unwrap();
+        }
+
+        let mut restarted = LedgerAppendEngine::bootstrap(config.clone()).unwrap();
+        assert_eq!(restarted.next_lsn(), Lsn(1));
+        assert_eq!(
+            restarted.append(EventType::RegistryMutation, payload),
+            Ok(Lsn(1))
+        );
+        restarted.flush().unwrap();
+
+        let tail = discover_ledger_tail(&config).unwrap();
+        assert_eq!(tail.tail_lsn, Some(Lsn(1)));
+        assert_eq!(tail.records_validated, 2);
+        let _ = fs::remove_dir_all(&config.storage_root);
+    }
+
+    #[test]
+    fn bootstrap_reuses_empty_trailing_segment() {
+        let config = test_config("restart_empty_trailing");
+        let payload = b"sovereign_os_restart_payload";
+        {
+            let mut engine = LedgerAppendEngine::bootstrap(config.clone()).unwrap();
+            assert_eq!(
+                engine.append(EventType::KernelDirective, payload),
+                Ok(Lsn(0))
+            );
+            engine.flush().unwrap();
+        }
+        LedgerSegment::create(&config.storage_root, Lsn(1), config.max_segment_size).unwrap();
+
+        let mut restarted = LedgerAppendEngine::bootstrap(config.clone()).unwrap();
+        assert_eq!(restarted.next_lsn(), Lsn(1));
+        assert_eq!(
+            restarted.append(EventType::RegistryMutation, payload),
+            Ok(Lsn(1))
+        );
+        restarted.flush().unwrap();
+
+        let tail = discover_ledger_tail(&config).unwrap();
+        assert_eq!(tail.tail_lsn, Some(Lsn(1)));
+        assert_eq!(tail.segments_scanned, 2);
+        let _ = fs::remove_dir_all(&config.storage_root);
+    }
+    #[test]
+    fn bootstrap_removes_stale_pending_artifact() {
+        let config = test_config("stale_pending");
+        fs::create_dir_all(&config.storage_root).unwrap();
+        let pending = config.storage_root.join(".0000000000000000.42.7.pending");
+        fs::write(&pending, b"partial-record").unwrap();
+
+        let engine = LedgerAppendEngine::bootstrap(config.clone()).unwrap();
+        assert_eq!(engine.next_lsn(), Lsn(0));
+        assert!(!pending.exists());
         let _ = fs::remove_dir_all(&config.storage_root);
     }
 }

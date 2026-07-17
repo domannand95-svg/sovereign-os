@@ -5,6 +5,7 @@ members = [
     "crates/sovereign-registry",
     "crates/sovereign-core-asm",
     "crates/sovereign-policy",
+    "crates/sovereign-engine",
     "crates/sovereign-audit",
     "crates/sovereign-discovery",
 ]

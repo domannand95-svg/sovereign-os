@@ -4,6 +4,16 @@ use crate::{LedgerError, Lsn};
 use std::fs::{File, OpenOptions};
 use std::io::{Read, Seek, SeekFrom, Write};
 use std::path::Path;
+use std::sync::atomic::{AtomicU64, Ordering};
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum AtomicPublishStage {
+    PendingSynced,
+    Published,
+    Durable,
+}
+
+static NEXT_PENDING_ID: AtomicU64 = AtomicU64::new(0);
 
 /// Physical lifecycle wrapper for one ledger segment file.
 #[derive(Debug)]
@@ -45,11 +55,71 @@ impl LedgerSegment {
         })
     }
 
-    /// Opens an existing segment as read-only.
-    pub fn open_read_only<P: AsRef<Path>>(
-        path: P,
+    /// Publishes one complete record through a synchronized pending file and atomic rename.
+    pub(crate) fn publish_atomic_record<P, F>(
+        directory: P,
         base_lsn: Lsn,
-    ) -> Result<Self, LedgerError> {
+        max_size: usize,
+        bytes: &[u8],
+        mut observer: F,
+    ) -> Result<(), LedgerError>
+    where
+        P: AsRef<Path>,
+        F: FnMut(AtomicPublishStage),
+    {
+        if bytes.is_empty() || bytes.len() > max_size {
+            return Err(LedgerError::StorageExhausted);
+        }
+
+        let directory = directory.as_ref();
+        let canonical = directory.join(format!("{:016x}.seg", base_lsn.get()));
+        if canonical.exists() {
+            return Err(LedgerError::WriteViolation);
+        }
+
+        let (pending_path, mut pending) = loop {
+            let id = NEXT_PENDING_ID.fetch_add(1, Ordering::Relaxed);
+            let path = directory.join(format!(
+                ".{:016x}.{}.{}.pending",
+                base_lsn.get(),
+                std::process::id(),
+                id
+            ));
+            match OpenOptions::new().write(true).create_new(true).open(&path) {
+                Ok(file) => break (path, file),
+                Err(error) if error.kind() == std::io::ErrorKind::AlreadyExists => continue,
+                Err(_) => return Err(LedgerError::WriteViolation),
+            }
+        };
+
+        let result = (|| {
+            pending
+                .write_all(bytes)
+                .map_err(|_| LedgerError::StorageExhausted)?;
+            pending
+                .sync_all()
+                .map_err(|_| LedgerError::WriteViolation)?;
+            observer(AtomicPublishStage::PendingSynced);
+            drop(pending);
+
+            std::fs::rename(&pending_path, &canonical).map_err(|_| LedgerError::WriteViolation)?;
+            observer(AtomicPublishStage::Published);
+
+            File::open(directory)
+                .and_then(|handle| handle.sync_all())
+                .map_err(|_| LedgerError::WriteViolation)?;
+            observer(AtomicPublishStage::Durable);
+            Ok(())
+        })();
+
+        if result.is_err() {
+            let _ = std::fs::remove_file(&pending_path);
+        }
+        result
+    }
+
+    /// Opens an existing segment as read-only.
+    pub fn open_read_only<P: AsRef<Path>>(path: P, base_lsn: Lsn) -> Result<Self, LedgerError> {
         let file = OpenOptions::new()
             .read(true)
             .write(false)
@@ -124,7 +194,9 @@ impl LedgerSegment {
             return Ok(());
         }
 
-        self.file.sync_all().map_err(|_| LedgerError::WriteViolation)
+        self.file
+            .sync_all()
+            .map_err(|_| LedgerError::WriteViolation)
     }
 
     /// Marks the segment handle as immutable after syncing.
@@ -168,11 +240,7 @@ mod tests {
     use super::*;
 
     fn test_dir(name: &str) -> std::path::PathBuf {
-        let dir = std::env::temp_dir().join(format!(
-            "sovereign_{}_{}",
-            name,
-            std::process::id()
-        ));
+        let dir = std::env::temp_dir().join(format!("sovereign_{}_{}", name, std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
         std::fs::create_dir_all(&dir).unwrap();
         dir

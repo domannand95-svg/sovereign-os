@@ -1,0 +1,10 @@
+[package]
+name = "sovereign-engine"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+sovereign-core-asm = { path = "../sovereign-core-asm" }
+sovereign-ledger = { path = "../sovereign-ledger" }
+sovereign-policy = { path = "../sovereign-policy" }
+sovereign-registry = { path = "../sovereign-registry" }

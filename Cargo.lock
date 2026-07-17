@@ -114,6 +114,16 @@ name = "sovereign-discovery"
 version = "0.1.0"
 
 [[package]]
+name = "sovereign-engine"
+version = "0.1.0"
+dependencies = [
+ "sovereign-core-asm",
+ "sovereign-ledger",
+ "sovereign-policy",
+ "sovereign-registry",
+]
+
+[[package]]
 name = "sovereign-ledger"
 version = "0.1.0"
 dependencies = [
@@ -125,6 +135,9 @@ dependencies = [
 [[package]]
 name = "sovereign-policy"
 version = "0.1.0"
+dependencies = [
+ "sovereign-ledger",
+]
 
 [[package]]
 name = "sovereign-registry"
