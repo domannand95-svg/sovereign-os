@@ -3,6 +3,7 @@
 use crate::record::{
     EventRecord, PAYLOAD_LEN_OFFSET, PAYLOAD_OFFSET, RECORD_CHECKSUM_LEN, RECORD_HEADER_LEN,
 };
+use crate::scan::enumerate_segments_strict;
 use crate::{
     domain_integration::{LedgerEventMapper, LedgerStateTransition, LedgerTransitionError},
     LedgerConfig, LedgerError, Lsn,
@@ -120,6 +121,66 @@ impl ReplayIterator {
         replay.load_current_segment()?;
 
         Ok(replay)
+    }
+
+    /// Creates an iterator positioned at the first record after a validated checkpoint.
+    ///
+    /// Every record through the checkpoint is decoded and continuity-checked before
+    /// the returned iterator can yield a delta. A checkpoint at the ledger tail
+    /// returns an exhausted iterator. Missing or future checkpoints fail closed.
+    pub fn from_checkpoint_lsn(
+        config: LedgerConfig,
+        checkpoint_lsn: Lsn,
+    ) -> Result<Self, LedgerError> {
+        config.validate()?;
+        let target_lsn = checkpoint_lsn.next()?;
+        let segment_paths = enumerate_segments_strict(&config)?;
+
+        let mut replay = Self {
+            config,
+            segment_paths,
+            current_segment_idx: 0,
+            current_segment_bytes: Vec::new(),
+            offset: 0,
+            expected_lsn: Lsn(0),
+            terminated: false,
+        };
+        replay.load_current_segment()?;
+
+        let mut last_seen = None;
+
+        loop {
+            let record_result = match replay.next_record() {
+                Some(record_result) => record_result,
+                None => break,
+            };
+
+            let (record_lsn, encoded_len) = {
+                let record = record_result?;
+                (record.lsn, record.encoded_len())
+            };
+            last_seen = Some(record_lsn);
+
+            if record_lsn == target_lsn {
+                replay.offset = replay
+                    .offset
+                    .checked_sub(encoded_len)
+                    .ok_or(LedgerError::SegmentCorrupted)?;
+                replay.expected_lsn = target_lsn;
+                replay.terminated = false;
+                return Ok(replay);
+            }
+
+            if record_lsn > target_lsn {
+                return Err(LedgerError::LsnSequenceGap);
+            }
+        }
+
+        if last_seen == Some(checkpoint_lsn) {
+            return Ok(replay);
+        }
+
+        Err(LedgerError::LsnSequenceGap)
     }
 
     fn load_current_segment(&mut self) -> Result<(), LedgerError> {
@@ -333,6 +394,93 @@ mod tests {
             replay.next_record().unwrap().unwrap_err(),
             LedgerError::LsnSequenceGap
         );
+
+        let _ = fs::remove_dir_all(&config.storage_root);
+    }
+
+    #[test]
+    fn checkpoint_seek_starts_at_first_delta() {
+        let config = test_config("checkpoint_mid_segment");
+
+        {
+            let mut writer = LedgerAppendEngine::bootstrap(config.clone()).unwrap();
+            writer.append(EventType::KernelDirective, b"zero").unwrap();
+            writer.append(EventType::KernelDirective, b"one").unwrap();
+            writer.append(EventType::KernelDirective, b"two").unwrap();
+            writer.flush().unwrap();
+        }
+
+        let mut replay = ReplayIterator::from_checkpoint_lsn(config.clone(), Lsn(0)).unwrap();
+        assert_eq!(replay.next_record().unwrap().unwrap().lsn, Lsn(1));
+        assert_eq!(replay.next_record().unwrap().unwrap().lsn, Lsn(2));
+        assert!(replay.next_record().is_none());
+
+        let _ = fs::remove_dir_all(&config.storage_root);
+    }
+
+    #[test]
+    fn checkpoint_seek_crosses_segment_boundary() {
+        let mut config = test_config("checkpoint_segment_boundary");
+        config.max_record_payload_size = 1;
+        config.max_segment_size = RECORD_HEADER_LEN + 1 + RECORD_CHECKSUM_LEN;
+
+        {
+            let mut writer = LedgerAppendEngine::bootstrap(config.clone()).unwrap();
+            writer.append(EventType::KernelDirective, b"a").unwrap();
+            writer.append(EventType::KernelDirective, b"b").unwrap();
+            writer.flush().unwrap();
+        }
+
+        let mut replay = ReplayIterator::from_checkpoint_lsn(config.clone(), Lsn(0)).unwrap();
+        assert_eq!(replay.next_record().unwrap().unwrap().lsn, Lsn(1));
+        assert!(replay.next_record().is_none());
+
+        let _ = fs::remove_dir_all(&config.storage_root);
+    }
+
+    #[test]
+    fn checkpoint_at_tail_returns_empty_iterator() {
+        let config = test_config("checkpoint_at_tail");
+
+        {
+            let mut writer = LedgerAppendEngine::bootstrap(config.clone()).unwrap();
+            writer.append(EventType::KernelDirective, b"zero").unwrap();
+            writer.append(EventType::KernelDirective, b"one").unwrap();
+            writer.flush().unwrap();
+        }
+
+        let mut replay = ReplayIterator::from_checkpoint_lsn(config.clone(), Lsn(1)).unwrap();
+        assert!(replay.next_record().is_none());
+
+        let _ = fs::remove_dir_all(&config.storage_root);
+    }
+
+    #[test]
+    fn missing_or_future_checkpoint_fails_closed() {
+        let config = test_config("checkpoint_missing");
+
+        {
+            let mut writer = LedgerAppendEngine::bootstrap(config.clone()).unwrap();
+            writer.append(EventType::KernelDirective, b"zero").unwrap();
+            writer.flush().unwrap();
+        }
+
+        assert!(matches!(
+            ReplayIterator::from_checkpoint_lsn(config.clone(), Lsn(9)),
+            Err(LedgerError::LsnSequenceGap)
+        ));
+
+        let _ = fs::remove_dir_all(&config.storage_root);
+    }
+
+    #[test]
+    fn checkpoint_lsn_overflow_fails_closed() {
+        let config = test_config("checkpoint_overflow");
+
+        assert!(matches!(
+            ReplayIterator::from_checkpoint_lsn(config.clone(), Lsn(u64::MAX)),
+            Err(LedgerError::LsnOverflow)
+        ));
 
         let _ = fs::remove_dir_all(&config.storage_root);
     }
