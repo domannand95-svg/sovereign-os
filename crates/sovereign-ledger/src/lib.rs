@@ -35,3 +35,4 @@ pub use error::{
 pub mod state_root;
 
 pub use state_root::{compute_state_root, compute_state_root_from_encoded, DOMAIN_SEPARATOR};
+mod scan;
