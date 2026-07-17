@@ -156,12 +156,7 @@ impl ReplayIterator {
 
         let mut last_seen = None;
 
-        loop {
-            let record_result = match replay.next_record() {
-                Some(record_result) => record_result,
-                None => break,
-            };
-
+        while let Some(record_result) = replay.next_record() {
             let (record_lsn, encoded_len) = {
                 let record = record_result?;
                 (record.lsn, record.encoded_len())

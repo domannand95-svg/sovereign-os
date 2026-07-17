@@ -234,6 +234,30 @@ pub fn snapshot_candidates_descending(
             }
         };
 
+        let embedded_lsn = match fs::read(&path) {
+            Ok(bytes) if bytes.len() >= 8 => Lsn(u64::from_be_bytes(
+                bytes[..8]
+                    .try_into()
+                    .map_err(|_| LedgerError::SegmentCorrupted)?,
+            )),
+            Ok(_) => {
+                discovery.rejected.push(RejectedSnapshot {
+                    lsn: Some(lsn),
+                    reason: RejectionReason::Malformed,
+                });
+                continue;
+            }
+            Err(_) => return Err(LedgerError::SegmentCorrupted),
+        };
+
+        if embedded_lsn != lsn {
+            discovery.rejected.push(RejectedSnapshot {
+                lsn: Some(lsn),
+                reason: RejectionReason::FilenameMismatch,
+            });
+            continue;
+        }
+
         match LedgerSnapshotManager::read_snapshot(config, lsn) {
             Ok((header, payload)) => discovery.candidates.push(SnapshotCandidate {
                 lsn,
@@ -258,7 +282,7 @@ pub fn snapshot_candidates_descending(
 
     discovery
         .candidates
-        .sort_by(|left, right| right.lsn.cmp(&left.lsn));
+        .sort_by_key(|candidate| std::cmp::Reverse(candidate.lsn));
     Ok(discovery)
 }
 
@@ -416,5 +440,21 @@ mod tests {
         assert_eq!(payload, sovereign_core_asm::snapshot::encode(&state));
 
         let _ = fs::remove_dir_all(&config.storage_root);
+    }
+
+    #[test]
+    fn discovery_rejects_header_lsn_that_differs_from_filename() {
+        let config = test_config("header_filename_lsn_mismatch");
+        let state = StateVector::new();
+        let original = write_snapshot_with_root(&config, Lsn(5), &state).unwrap();
+        let renamed = config.storage_root.join(format!("{:016x}.snap", 7));
+        fs::rename(original, renamed).unwrap();
+
+        let discovery = snapshot_candidates_descending(&config).unwrap();
+
+        assert!(discovery.candidates.is_empty());
+        assert!(discovery.rejected.iter().any(|rejected| {
+            rejected.lsn == Some(Lsn(7)) && rejected.reason == RejectionReason::FilenameMismatch
+        }));
     }
 }
