@@ -31,6 +31,8 @@ pub enum ReplayError<MapperError> {
 pub struct ReplaySummary {
     /// Number of transitions successfully applied.
     pub records_applied: usize,
+    /// LSN of the last transition successfully applied, or none for empty replay.
+    pub final_lsn: Option<Lsn>,
 }
 
 /// Coordinates deterministic reconstruction of state from ordered ledger data.
@@ -58,6 +60,7 @@ where
         vector: &mut StateVector,
     ) -> Result<ReplaySummary, ReplayError<M::Error>> {
         let mut records_applied = 0;
+        let mut final_lsn = None;
 
         while let Some(record_result) = records.next_record() {
             let record = record_result.map_err(ReplayError::Ledger)?;
@@ -69,10 +72,14 @@ where
                 .apply(vector)
                 .map_err(ReplayError::StateApplication)?;
 
+            final_lsn = Some(record.lsn);
             records_applied += 1;
         }
 
-        Ok(ReplaySummary { records_applied })
+        Ok(ReplaySummary {
+            records_applied,
+            final_lsn,
+        })
     }
 }
 
@@ -520,6 +527,27 @@ mod tests {
     }
 
     #[test]
+    fn empty_replay_reports_no_final_lsn() {
+        let config = test_config("gate6_empty_summary");
+        fs::create_dir_all(&config.storage_root).unwrap();
+        let coordinate = StateCoordinate::new(9).unwrap();
+        let replayer = LedgerStateReplayer::new(ReplayTestMapper {
+            calls: Rc::new(Cell::new(0)),
+            coordinate,
+            fail_at: None,
+        });
+        let mut records = ReplayIterator::bootstrap(config.clone(), Lsn(0)).unwrap();
+        let mut vector = StateVector::default();
+
+        let summary = replayer.replay(&mut records, &mut vector).unwrap();
+
+        assert_eq!(summary.records_applied, 0);
+        assert_eq!(summary.final_lsn, None);
+
+        let _ = fs::remove_dir_all(&config.storage_root);
+    }
+
+    #[test]
     fn ordered_records_reconstruct_expected_state() {
         let config = test_config("gate6_ordered");
         let coordinate = StateCoordinate::new(10).unwrap();
@@ -546,6 +574,7 @@ mod tests {
         let summary = replayer.replay(&mut records, &mut vector).unwrap();
 
         assert_eq!(summary.records_applied, 2);
+        assert_eq!(summary.final_lsn, Some(Lsn(1)));
         assert_eq!(calls.get(), 2);
         assert_eq!(vector.get(coordinate).read_bytes(), b"second");
 
@@ -590,6 +619,7 @@ mod tests {
 
         assert_eq!(summary_a, summary_b);
         assert_eq!(summary_a.records_applied, 2);
+        assert_eq!(summary_a.final_lsn, Some(Lsn(1)));
         assert_eq!(calls_a.get(), 2);
         assert_eq!(calls_b.get(), 2);
         assert_eq!(
