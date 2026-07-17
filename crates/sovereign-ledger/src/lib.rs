@@ -27,3 +27,7 @@ pub use segment::LedgerSegment;
 pub use snapshot::{
     LedgerSnapshotManager, SnapshotHeader, SNAPSHOT_CHECKSUM_LEN, SNAPSHOT_HEADER_LEN,
 };
+
+pub use error::{
+    FallbackReason, RejectedSnapshot, RejectionReason, RestorationError, RestorationResult,
+};
