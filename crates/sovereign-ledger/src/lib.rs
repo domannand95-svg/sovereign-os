@@ -25,7 +25,9 @@ pub use replay::ReplayIterator;
 pub use segment::LedgerSegment;
 
 pub use snapshot::{
-    LedgerSnapshotManager, SnapshotHeader, SNAPSHOT_CHECKSUM_LEN, SNAPSHOT_HEADER_LEN,
+    snapshot_candidates_descending, write_snapshot_with_root, LedgerSnapshotManager,
+    SnapshotCandidate, SnapshotDiscovery, SnapshotHeader, SNAPSHOT_CHECKSUM_LEN,
+    SNAPSHOT_HEADER_LEN,
 };
 
 pub use error::{
