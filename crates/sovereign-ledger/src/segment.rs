@@ -102,7 +102,13 @@ impl LedgerSegment {
             observer(AtomicPublishStage::PendingSynced);
             drop(pending);
 
-            std::fs::rename(&pending_path, &canonical).map_err(|_| LedgerError::WriteViolation)?;
+            // Publish without replacement. A prior exists() check cannot protect against
+            // concurrent writers because ordinary rename replaces the destination on Unix.
+            // Linking the already-synchronized inode fails atomically if canonical exists.
+            std::fs::hard_link(&pending_path, &canonical)
+                .map_err(|_| LedgerError::WriteViolation)?;
+            // Canonical now owns the durable inode; stale pending cleanup is best-effort.
+            let _ = std::fs::remove_file(&pending_path);
             observer(AtomicPublishStage::Published);
 
             File::open(directory)
