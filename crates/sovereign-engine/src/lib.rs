@@ -105,7 +105,6 @@ impl SovereignEngine {
         if assigned != lsn {
             return Err(DirectiveError::Ledger(LedgerError::LsnSequenceGap));
         }
-        append.flush().map_err(DirectiveError::Ledger)?;
 
         transition
             .apply(&mut self.restoration.state)
