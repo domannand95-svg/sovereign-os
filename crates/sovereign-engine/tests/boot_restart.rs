@@ -60,7 +60,6 @@ fn boot_apply_persist_restart_reconstructs_identical_state() {
     assert_eq!(first_boot.final_lsn(), None);
     let first_receipt = first_boot
         .submit_directive(
-            &config,
             &policy,
             &LsnMapper,
             EventType::RegistryMutation,
@@ -91,7 +90,6 @@ fn boot_apply_persist_restart_reconstructs_identical_state() {
     let child_payload = RegistryLedgerSync::serialize_node(&child_node);
     let second_receipt = second_boot
         .submit_directive(
-            &config,
             &policy,
             &LsnMapper,
             EventType::RegistryMutation,
@@ -146,7 +144,6 @@ fn denied_directive_remains_absent_after_restart() {
 
     let error = engine
         .submit_directive(
-            &config,
             &policy,
             &LsnMapper,
             EventType::RegistryMutation,
@@ -230,7 +227,6 @@ fn interrupted_publication_exposes_only_previous_or_complete_state() {
         let mut engine = SovereignEngine::boot(&config, LsnMapper).unwrap();
         engine
             .submit_directive(
-                &config,
                 &policy,
                 &LsnMapper,
                 EventType::RegistryMutation,

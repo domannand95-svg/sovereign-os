@@ -11,6 +11,8 @@ pub enum LedgerError {
     StorageExhausted,
     UnsupportedVersion,
     WriteViolation,
+    /// A canonical record was published, but its directory durability could not be proven.
+    CommitAmbiguous,
     LsnOverflow,
 }
 
@@ -23,6 +25,9 @@ impl fmt::Display for LedgerError {
             LedgerError::StorageExhausted => f.write_str("ledger storage exhausted"),
             LedgerError::UnsupportedVersion => f.write_str("unsupported ledger format version"),
             LedgerError::WriteViolation => f.write_str("ledger write violation"),
+            LedgerError::CommitAmbiguous => {
+                f.write_str("ledger commit outcome is ambiguous; restart required")
+            }
             LedgerError::LsnOverflow => f.write_str("ledger LSN overflow"),
         }
     }

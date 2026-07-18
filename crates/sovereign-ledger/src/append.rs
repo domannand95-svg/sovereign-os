@@ -123,6 +123,9 @@ impl LedgerAppendEngine {
                 continue;
             };
             if path.is_file() && Self::is_pending_filename(name) {
+                if Self::pending_owner_pid(name) == Some(std::process::id()) {
+                    continue;
+                }
                 fs::remove_file(path).map_err(|_| LedgerError::WriteViolation)?;
                 removed = true;
             }
@@ -146,6 +149,13 @@ impl LedgerAppendEngine {
             && !parts[3].is_empty()
             && parts[3].chars().all(|value| value.is_ascii_digit())
             && parts[4] == "pending"
+    }
+
+    fn pending_owner_pid(name: &str) -> Option<u32> {
+        if !Self::is_pending_filename(name) {
+            return None;
+        }
+        name.split('.').nth(2)?.parse().ok()
     }
 
     fn sync_storage_root(config: &LedgerConfig) -> Result<(), LedgerError> {
@@ -295,12 +305,57 @@ mod tests {
     fn bootstrap_removes_stale_pending_artifact() {
         let config = test_config("stale_pending");
         fs::create_dir_all(&config.storage_root).unwrap();
-        let pending = config.storage_root.join(".0000000000000000.42.7.pending");
+        let stale_pid = std::process::id().wrapping_add(1);
+        let pending = config
+            .storage_root
+            .join(format!(".0000000000000000.{stale_pid}.7.pending"));
         fs::write(&pending, b"partial-record").unwrap();
+        let oversized_pid = config
+            .storage_root
+            .join(".0000000000000000.42949672960.8.pending");
+        fs::write(&oversized_pid, b"partial-record").unwrap();
 
         let engine = LedgerAppendEngine::bootstrap(config.clone()).unwrap();
         assert_eq!(engine.next_lsn(), Lsn(0));
         assert!(!pending.exists());
+        assert!(!oversized_pid.exists());
+        let _ = fs::remove_dir_all(&config.storage_root);
+    }
+    #[test]
+    fn bootstrap_preserves_live_pending_file_from_current_process() {
+        let config = test_config("live_pending");
+        let mut writer = LedgerAppendEngine::bootstrap(config.clone()).unwrap();
+        let (pending_tx, pending_rx) = std::sync::mpsc::sync_channel(0);
+        let (resume_tx, resume_rx) = std::sync::mpsc::sync_channel(0);
+
+        let writer_handle = std::thread::spawn(move || {
+            writer.append_observed(EventType::KernelDirective, b"live-writer", |stage| {
+                if stage == AppendCommitStage::PendingSynced {
+                    pending_tx.send(()).unwrap();
+                    resume_rx.recv().unwrap();
+                }
+            })
+        });
+
+        pending_rx.recv().unwrap();
+        let observer = LedgerAppendEngine::bootstrap(config.clone()).unwrap();
+        assert_eq!(observer.next_lsn(), Lsn(0));
+        let pending_count = fs::read_dir(&config.storage_root)
+            .unwrap()
+            .filter_map(Result::ok)
+            .filter(|entry| {
+                entry
+                    .file_name()
+                    .to_str()
+                    .is_some_and(LedgerAppendEngine::is_pending_filename)
+            })
+            .count();
+        assert_eq!(pending_count, 1);
+
+        resume_tx.send(()).unwrap();
+        assert_eq!(writer_handle.join().unwrap(), Ok(Lsn(0)));
+        let tail = discover_ledger_tail(&config).unwrap();
+        assert_eq!(tail.tail_lsn, Some(Lsn(0)));
         let _ = fs::remove_dir_all(&config.storage_root);
     }
 }

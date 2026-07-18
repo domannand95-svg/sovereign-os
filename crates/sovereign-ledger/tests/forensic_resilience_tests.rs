@@ -1,10 +1,12 @@
 use sovereign_ledger::{
-    EventType, LedgerAppendEngine, LedgerConfig, LedgerError, LedgerSnapshotManager, Lsn,
-    ReplayIterator,
+    AppendCommitStage, EventType, LedgerAppendEngine, LedgerConfig, LedgerError,
+    LedgerSnapshotManager, Lsn, ReplayIterator,
 };
 use std::fs::{self, OpenOptions};
 use std::io::{Read, Seek, SeekFrom, Write};
 use std::path::PathBuf;
+use std::sync::{Arc, Barrier};
+use std::thread;
 
 fn workspace(case_name: &str) -> LedgerConfig {
     let path = std::env::temp_dir().join(format!(
@@ -261,6 +263,60 @@ fn snapshot_payload_length_corruption_fails_closed() {
         LedgerSnapshotManager::read_snapshot(&config, Lsn(14)).unwrap_err(),
         LedgerError::SegmentCorrupted
     );
+
+    let _ = fs::remove_dir_all(&config.storage_root);
+}
+
+#[test]
+fn concurrent_same_lsn_publication_is_no_clobber() {
+    let config = workspace("concurrent_same_lsn");
+    let first = LedgerAppendEngine::bootstrap(config.clone()).unwrap();
+    let second = LedgerAppendEngine::bootstrap(config.clone()).unwrap();
+    assert_eq!(first.next_lsn(), Lsn(0));
+    assert_eq!(second.next_lsn(), Lsn(0));
+
+    let barrier = Arc::new(Barrier::new(2));
+    let spawn_writer =
+        |mut append: LedgerAppendEngine, payload: &'static [u8], barrier: Arc<Barrier>| {
+            thread::spawn(move || {
+                append.append_observed(EventType::KernelDirective, payload, |stage| {
+                    if stage == AppendCommitStage::PendingSynced {
+                        barrier.wait();
+                    }
+                })
+            })
+        };
+
+    let first_handle = spawn_writer(first, b"writer_a", Arc::clone(&barrier));
+    let second_handle = spawn_writer(second, b"writer_b", barrier);
+    let results = [first_handle.join().unwrap(), second_handle.join().unwrap()];
+
+    assert_eq!(results.iter().filter(|result| result.is_ok()).count(), 1);
+    assert_eq!(
+        results
+            .iter()
+            .filter(|result| matches!(result, Err(LedgerError::WriteViolation)))
+            .count(),
+        1
+    );
+
+    let canonical_segments = fs::read_dir(&config.storage_root)
+        .unwrap()
+        .filter_map(Result::ok)
+        .filter(|entry| {
+            entry
+                .file_name()
+                .to_str()
+                .is_some_and(|name| name.ends_with(".seg"))
+        })
+        .count();
+    assert_eq!(canonical_segments, 1);
+
+    let mut replay = ReplayIterator::bootstrap(config.clone(), Lsn(0)).unwrap();
+    let record = replay.next_record().unwrap().unwrap();
+    assert_eq!(record.lsn, Lsn(0));
+    assert!(record.payload == b"writer_a" || record.payload == b"writer_b");
+    assert!(replay.next_record().is_none());
 
     let _ = fs::remove_dir_all(&config.storage_root);
 }
