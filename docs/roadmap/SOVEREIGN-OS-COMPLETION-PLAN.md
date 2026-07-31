@@ -1,5 +1,12 @@
 # Sovereign OS Completion Plan
 
+> **Historical planning baseline:** This document records the plan used before
+> the current single-node foundation and snapshot-hardening work was merged.
+> Some branch names, test totals, and "remaining work" items below are stale.
+> Use [EXECUTION-PLAN.md](EXECUTION-PLAN.md) for current sequencing and
+> [LEGACY-EXTRACTION-MATRIX.md](LEGACY-EXTRACTION-MATRIX.md) for prototype
+> retirement decisions.
+
 | Field | Value |
 |---|---|
 | Document ID | SOV-PLAN-001 |
