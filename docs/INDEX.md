@@ -35,6 +35,8 @@ The Engineering Handbook is the authoritative documentation set describing the p
 - Runtime Architecture
 - `architecture/governed-agentic-research.md` - proposed agent, evidence,
   capability, trust, enforcement, and governed-learning architecture
+- `adr/0002-authority-separation.md` - proposed constitutional authority roles,
+  independence rules, prohibited combinations, and negative cases
 
 ---
 
