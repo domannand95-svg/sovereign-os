@@ -62,9 +62,7 @@ fn test_config(name: &str) -> LedgerConfig {
 fn append_history(config: &LedgerConfig, payloads: &[&[u8]]) {
     let mut engine = LedgerAppendEngine::bootstrap(config.clone()).unwrap();
     for payload in payloads {
-        engine
-            .append(EventType::RegistryMutation, payload)
-            .unwrap();
+        engine.append(EventType::RegistryMutation, payload).unwrap();
     }
     engine.flush().unwrap();
 }
@@ -81,7 +79,10 @@ fn state_through(payloads: &[&[u8]], final_index: usize) -> StateVector {
 fn seeded_live_state() -> StateVector {
     let mut state = StateVector::new();
     state
-        .write(StateCoordinate::new(900).unwrap(), b"live-state-before-restore")
+        .write(
+            StateCoordinate::new(900).unwrap(),
+            b"live-state-before-restore",
+        )
         .unwrap();
     state
 }
@@ -98,7 +99,8 @@ fn snapshot_plus_deltas_is_root_equivalent_to_genesis_replay() {
     write_snapshot_with_root(&snapshot_config, Lsn(2), &checkpoint_state).unwrap();
 
     let snapshot_restore =
-        initialize_from_snapshot_or_replay(&snapshot_config, CoordinateMapper::accepting()).unwrap();
+        initialize_from_snapshot_or_replay(&snapshot_config, CoordinateMapper::accepting())
+            .unwrap();
     let genesis_restore =
         initialize_from_snapshot_or_replay(&genesis_config, CoordinateMapper::accepting()).unwrap();
 
@@ -118,9 +120,7 @@ fn snapshot_plus_deltas_is_root_equivalent_to_genesis_replay() {
     );
     assert_eq!(
         genesis_restore.source,
-        RestorationSource::FullReplay {
-            final_lsn: Lsn(4),
-        }
+        RestorationSource::FullReplay { final_lsn: Lsn(4) }
     );
 }
 
@@ -134,17 +134,18 @@ fn mid_delta_mapping_failure_cannot_mutate_live_state() {
 
     let live_state = seeded_live_state();
     let live_before = live_state.clone();
-    let result = initialize_from_snapshot_or_replay(
-        &config,
-        CoordinateMapper::rejecting_at(Lsn(3)),
-    );
+    let result =
+        initialize_from_snapshot_or_replay(&config, CoordinateMapper::rejecting_at(Lsn(3)));
 
     assert_eq!(
         result,
         Err(RestorationError::Mapping(MappingError::Rejected(Lsn(3))))
     );
     assert_eq!(live_state, live_before);
-    assert_eq!(compute_state_root(&live_state), compute_state_root(&live_before));
+    assert_eq!(
+        compute_state_root(&live_state),
+        compute_state_root(&live_before)
+    );
 }
 
 #[test]
@@ -159,7 +160,10 @@ fn mid_genesis_application_failure_cannot_mutate_live_state() {
 
     assert!(matches!(result, Err(RestorationError::StateApplication(_))));
     assert_eq!(live_state, live_before);
-    assert_eq!(compute_state_root(&live_state), compute_state_root(&live_before));
+    assert_eq!(
+        compute_state_root(&live_state),
+        compute_state_root(&live_before)
+    );
 }
 
 #[test]
@@ -183,5 +187,8 @@ fn structural_corruption_cannot_mutate_live_state() {
 
     assert!(matches!(result, Err(RestorationError::Ledger(_))));
     assert_eq!(live_state, live_before);
-    assert_eq!(compute_state_root(&live_state), compute_state_root(&live_before));
+    assert_eq!(
+        compute_state_root(&live_state),
+        compute_state_root(&live_before)
+    );
 }

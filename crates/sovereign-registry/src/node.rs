@@ -45,11 +45,7 @@ impl RegistryNode {
         })
     }
 
-    pub fn derive_caid(
-        node_type: RegistryNodeType,
-        payload: &[u8],
-        parents: &[Caid],
-    ) -> Caid {
+    pub fn derive_caid(node_type: RegistryNodeType, payload: &[u8], parents: &[Caid]) -> Caid {
         let mut hasher = blake3::Hasher::new();
         hasher.update(&[node_type.as_u8()]);
         hasher.update(&(payload.len() as u64).to_be_bytes());
@@ -120,7 +116,8 @@ mod tests {
         let capability =
             RegistryNode::new(RegistryNodeType::Capability, b"payload".to_vec(), vec![]).unwrap();
 
-        let actor = RegistryNode::new(RegistryNodeType::Actor, b"payload".to_vec(), vec![]).unwrap();
+        let actor =
+            RegistryNode::new(RegistryNodeType::Actor, b"payload".to_vec(), vec![]).unwrap();
 
         assert_ne!(capability.caid(), actor.caid());
     }

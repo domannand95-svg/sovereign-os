@@ -3,10 +3,10 @@
 use crate::config::{LedgerConfig, MAX_RECORD_OVERHEAD};
 use crate::record::{EventRecord, EventType};
 use crate::scan::enumerate_segments_strict;
-use crate::segment::AtomicPublishStage;
+use crate::segment::{sync_directory, AtomicPublishStage};
 use crate::tail::discover_ledger_tail;
 use crate::{LedgerError, LedgerSegment, Lsn};
-use std::fs::{self, File};
+use std::fs;
 
 /// Observable durability boundaries used by forensic crash tests and telemetry.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -159,9 +159,7 @@ impl LedgerAppendEngine {
     }
 
     fn sync_storage_root(config: &LedgerConfig) -> Result<(), LedgerError> {
-        File::open(&config.storage_root)
-            .and_then(|handle| handle.sync_all())
-            .map_err(|_| LedgerError::WriteViolation)
+        sync_directory(&config.storage_root).map_err(|_| LedgerError::WriteViolation)
     }
 
     pub const fn next_lsn(&self) -> Lsn {

@@ -171,7 +171,11 @@ mod tests {
         let root_caid = root.caid();
         graph.insert_node(root).unwrap();
 
-        let child = node(RegistryNodeType::Capability, b"kernel_gate_0", vec![root_caid]);
+        let child = node(
+            RegistryNodeType::Capability,
+            b"kernel_gate_0",
+            vec![root_caid],
+        );
         let child_caid = child.caid();
         graph.insert_node(child).unwrap();
 

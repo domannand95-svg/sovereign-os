@@ -143,12 +143,7 @@ fn denied_directive_remains_absent_after_restart() {
     let empty_root = compute_state_root(engine.state());
 
     let error = engine
-        .submit_directive(
-            &policy,
-            &LsnMapper,
-            EventType::RegistryMutation,
-            &payload,
-        )
+        .submit_directive(&policy, &LsnMapper, EventType::RegistryMutation, &payload)
         .unwrap_err();
     assert_eq!(error, DirectiveError::Denied(PolicyDenial::EventTypeDenied));
     drop(engine);
