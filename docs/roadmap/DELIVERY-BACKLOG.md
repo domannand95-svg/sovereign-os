@@ -42,6 +42,9 @@ workspace, and Linux/Windows CI.
 - **Acceptance:** Self-promotion, self-review, silent evidence mutation, and
   unilateral constitutional changes are explicitly prohibited.
 - **Prerequisites:** A01.
+- **Checkpoint:** Proposed in
+  [`ADR-0002`](../adr/0002-authority-separation.md); acceptance requires
+  owner-approved merge.
 
 ### A03 — Identity and lineage types
 
@@ -389,4 +392,3 @@ inspect
 ```
 
 No arrow may be skipped merely because later work depends on the item.
-

@@ -54,6 +54,10 @@ No agent may approve its own promotion, choose only favorable reviewers, modify
 its evaluation criteria after seeing results, suppress negative evidence, or
 grant itself additional capabilities.
 
+The binding proposed role boundaries, composition rules, emergency limits, and
+required negative cases are defined in
+[ADR-0002: Constitutional Authority Separation](../adr/0002-authority-separation.md).
+
 ## Research artifact lifecycle
 
 Research artifacts move through explicit states:
@@ -304,4 +308,3 @@ The platform therefore records enough context to distinguish:
 
 Claims must not be labelled deterministic merely because the surrounding ledger
 is deterministic.
-
