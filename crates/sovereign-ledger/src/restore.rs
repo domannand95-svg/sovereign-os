@@ -257,7 +257,11 @@ where
 mod tests {
     use super::*;
     use crate::domain_integration::MappedLedgerWrite;
-    use crate::snapshot::{write_snapshot_with_root, LedgerSnapshotManager};
+    use crate::snapshot::{
+        write_snapshot_with_root, LedgerSnapshotManager, LEGACY_SNAPSHOT_HEADER_LEN,
+        SNAPSHOT_FORMAT_VERSION,
+    };
+    use crate::state_root::compute_state_root_from_encoded;
     use crate::{EventRecord, EventType, LedgerAppendEngine};
     use sovereign_core_asm::state::StateCoordinate;
     use std::fs;
@@ -302,6 +306,28 @@ mod tests {
             engine.append(EventType::RegistryMutation, payload).unwrap();
         }
         engine.flush().unwrap();
+    }
+
+    fn write_legacy_state_snapshot(config: &LedgerConfig, lsn: Lsn, state: &StateVector) {
+        let payload = sovereign_core_asm::snapshot::encode(state);
+        let root = compute_state_root_from_encoded(&payload);
+        let payload_len = u32::try_from(payload.len()).unwrap();
+        let mut header = [0_u8; LEGACY_SNAPSHOT_HEADER_LEN];
+        header[0..8].copy_from_slice(&lsn.get().to_be_bytes());
+        header[8..40].copy_from_slice(&root);
+        header[40..44].copy_from_slice(&payload_len.to_be_bytes());
+        let checksum =
+            ::crc32c::crc32c_append(crate::checksum::crc32c(&header), &payload).to_be_bytes();
+
+        let mut bytes = Vec::with_capacity(header.len() + payload.len() + checksum.len());
+        bytes.extend_from_slice(&header);
+        bytes.extend_from_slice(&payload);
+        bytes.extend_from_slice(&checksum);
+        fs::write(
+            config.storage_root.join(format!("{:016x}.snap", lsn.get())),
+            bytes,
+        )
+        .unwrap();
     }
 
     #[test]
@@ -357,6 +383,29 @@ mod tests {
     }
 
     #[test]
+    fn legacy_snapshot_at_tail_remains_a_valid_recovery_source() {
+        let config = test_config("legacy_snapshot_at_tail");
+        append(&config, &[b"legacy-checkpoint"]);
+        let coordinate = StateCoordinate::new(7).unwrap();
+        let mut snapshot_state = StateVector::new();
+        snapshot_state
+            .write(coordinate, b"legacy-checkpoint")
+            .unwrap();
+        write_legacy_state_snapshot(&config, Lsn(0), &snapshot_state);
+
+        let outcome = initialize_from_snapshot_or_replay(&config, mapper()).unwrap();
+
+        assert_eq!(outcome.state, snapshot_state);
+        assert_eq!(
+            outcome.source,
+            RestorationSource::SnapshotAtTail {
+                checkpoint_lsn: Lsn(0),
+                final_lsn: Lsn(0),
+            }
+        );
+    }
+
+    #[test]
     fn snapshot_plus_deltas_matches_genesis_replay() {
         let config = test_config("snapshot_deltas");
         append(&config, &[b"checkpoint", b"delta-one", b"delta-two"]);
@@ -400,5 +449,39 @@ mod tests {
             .rejections
             .iter()
             .any(|rejected| rejected.reason == RejectionReason::RootMismatch));
+    }
+
+    #[test]
+    fn unknown_snapshot_version_falls_back_to_genesis() {
+        let config = test_config("unknown_version_fallback");
+        append(&config, &[b"authoritative-ledger-state"]);
+        let path = write_snapshot_with_root(&config, Lsn(0), &StateVector::new()).unwrap();
+        let mut bytes = fs::read(&path).unwrap();
+        bytes[4..6].copy_from_slice(&(SNAPSHOT_FORMAT_VERSION + 1).to_be_bytes());
+        fs::write(path, bytes).unwrap();
+
+        let outcome = initialize_from_snapshot_or_replay(&config, mapper()).unwrap();
+        let coordinate = StateCoordinate::new(7).unwrap();
+
+        assert_eq!(
+            outcome.state.get(coordinate).read_bytes(),
+            b"authoritative-ledger-state"
+        );
+        assert_eq!(
+            outcome.source,
+            RestorationSource::FullReplay { final_lsn: Lsn(0) }
+        );
+        assert_eq!(
+            outcome.diagnostics.fallback_reason,
+            Some(FallbackReason::NoValidSnapshotsFound)
+        );
+        assert!(outcome
+            .diagnostics
+            .validation
+            .rejections
+            .contains(&RejectedSnapshot {
+                lsn: Some(Lsn(0)),
+                reason: RejectionReason::UnsupportedVersion,
+            }));
     }
 }

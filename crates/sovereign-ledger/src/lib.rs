@@ -26,8 +26,9 @@ pub use segment::LedgerSegment;
 
 pub use snapshot::{
     snapshot_candidates_descending, write_snapshot_with_root, LedgerSnapshotManager,
-    SnapshotCandidate, SnapshotDiscovery, SnapshotHeader, SNAPSHOT_CHECKSUM_LEN,
-    SNAPSHOT_HEADER_LEN,
+    SnapshotCandidate, SnapshotDiscovery, SnapshotHeader, LEGACY_SNAPSHOT_FORMAT_VERSION,
+    LEGACY_SNAPSHOT_HEADER_LEN, SNAPSHOT_CHECKSUM_LEN, SNAPSHOT_FORMAT_VERSION,
+    SNAPSHOT_HEADER_LEN, SNAPSHOT_MAGIC,
 };
 
 pub use error::{

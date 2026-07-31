@@ -14,13 +14,18 @@ use std::sync::atomic::{AtomicU64, Ordering};
 
 use crate::segment::sync_directory;
 
-pub const SNAPSHOT_HEADER_LEN: usize = 44;
+pub const SNAPSHOT_MAGIC: [u8; 4] = *b"SOSN";
+pub const SNAPSHOT_FORMAT_VERSION: u16 = 1;
+pub const LEGACY_SNAPSHOT_FORMAT_VERSION: u16 = 0;
+pub const LEGACY_SNAPSHOT_HEADER_LEN: usize = 44;
+pub const SNAPSHOT_HEADER_LEN: usize = 52;
 pub const SNAPSHOT_CHECKSUM_LEN: usize = 4;
 
 static NEXT_PENDING_SNAPSHOT_ID: AtomicU64 = AtomicU64::new(0);
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub struct SnapshotHeader {
+    pub format_version: u16,
     pub associated_lsn: Lsn,
     pub state_root_hash: [u8; 32],
     pub payload_len: u32,
@@ -100,9 +105,12 @@ impl LedgerSnapshotManager {
         }
 
         let mut header = [0_u8; SNAPSHOT_HEADER_LEN];
-        header[0..8].copy_from_slice(&associated_lsn.get().to_be_bytes());
-        header[8..40].copy_from_slice(&state_root_hash);
-        header[40..44].copy_from_slice(&payload_len.to_be_bytes());
+        header[0..4].copy_from_slice(&SNAPSHOT_MAGIC);
+        header[4..6].copy_from_slice(&SNAPSHOT_FORMAT_VERSION.to_be_bytes());
+        // Bytes 6..8 are reserved and must remain zero.
+        header[8..16].copy_from_slice(&associated_lsn.get().to_be_bytes());
+        header[16..48].copy_from_slice(&state_root_hash);
+        header[48..52].copy_from_slice(&payload_len.to_be_bytes());
 
         let checksum = ::crc32c::crc32c_append(crc32c(&header), payload);
         let checksum_bytes = checksum.to_be_bytes();
@@ -185,12 +193,42 @@ impl LedgerSnapshotManager {
         file.read_to_end(&mut bytes)
             .map_err(|_| LedgerError::SegmentCorrupted)?;
 
-        if bytes.len() < SNAPSHOT_HEADER_LEN + SNAPSHOT_CHECKSUM_LEN {
-            return Err(LedgerError::SegmentCorrupted);
-        }
+        let is_versioned = bytes.starts_with(&SNAPSHOT_MAGIC);
+        let (format_version, header_len, lsn_range, root_range, payload_len_range) = if is_versioned
+        {
+            if bytes.len() < SNAPSHOT_HEADER_LEN + SNAPSHOT_CHECKSUM_LEN {
+                return Err(LedgerError::SegmentCorrupted);
+            }
+
+            let version = u16::from_be_bytes(
+                bytes[4..6]
+                    .try_into()
+                    .map_err(|_| LedgerError::SegmentCorrupted)?,
+            );
+            if version != SNAPSHOT_FORMAT_VERSION {
+                return Err(LedgerError::UnsupportedVersion);
+            }
+            if bytes[6..8] != [0, 0] {
+                return Err(LedgerError::SegmentCorrupted);
+            }
+
+            (version, SNAPSHOT_HEADER_LEN, 8..16, 16..48, 48..52)
+        } else {
+            if bytes.len() < LEGACY_SNAPSHOT_HEADER_LEN + SNAPSHOT_CHECKSUM_LEN {
+                return Err(LedgerError::SegmentCorrupted);
+            }
+
+            (
+                LEGACY_SNAPSHOT_FORMAT_VERSION,
+                LEGACY_SNAPSHOT_HEADER_LEN,
+                0..8,
+                8..40,
+                40..44,
+            )
+        };
 
         let parsed_lsn = Lsn(u64::from_be_bytes(
-            bytes[0..8]
+            bytes[lsn_range]
                 .try_into()
                 .map_err(|_| LedgerError::SegmentCorrupted)?,
         ));
@@ -200,15 +238,15 @@ impl LedgerSnapshotManager {
         }
 
         let mut state_root_hash = [0_u8; 32];
-        state_root_hash.copy_from_slice(&bytes[8..40]);
+        state_root_hash.copy_from_slice(&bytes[root_range]);
 
         let payload_len = u32::from_be_bytes(
-            bytes[40..44]
+            bytes[payload_len_range]
                 .try_into()
                 .map_err(|_| LedgerError::SegmentCorrupted)?,
         ) as usize;
 
-        let expected_len = SNAPSHOT_HEADER_LEN
+        let expected_len = header_len
             .checked_add(payload_len)
             .and_then(|n| n.checked_add(SNAPSHOT_CHECKSUM_LEN))
             .ok_or(LedgerError::SegmentCorrupted)?;
@@ -217,7 +255,7 @@ impl LedgerSnapshotManager {
             return Err(LedgerError::SegmentCorrupted);
         }
 
-        let payload_start = SNAPSHOT_HEADER_LEN;
+        let payload_start = header_len;
         let payload_end = payload_start + payload_len;
 
         let embedded_checksum = u32::from_be_bytes(
@@ -227,7 +265,7 @@ impl LedgerSnapshotManager {
         );
 
         let computed_checksum = ::crc32c::crc32c_append(
-            crc32c(&bytes[..SNAPSHOT_HEADER_LEN]),
+            crc32c(&bytes[..header_len]),
             &bytes[payload_start..payload_end],
         );
 
@@ -237,6 +275,7 @@ impl LedgerSnapshotManager {
 
         Ok((
             SnapshotHeader {
+                format_version,
                 associated_lsn: parsed_lsn,
                 state_root_hash,
                 payload_len: payload_len as u32,
@@ -303,17 +342,24 @@ pub fn snapshot_candidates_descending(
         };
 
         let embedded_lsn = match fs::read(&path) {
-            Ok(bytes) if bytes.len() >= 8 => Lsn(u64::from_be_bytes(
-                bytes[..8]
-                    .try_into()
-                    .map_err(|_| LedgerError::SegmentCorrupted)?,
-            )),
-            Ok(_) => {
-                discovery.rejected.push(RejectedSnapshot {
-                    lsn: Some(lsn),
-                    reason: RejectionReason::Malformed,
-                });
-                continue;
+            Ok(bytes) => {
+                let lsn_bytes = if bytes.starts_with(&SNAPSHOT_MAGIC) {
+                    bytes.get(8..16)
+                } else {
+                    bytes.get(0..8)
+                };
+                let Some(lsn_bytes) = lsn_bytes else {
+                    discovery.rejected.push(RejectedSnapshot {
+                        lsn: Some(lsn),
+                        reason: RejectionReason::Malformed,
+                    });
+                    continue;
+                };
+                Lsn(u64::from_be_bytes(
+                    lsn_bytes
+                        .try_into()
+                        .map_err(|_| LedgerError::SegmentCorrupted)?,
+                ))
             }
             Err(_) => return Err(LedgerError::SegmentCorrupted),
         };
@@ -332,6 +378,12 @@ pub fn snapshot_candidates_descending(
                 header,
                 payload,
             }),
+            Err(LedgerError::UnsupportedVersion) => {
+                discovery.rejected.push(RejectedSnapshot {
+                    lsn: Some(lsn),
+                    reason: RejectionReason::UnsupportedVersion,
+                });
+            }
             Err(LedgerError::InvalidChecksum) => {
                 discovery.rejected.push(RejectedSnapshot {
                     lsn: Some(lsn),
@@ -380,6 +432,32 @@ mod tests {
         config
     }
 
+    fn write_legacy_snapshot(
+        config: &LedgerConfig,
+        associated_lsn: Lsn,
+        state_root_hash: [u8; 32],
+        payload: &[u8],
+    ) -> PathBuf {
+        fs::create_dir_all(&config.storage_root).unwrap();
+        let payload_len = u32::try_from(payload.len()).unwrap();
+        let mut header = [0_u8; LEGACY_SNAPSHOT_HEADER_LEN];
+        header[0..8].copy_from_slice(&associated_lsn.get().to_be_bytes());
+        header[8..40].copy_from_slice(&state_root_hash);
+        header[40..44].copy_from_slice(&payload_len.to_be_bytes());
+
+        let checksum = ::crc32c::crc32c_append(crc32c(&header), payload);
+        let path = config
+            .storage_root
+            .join(format!("{:016x}.snap", associated_lsn.get()));
+        let mut bytes =
+            Vec::with_capacity(LEGACY_SNAPSHOT_HEADER_LEN + payload.len() + SNAPSHOT_CHECKSUM_LEN);
+        bytes.extend_from_slice(&header);
+        bytes.extend_from_slice(payload);
+        bytes.extend_from_slice(&checksum.to_be_bytes());
+        fs::write(&path, bytes).unwrap();
+        path
+    }
+
     #[test]
     fn snapshot_round_trip_succeeds() {
         let config = test_config("round_trip");
@@ -390,9 +468,80 @@ mod tests {
 
         let (header, restored) = LedgerSnapshotManager::read_snapshot(&config, Lsn(10)).unwrap();
 
+        assert_eq!(header.format_version, SNAPSHOT_FORMAT_VERSION);
         assert_eq!(header.associated_lsn, Lsn(10));
         assert_eq!(header.state_root_hash, hash);
         assert_eq!(restored, payload);
+
+        let _ = fs::remove_dir_all(&config.storage_root);
+    }
+
+    #[test]
+    fn new_snapshot_uses_versioned_envelope() {
+        let config = test_config("versioned_envelope");
+
+        let path =
+            LedgerSnapshotManager::write_snapshot(&config, Lsn(12), [0x12; 32], b"versioned")
+                .unwrap();
+        let bytes = fs::read(path).unwrap();
+
+        assert_eq!(&bytes[0..4], &SNAPSHOT_MAGIC);
+        assert_eq!(
+            u16::from_be_bytes(bytes[4..6].try_into().unwrap()),
+            SNAPSHOT_FORMAT_VERSION
+        );
+        assert_eq!(&bytes[6..8], &[0, 0]);
+
+        let _ = fs::remove_dir_all(&config.storage_root);
+    }
+
+    #[test]
+    fn legacy_versionless_snapshot_remains_readable() {
+        let config = test_config("legacy_read");
+        let hash = [0x34; 32];
+        let payload = b"legacy";
+        write_legacy_snapshot(&config, Lsn(13), hash, payload);
+
+        let (header, restored) = LedgerSnapshotManager::read_snapshot(&config, Lsn(13)).unwrap();
+
+        assert_eq!(header.format_version, LEGACY_SNAPSHOT_FORMAT_VERSION);
+        assert_eq!(header.associated_lsn, Lsn(13));
+        assert_eq!(header.state_root_hash, hash);
+        assert_eq!(restored, payload);
+
+        let discovery = snapshot_candidates_descending(&config).unwrap();
+        assert_eq!(discovery.candidates.len(), 1);
+        assert_eq!(
+            discovery.candidates[0].header.format_version,
+            LEGACY_SNAPSHOT_FORMAT_VERSION
+        );
+
+        let _ = fs::remove_dir_all(&config.storage_root);
+    }
+
+    #[test]
+    fn unknown_snapshot_version_is_rejected_without_aborting_discovery() {
+        let config = test_config("unknown_version");
+        let path =
+            LedgerSnapshotManager::write_snapshot(&config, Lsn(14), [0x56; 32], b"future").unwrap();
+        let mut bytes = fs::read(&path).unwrap();
+        bytes[4..6].copy_from_slice(&(SNAPSHOT_FORMAT_VERSION + 1).to_be_bytes());
+        fs::write(&path, bytes).unwrap();
+
+        assert_eq!(
+            LedgerSnapshotManager::read_snapshot(&config, Lsn(14)).unwrap_err(),
+            LedgerError::UnsupportedVersion
+        );
+
+        let discovery = snapshot_candidates_descending(&config).unwrap();
+        assert!(discovery.candidates.is_empty());
+        assert_eq!(
+            discovery.rejected,
+            vec![RejectedSnapshot {
+                lsn: Some(Lsn(14)),
+                reason: RejectionReason::UnsupportedVersion,
+            }]
+        );
 
         let _ = fs::remove_dir_all(&config.storage_root);
     }

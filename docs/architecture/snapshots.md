@@ -1,7 +1,7 @@
 ---
 Document: Snapshot Architecture Specification
 ID: ARCH-SNAP-001
-Version: 1.1
+Version: 1.2
 Status: Implemented Specification
 Owner: Repository Maintainer
 Reviewers:
@@ -38,18 +38,42 @@ Snapshots are part of the active production substrate. They accelerate recovery 
 ## 3. Authoritative implementation
 
 The active implementation is `sovereign-ledger::snapshot`. Snapshot files use
-the canonical name `<16-lowercase-hex-lsn>.snap` and contain:
+the canonical name `<16-lowercase-hex-lsn>.snap`.
 
-1. the associated LSN as an eight-byte big-endian integer;
-2. the 32-byte normative state-root hash;
-3. the payload length as a four-byte big-endian integer;
-4. the encoded state-vector payload; and
-5. a four-byte CRC32C covering the header and payload.
+Version 1 envelopes contain:
+
+1. the four-byte ASCII magic `SOSN`;
+2. the format version as a two-byte big-endian integer;
+3. two zero-valued reserved bytes;
+4. the associated LSN as an eight-byte big-endian integer;
+5. the 32-byte normative state-root hash;
+6. the payload length as a four-byte big-endian integer;
+7. the encoded state-vector payload; and
+8. a four-byte CRC32C covering the complete header and payload.
 
 Discovery accepts only canonical filenames, requires the embedded LSN to match
 the filename, validates the exact envelope length and checksum, and returns
 valid candidates newest-first. State decoding and root validation occur before
 a candidate can become live recovery state.
+
+### 3.1 Compatibility and migration
+
+Writers always emit the current version 1 envelope. Readers recognize two
+formats:
+
+- **Legacy version 0:** the original versionless 44-byte header beginning with
+  the associated LSN.
+- **Version 1:** the 52-byte header beginning with `SOSN`, the version, and
+  reserved bytes.
+
+Legacy snapshots remain valid recovery candidates and require no eager rewrite.
+This preserves deterministic recovery across an upgrade. An unknown version is
+recorded as `UnsupportedVersion`, excluded from candidate selection, and causes
+recovery to fall back to the authoritative ledger when no supported snapshot
+remains. Unknown versions never abort boot by themselves.
+
+Reserved bytes must be zero. This creates an explicit extension boundary
+without allowing silently ambiguous interpretations.
 
 ## 4. Responsibilities
 
@@ -114,11 +138,14 @@ specification's implementation.
 
 ## 10. Future Work
 
-Future work includes an explicit snapshot-envelope format version and a
-versioned migration framework. Those capabilities are not implemented yet.
+Future format changes should add a version-specific decoder and migration test
+before writers advance `SNAPSHOT_FORMAT_VERSION`. Eager snapshot rewriting and
+multi-step payload-schema migrations are not implemented.
 
 ## Changelog
 
+- **v1.2 (2026-07-31):** Added the version 1 magic and header layout, legacy
+  version 0 compatibility, and safe unknown-version fallback rules.
 - **v1.1 (2026-07-31):** Documented the authoritative binary envelope,
   validation pipeline, atomic no-clobber publication, and platform durability
   boundary.

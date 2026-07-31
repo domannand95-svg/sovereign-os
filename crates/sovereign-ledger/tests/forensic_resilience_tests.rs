@@ -1,6 +1,6 @@
 use sovereign_ledger::{
     AppendCommitStage, EventType, LedgerAppendEngine, LedgerConfig, LedgerError,
-    LedgerSnapshotManager, Lsn, ReplayIterator,
+    LedgerSnapshotManager, Lsn, ReplayIterator, SNAPSHOT_HEADER_LEN,
 };
 use std::fs::{self, OpenOptions};
 use std::io::{Read, Seek, SeekFrom, Write};
@@ -213,7 +213,7 @@ fn snapshot_payload_corruption_fails_closed() {
     )
     .unwrap();
 
-    flip_byte(&path, 44);
+    flip_byte(&path, SNAPSHOT_HEADER_LEN as u64);
 
     assert_eq!(
         LedgerSnapshotManager::read_snapshot(&config, Lsn(12)).unwrap_err(),
@@ -235,7 +235,7 @@ fn snapshot_state_root_corruption_fails_closed() {
     )
     .unwrap();
 
-    flip_byte(&path, 8);
+    flip_byte(&path, 16);
 
     assert_eq!(
         LedgerSnapshotManager::read_snapshot(&config, Lsn(13)).unwrap_err(),
@@ -257,7 +257,7 @@ fn snapshot_payload_length_corruption_fails_closed() {
     )
     .unwrap();
 
-    flip_byte(&path, 40);
+    flip_byte(&path, 48);
 
     assert_eq!(
         LedgerSnapshotManager::read_snapshot(&config, Lsn(14)).unwrap_err(),

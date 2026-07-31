@@ -55,6 +55,7 @@ pub enum RestorationError<MapperError> {
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum RejectionReason {
     Malformed,
+    UnsupportedVersion,
     ChecksumMismatch,
     PayloadLengthMismatch,
     FilenameMismatch,
