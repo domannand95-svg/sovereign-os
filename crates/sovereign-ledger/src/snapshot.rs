@@ -9,10 +9,15 @@ use crate::{
 use sovereign_core_asm::state::StateVector;
 use std::fs::{self, OpenOptions};
 use std::io::{Read, Write};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicU64, Ordering};
+
+use crate::segment::sync_directory;
 
 pub const SNAPSHOT_HEADER_LEN: usize = 44;
 pub const SNAPSHOT_CHECKSUM_LEN: usize = 4;
+
+static NEXT_PENDING_SNAPSHOT_ID: AtomicU64 = AtomicU64::new(0);
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub struct SnapshotHeader {
@@ -60,6 +65,25 @@ impl LedgerSnapshotManager {
         state_root_hash: [u8; 32],
         payload: &[u8],
     ) -> Result<PathBuf, LedgerError> {
+        Self::write_snapshot_with_directory_sync(
+            config,
+            associated_lsn,
+            state_root_hash,
+            payload,
+            sync_directory,
+        )
+    }
+
+    fn write_snapshot_with_directory_sync<S>(
+        config: &LedgerConfig,
+        associated_lsn: Lsn,
+        state_root_hash: [u8; 32],
+        payload: &[u8],
+        mut sync_directory: S,
+    ) -> Result<PathBuf, LedgerError>
+    where
+        S: FnMut(&Path) -> std::io::Result<()>,
+    {
         config.validate()?;
         fs::create_dir_all(&config.storage_root).map_err(|_| LedgerError::WriteViolation)?;
 
@@ -71,6 +95,9 @@ impl LedgerSnapshotManager {
         let path = config
             .storage_root
             .join(format!("{:016x}.snap", associated_lsn.get()));
+        if path.exists() {
+            return Err(LedgerError::WriteViolation);
+        }
 
         let mut header = [0_u8; SNAPSHOT_HEADER_LEN];
         header[0..8].copy_from_slice(&associated_lsn.get().to_be_bytes());
@@ -80,22 +107,63 @@ impl LedgerSnapshotManager {
         let checksum = ::crc32c::crc32c_append(crc32c(&header), payload);
         let checksum_bytes = checksum.to_be_bytes();
 
-        let mut file = OpenOptions::new()
-            .write(true)
-            .create(true)
-            .truncate(true)
-            .open(&path)
-            .map_err(|_| LedgerError::WriteViolation)?;
+        let (pending_path, mut pending) = loop {
+            let id = NEXT_PENDING_SNAPSHOT_ID.fetch_add(1, Ordering::Relaxed);
+            let pending_path = config.storage_root.join(format!(
+                ".{:016x}.{}.{}.snap.pending",
+                associated_lsn.get(),
+                std::process::id(),
+                id
+            ));
+            match OpenOptions::new()
+                .write(true)
+                .create_new(true)
+                .open(&pending_path)
+            {
+                Ok(file) => break (pending_path, file),
+                Err(error) if error.kind() == std::io::ErrorKind::AlreadyExists => continue,
+                Err(_) => return Err(LedgerError::WriteViolation),
+            }
+        };
 
-        file.write_all(&header)
-            .map_err(|_| LedgerError::StorageExhausted)?;
-        file.write_all(payload)
-            .map_err(|_| LedgerError::StorageExhausted)?;
-        file.write_all(&checksum_bytes)
-            .map_err(|_| LedgerError::StorageExhausted)?;
-        file.sync_all().map_err(|_| LedgerError::WriteViolation)?;
+        let mut canonical_published = false;
+        let result = (|| {
+            pending
+                .write_all(&header)
+                .map_err(|_| LedgerError::StorageExhausted)?;
+            pending
+                .write_all(payload)
+                .map_err(|_| LedgerError::StorageExhausted)?;
+            pending
+                .write_all(&checksum_bytes)
+                .map_err(|_| LedgerError::StorageExhausted)?;
+            pending
+                .sync_all()
+                .map_err(|_| LedgerError::WriteViolation)?;
+            drop(pending);
 
-        Ok(path)
+            // Publish the fully synchronized inode without replacing an existing
+            // snapshot. This preserves immutability under concurrent writers.
+            fs::hard_link(&pending_path, &path).map_err(|_| LedgerError::WriteViolation)?;
+            canonical_published = true;
+
+            // The canonical name now owns the synchronized inode. A stale pending
+            // link is harmless and ignored by discovery if cleanup is interrupted.
+            let _ = fs::remove_file(&pending_path);
+
+            sync_directory(&config.storage_root).map_err(|_| LedgerError::CommitAmbiguous)?;
+            Ok(path.clone())
+        })();
+
+        if result.is_err() {
+            let _ = fs::remove_file(&pending_path);
+            if canonical_published {
+                let _ = fs::remove_file(&path);
+                let _ = sync_directory(&config.storage_root);
+            }
+        }
+
+        result
     }
 
     pub fn read_snapshot(
@@ -325,6 +393,81 @@ mod tests {
         assert_eq!(header.associated_lsn, Lsn(10));
         assert_eq!(header.state_root_hash, hash);
         assert_eq!(restored, payload);
+
+        let _ = fs::remove_dir_all(&config.storage_root);
+    }
+
+    #[test]
+    fn snapshot_publication_leaves_no_pending_file() {
+        let config = test_config("no_pending_file");
+
+        LedgerSnapshotManager::write_snapshot(&config, Lsn(3), [3; 32], b"complete").unwrap();
+
+        let entries: Vec<_> = fs::read_dir(&config.storage_root)
+            .unwrap()
+            .map(|entry| entry.unwrap().file_name())
+            .collect();
+        assert_eq!(
+            entries,
+            vec![std::ffi::OsString::from("0000000000000003.snap")]
+        );
+
+        let _ = fs::remove_dir_all(&config.storage_root);
+    }
+
+    #[test]
+    fn duplicate_snapshot_write_preserves_original() {
+        let config = test_config("duplicate_preserves_original");
+        let original_hash = [0x11; 32];
+        let original_payload = b"original";
+
+        LedgerSnapshotManager::write_snapshot(&config, Lsn(4), original_hash, original_payload)
+            .unwrap();
+
+        assert_eq!(
+            LedgerSnapshotManager::write_snapshot(&config, Lsn(4), [0x22; 32], b"replacement")
+                .unwrap_err(),
+            LedgerError::WriteViolation
+        );
+
+        let (header, payload) = LedgerSnapshotManager::read_snapshot(&config, Lsn(4)).unwrap();
+        assert_eq!(header.state_root_hash, original_hash);
+        assert_eq!(payload, original_payload);
+
+        let _ = fs::remove_dir_all(&config.storage_root);
+    }
+
+    #[test]
+    fn directory_sync_failure_rolls_back_snapshot_visibility() {
+        let config = test_config("directory_sync_failure");
+        let canonical = config.storage_root.join("0000000000000005.snap");
+        let mut sync_attempts = 0_u8;
+
+        let result = LedgerSnapshotManager::write_snapshot_with_directory_sync(
+            &config,
+            Lsn(5),
+            [5; 32],
+            b"ambiguous",
+            |_| {
+                sync_attempts += 1;
+                if sync_attempts == 1 {
+                    Err(std::io::Error::other("injected directory sync failure"))
+                } else {
+                    Ok(())
+                }
+            },
+        );
+
+        assert_eq!(result.unwrap_err(), LedgerError::CommitAmbiguous);
+        assert!(!canonical.exists());
+        assert_eq!(sync_attempts, 2);
+        assert!(fs::read_dir(&config.storage_root)
+            .unwrap()
+            .all(|entry| !entry
+                .unwrap()
+                .file_name()
+                .to_string_lossy()
+                .ends_with(".pending")));
 
         let _ = fs::remove_dir_all(&config.storage_root);
     }
