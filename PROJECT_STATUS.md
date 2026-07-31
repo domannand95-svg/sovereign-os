@@ -11,7 +11,7 @@ The root `Cargo.toml` and `Cargo.lock` define the active build:
 | Crate | Status | Responsibility |
 |---|---|---|
 | `sovereign-core-asm` | Implemented | Deterministic state vectors, transitions, receipts, and snapshots |
-| `sovereign-ledger` | Implemented | Append, replay, recovery, snapshots, checksums, and state roots |
+| `sovereign-ledger` | Implemented | Append, replay, recovery, crash-atomic snapshots, checksums, and state roots |
 | `sovereign-registry` | Implemented | Content-addressed registry graph and ledger projection |
 | `sovereign-policy` | Implemented | Deterministic directive admission |
 | `sovereign-engine` | Implemented | Single-node boot, directive orchestration, and restart reconstruction |
