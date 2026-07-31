@@ -33,6 +33,8 @@ The Engineering Handbook is the authoritative documentation set describing the p
 - Event Log Architecture
 - Snapshot Architecture
 - Runtime Architecture
+- `architecture/governed-agentic-research.md` - proposed agent, evidence,
+  capability, trust, enforcement, and governed-learning architecture
 
 ---
 
@@ -40,12 +42,18 @@ The Engineering Handbook is the authoritative documentation set describing the p
 
 - ADR Template
 - RFC Template
+- `governance/DEVELOPMENT-WORKFLOW.md` - repository change and approval process
 
 ---
 
-# Volume IV — Planning
+# Volume IV - Planning
 
-- ROADMAP.md
+- `roadmap/ROADMAP.md` - current milestone summary
+- `roadmap/EXECUTION-PLAN.md` - active delivery sequence and review workflow
+- `roadmap/DELIVERY-BACKLOG.md` - dependency-ordered, owner-approved PR slices
+- `roadmap/LEGACY-EXTRACTION-MATRIX.md` - prototype extraction and retirement
+- `roadmap/V0.1-ACCEPTANCE-CONTRACT.md` - completed foundation contract
+- `roadmap/SOVEREIGN-OS-COMPLETION-PLAN.md` - historical planning baseline
 
 ---
 

@@ -1,55 +1,79 @@
 # Sovereign OS
 
-> Building resilient autonomous computing through deterministic state, event sourcing, and digital sovereignty.
+> Provider-neutral infrastructure for governed agentic research, reproducible
+> evidence, bounded authority, and progressively earned trust.
 
-Sovereign OS is an experimental operating system written in Rust. It explores
-event-sourced state, deterministic recovery, cryptographically verifiable
-projections, and governed autonomous computing.
+Sovereign OS is an experimental Rust platform for coordinating AI agents under
+explicit governance. Its objective is not to declare agents trustworthy. It is
+to make their authority, evidence, tool use, resource consumption, review
+history, and promotion or demotion decisions inspectable and reproducible.
 
-Rather than treating persistence as an implementation detail, the active core
-records admitted transitions in an append-only ledger. State and registry
-projections can then be reconstructed deterministically, accelerated through
-validated snapshots, and checked against the same ledger tail.
+The long-term platform is intended for institutions that want to use capable
+external models while retaining local control of policy, data boundaries,
+research evidence, agent authority, and institution-developed models.
 
 > [!IMPORTANT]
-> The authoritative build is the seven-crate `sovereign-*` Cargo workspace.
-> Earlier service-layer prototypes remain in `crates/` for reference but are
-> not workspace members. Read [PROJECT_STATUS.md](PROJECT_STATUS.md) before
-> changing crate membership or treating prototype features as production.
+> The governed research, tool authority, adversarial review, enforcement, and
+> learning layers are planned architecture, not implemented production
+> features. The implemented baseline is the deterministic single-node core
+> described below.
 
-## Vision
+## Mission
 
-Modern systems accumulate mutable state that becomes difficult to reason about.
-Sovereign OS takes the opposite approach:
+Sovereign OS is designed around four pillars:
 
-- important transitions become immutable events;
-- snapshots are validated caches rather than sources of truth;
-- recovery is deterministic;
-- governance decisions can become auditable;
-- failures close authority rather than silently publishing uncertain state.
+1. **Governed agentic research** — claims move through declared objectives,
+   evidence requirements, independent challenge, and recorded decisions.
+2. **Capability, tool, and resource authority** — agents receive only explicitly
+   granted operations, targets, data, network access, and budgets.
+3. **Evidence-based trust and adversarial scrutiny** — trust is scoped, earned
+   through observable conduct, independently reviewed, and revocable.
+4. **Governed local model development** — authorised and verified evidence may
+   support institution-controlled models without making training equivalent to
+   trust.
 
-The long-term objective is an operating environment that coordinates autonomous
-services while preserving integrity, fault tolerance, and digital sovereignty.
+The complete proposed authority model is documented in
+[Governed Agentic Research Architecture](docs/architecture/governed-agentic-research.md).
+
+## Core principles
+
+- Proposers cannot approve themselves.
+- Agents cannot grant themselves tools, resources, trust, or promotion.
+- Confidence and model reputation are not substitutes for evidence.
+- Important claims preserve sources, methods, uncertainty, failed attempts,
+  reviewer findings, and reproducibility results.
+- Tool, data, network, and resource access is default-deny, narrow, expiring,
+  monitored, and revocable.
+- Ordinary mistakes support correction and remediation.
+- Persistent cheating, evidence manipulation, or serious boundary violations
+  support restriction, suspension, revocation, and removal.
+- Local models and commercial models pass through the same governed trust
+  process.
+- Human constitutional authority remains available at high-impact boundaries.
+- External models may be nondeterministic; the platform must record enough
+  context to describe honestly what was replayed or reproduced.
 
 ## Implemented baseline
 
-The active workspace currently provides:
+The authoritative workspace currently provides:
 
-- append-only ledger records with checksums and strict LSN sequencing;
+- append-only ledger records with checksums and strict sequence ordering;
 - deterministic replay and state reconstruction;
-- versioned snapshots with integrity and state-root validation;
-- automatic fallback from invalid snapshots to genesis replay;
+- crash-atomic, explicitly versioned snapshots;
+- snapshot integrity, state-root validation, and legacy-format recovery;
+- safe fallback from invalid or unsupported snapshots to ledger replay;
 - content-addressed registry nodes and deterministic ledger projection;
-- deterministic directive admission policy;
-- single-node engine boot, directive submission, and restart reconstruction;
-- fail-closed handling of ambiguous persistence outcomes;
-- forensic tests for corruption and interrupted publication.
+- deterministic, fail-closed directive admission;
+- single-node boot, directive submission, and restart reconstruction;
+- fail-closed handling of ambiguous persistence outcomes; and
+- corruption and interrupted-publication tests.
 
-Distributed networking, governance, audit, discovery, agent lifecycle
-management, active memory, neuromorphic hardware, and ternary runtime work are
-not part of the active production baseline.
+This baseline supplies canonical state, persistence, recovery, and policy
+boundaries. Agent trust, research evidence, tool grants, adversarial review,
+enforcement, governed learning, and institutional interfaces remain staged
+work.
 
-## Architecture
+## Current architecture
 
 ```text
 Directive
@@ -58,7 +82,7 @@ Directive
 Deterministic policy
     |
     v
-Append-only ledger
+Append-only canonical ledger
     |
     +------------------+
     |                  |
@@ -71,9 +95,28 @@ Authoritative state    Registry projection
       Single-node engine
 ```
 
-Snapshots accelerate state restoration. The ledger remains canonical.
+Snapshots accelerate restoration. They are validated caches; the ledger remains
+canonical.
 
-## Workspace structure
+## Target governed research flow
+
+```text
+Research objective
+    -> capability-scoped agent work
+    -> recorded sources, methods, tools, budgets, and uncertainty
+    -> specialized independent and adversarial review
+    -> verified | disputed | rejected
+    -> independently authorized promotion, remediation, or revocation
+    -> reproducible evidence and audit history
+```
+
+Verified evidence may later enter a consented, licensed, versioned training
+corpus. A resulting local model re-enters as an untrusted candidate and must
+earn bounded authority through evaluation.
+
+## Workspace boundary
+
+The root `Cargo.toml` defines the authoritative seven-crate workspace:
 
 ```text
 crates/
@@ -84,8 +127,16 @@ crates/
 |-- sovereign-engine/     single-node boot and command orchestration
 |-- sovereign-audit/      scaffold; not implemented
 |-- sovereign-discovery/  scaffold; not implemented
-`-- service prototypes/   excluded; classified in PROJECT_STATUS.md
+`-- service prototypes/   excluded; classified for extraction or retirement
 ```
+
+The older `active-memory`, `event-log`, `registry-service`,
+`governance-wrapper`, and `network-service` crates are not active workspace
+members. They are preserved temporarily while useful contracts and adversarial
+cases are extracted. They must not be treated as production authority.
+
+See [Project Status](PROJECT_STATUS.md) and the
+[Legacy Extraction Matrix](docs/roadmap/LEGACY-EXTRACTION-MATRIX.md).
 
 ## Verification
 
@@ -97,56 +148,43 @@ cargo clippy --workspace --all-targets --locked -- -D warnings
 cargo test --workspace --all-targets --locked
 ```
 
-GitHub Actions runs these checks on Linux and Windows.
+GitHub Actions runs the same active-workspace checks on Linux and Windows.
 
-## Roadmap
+## Delivery plan
 
-### Current engineering priorities
+Work advances through small, independently reviewable pull requests. The
+project owner approves each merge; approving a plan does not pre-authorize
+later merges.
 
-1. Keep the active workspace green on Linux and Windows.
-2. Prove the complete boot, admit, persist, restart, and reconstruct path.
-3. Keep implemented, scaffolded, prototype, and research claims separate.
-4. Select the next capability through an explicit architecture decision.
+- [Execution Plan](docs/roadmap/EXECUTION-PLAN.md)
+- [Delivery Backlog](docs/roadmap/DELIVERY-BACKLOG.md)
+- [Legacy Extraction Matrix](docs/roadmap/LEGACY-EXTRACTION-MATRIX.md)
+- [Development and Review Workflow](docs/governance/DEVELOPMENT-WORKFLOW.md)
 
-### Candidate next capabilities
+The immediate direction is:
 
-- governed audit evidence;
-- discovery and multi-node identity;
-- snapshot schema migration;
-- distributed consensus and networking;
-- governance and agent lifecycle management.
+1. adopt the governed-agentic-research architecture;
+2. define constitutional identities, evidence, grants, trust, and governance;
+3. extract useful prototype contracts and retire duplicate authority;
+4. implement default-deny tool and resource grants;
+5. add evidence provenance and adversarial review;
+6. add trust enforcement and institution-controlled learning;
+7. harden and package the single-node product; and
+8. defer distributed consensus until single-node authority is dependable.
 
-## Design principles
+## Institutional design boundary
 
-- Event sourcing over opaque mutable state
-- Deterministic recovery
-- Cryptographic integrity
-- Fail-closed authority
-- Modular Rust architecture
-- Explicit governance
-- Evidence-backed capability claims
-- Long-term maintainability
-
-## Project status
-
-Sovereign OS is active research and engineering work. The single-node core is
-implemented and tested; broader distributed and autonomous-system capabilities
-remain staged work.
-
-See [PROJECT_STATUS.md](PROJECT_STATUS.md) for the exact build boundary and
-[ARCHITECTURE.md](ARCHITECTURE.md) for the top-level architecture classification.
+Sovereign OS aims to provide open, exportable technical evidence and locally
+controlled governance. It does not by itself certify legal compliance, research
+truth, model safety, or regulatory approval.
 
 ## Contributing
 
-Contributions are welcome. Create a focused feature branch, keep changes
-reviewable, and include the verification performed. See
+Keep changes focused, distinguish implemented behavior from proposals, and
+include the verification performed. See
 [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## License
 
 License information will be published with the first stable release. Until a
 license is added, no open-source reuse rights are granted by default.
-
----
-
-*"Deterministic systems are easier to reason about. Immutable history is easier to trust."*
