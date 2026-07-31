@@ -1,225 +1,151 @@
 # Sovereign OS
 
-> **Building resilient autonomous computing through deterministic state, event sourcing, and digital sovereignty.**
+> Building resilient autonomous computing through deterministic state, event sourcing, and digital sovereignty.
 
-Sovereign OS is an experimental operating system written in Rust that explores a new approach to autonomous computing through event sourcing, deterministic recovery, cryptographically verifiable state, and distributed agent orchestration.
+Sovereign OS is an experimental operating system written in Rust. It explores
+event-sourced state, deterministic recovery, cryptographically verifiable
+projections, and governed autonomous computing.
 
-Rather than treating persistence as an implementation detail, Sovereign OS records every state transition as an immutable event. System state can be reconstructed deterministically from event history, accelerated through validated snapshots, and recovered safely even after unexpected failures.
+Rather than treating persistence as an implementation detail, the active core
+records admitted transitions in an append-only ledger. State and registry
+projections can then be reconstructed deterministically, accelerated through
+validated snapshots, and checked against the same ledger tail.
 
-The project serves as the execution layer for the broader GUSA ecosystem while remaining modular enough to be useful as a standalone research platform for resilient distributed systems.
+> [!IMPORTANT]
+> The authoritative build is the seven-crate `sovereign-*` Cargo workspace.
+> Earlier service-layer prototypes remain in `crates/` for reference but are
+> not workspace members. Read [PROJECT_STATUS.md](PROJECT_STATUS.md) before
+> changing crate membership or treating prototype features as production.
 
----
+## Vision
 
-# Vision
+Modern systems accumulate mutable state that becomes difficult to reason about.
+Sovereign OS takes the opposite approach:
 
-Modern computing systems often rely on mutable state that becomes increasingly difficult to reason about as systems grow in complexity.
+- important transitions become immutable events;
+- snapshots are validated caches rather than sources of truth;
+- recovery is deterministic;
+- governance decisions can become auditable;
+- failures close authority rather than silently publishing uncertain state.
 
-Sovereign OS takes the opposite approach.
+The long-term objective is an operating environment that coordinates autonomous
+services while preserving integrity, fault tolerance, and digital sovereignty.
 
-Everything important becomes an immutable event.
+## Implemented baseline
 
-Snapshots become trusted caches.
+The active workspace currently provides:
 
-Recovery becomes deterministic.
+- append-only ledger records with checksums and strict LSN sequencing;
+- deterministic replay and state reconstruction;
+- versioned snapshots with integrity and state-root validation;
+- automatic fallback from invalid snapshots to genesis replay;
+- content-addressed registry nodes and deterministic ledger projection;
+- deterministic directive admission policy;
+- single-node engine boot, directive submission, and restart reconstruction;
+- fail-closed handling of ambiguous persistence outcomes;
+- forensic tests for corruption and interrupted publication.
 
-Governance becomes auditable.
+Distributed networking, governance, audit, discovery, agent lifecycle
+management, active memory, neuromorphic hardware, and ternary runtime work are
+not part of the active production baseline.
 
-The long-term objective is to build an operating environment capable of coordinating autonomous services across distributed infrastructure while maintaining cryptographic integrity, fault tolerance, and long-term digital sovereignty.
+## Architecture
 
----
-
-# Current Features
-
-## Event-Sourced Architecture
-
-All registry mutations are recorded as immutable events before state changes occur.
-
-- Append-only event log
-- Deterministic replay
-- Immutable history
-- Auditable state transitions
-
----
-
-## Registry Service
-
-The Registry acts as the authoritative source of infrastructure topology.
-
-Current capabilities include:
-
-- Node registration
-- Workload registration
-- Event persistence
-- Deterministic reconstruction
-- Snapshot creation
-- Cold-boot recovery
-
----
-
-## Snapshot System
-
-Snapshots provide fast startup without sacrificing correctness.
-
-Implemented:
-
-- Snapshot serialization
-- Snapshot restoration
-- Snapshot versioning
-- Integrity validation
-- Checksum verification
-- Automatic replay fallback
-- Snapshot round-trip testing
-
----
-
-## Cold Boot Optimization
-
-Rather than replaying the entire historical ledger every startup:
-
-```
-Snapshot
-      +
-Remaining Event Delta
+```text
+Directive
+    |
+    v
+Deterministic policy
+    |
+    v
+Append-only ledger
+    |
+    +------------------+
+    |                  |
+    v                  v
+Authoritative state    Registry projection
+    |                  |
+    +---------+--------+
+              |
+              v
+      Single-node engine
 ```
 
-This dramatically reduces startup time while preserving deterministic recovery.
+Snapshots accelerate state restoration. The ledger remains canonical.
 
----
+## Workspace structure
 
-## Benchmarking
-
-Performance instrumentation has been added for measuring:
-
-- Registry population
-- Snapshot creation
-- Cold boot initialization
-- Snapshot replay window
-
-Current measurements demonstrate that registry startup remains effectively constant once snapshots are available, while population cost scales linearly with event volume.
-
----
-
-# Architecture
-
-```
-Commands
-    │
-    ▼
-Events
-    │
-    ▼
-Append-only Ledger
-    │
-    ▼
-Snapshots
-    │
-    ▼
-Registry Reconstruction
-    │
-    ▼
-Runtime Orchestrator
-```
-
-Snapshots are treated as memoized state.
-
-The event log remains the canonical source of truth.
-
----
-
-# Project Structure
-
-```
+```text
 crates/
-
-├── registry-service/
-│   ├── registry
-│   ├── snapshot
-│   ├── persistence
-│   ├── runtime_orchestrator
-│   └── event_replay
-│
-├── event-log/
-│
-├── active-memory/
-│
-└── ...
+|-- sovereign-core-asm/   deterministic state and snapshot representation
+|-- sovereign-ledger/     append, replay, restore, integrity, and snapshots
+|-- sovereign-registry/   content-addressed derived registry graph
+|-- sovereign-policy/     deterministic directive admission
+|-- sovereign-engine/     single-node boot and command orchestration
+|-- sovereign-audit/      scaffold; not implemented
+|-- sovereign-discovery/  scaffold; not implemented
+`-- service prototypes/   excluded; classified in PROJECT_STATUS.md
 ```
 
----
+## Verification
 
-# Roadmap
+The repository pins its Rust toolchain. Run:
 
-## Completed
+```text
+cargo fmt --all -- --check
+cargo clippy --workspace --all-targets --locked -- -D warnings
+cargo test --workspace --all-targets --locked
+```
 
-- Runtime orchestrator foundation
-- Persistence abstraction
-- JSON persistence
-- Event replay
-- Runtime integration
-- Snapshot compaction
-- Registry benchmarking
-- Snapshot versioning
-- Snapshot integrity validation
+GitHub Actions runs these checks on Linux and Windows.
 
----
+## Roadmap
 
-## In Progress
+### Current engineering priorities
 
-- Streaming replay
-- Atomic snapshot writes
-- Snapshot migration framework
+1. Keep the active workspace green on Linux and Windows.
+2. Prove the complete boot, admit, persist, restart, and reconstruct path.
+3. Keep implemented, scaffolded, prototype, and research claims separate.
+4. Select the next capability through an explicit architecture decision.
 
----
+### Candidate next capabilities
 
-## Planned
+- governed audit evidence;
+- discovery and multi-node identity;
+- snapshot schema migration;
+- distributed consensus and networking;
+- governance and agent lifecycle management.
 
-- Snapshot compression
-- Incremental snapshots
-- Runtime scheduler
-- Distributed networking
-- Governance engine
-- Agent lifecycle management
-- Active memory integration
-- Digital archive subsystem
-- Neuromorphic hardware interfaces
-- Ternary logic runtime
+## Design principles
 
----
-
-# Design Principles
-
-- Event sourcing over mutable state
+- Event sourcing over opaque mutable state
 - Deterministic recovery
-- Modular Rust architecture
 - Cryptographic integrity
-- Fault tolerance
+- Fail-closed authority
+- Modular Rust architecture
 - Explicit governance
+- Evidence-backed capability claims
 - Long-term maintainability
-- Digital sovereignty
 
----
+## Project status
 
-# Current Status
+Sovereign OS is active research and engineering work. The single-node core is
+implemented and tested; broader distributed and autonomous-system capabilities
+remain staged work.
 
-Sovereign OS is an active research and engineering project.
+See [PROJECT_STATUS.md](PROJECT_STATUS.md) for the exact build boundary and
+[ARCHITECTURE.md](ARCHITECTURE.md) for the top-level architecture classification.
 
-The persistence, replay, and snapshot infrastructure are operational and continuously evolving. Higher-level runtime orchestration, distributed services, and governance systems are under active development.
+## Contributing
 
----
+Contributions are welcome. Create a focused feature branch, keep changes
+reviewable, and include the verification performed. See
+[CONTRIBUTING.md](CONTRIBUTING.md).
 
-# Contributing
+## License
 
-Contributions are welcome.
-
-If you're interested in operating systems, distributed systems, event sourcing, Rust, autonomous agents, governance, or resilient infrastructure, feel free to open an issue or submit a pull request.
-
-Please create feature branches for all changes and submit work through Pull Requests.
-
----
-
-# License
-
-License information will be published with the first stable release.
+License information will be published with the first stable release. Until a
+license is added, no open-source reuse rights are granted by default.
 
 ---
 

@@ -94,7 +94,8 @@ impl<'a> EventRecord<'a> {
         out[PAYLOAD_OFFSET..payload_end].copy_from_slice(self.payload);
 
         let checksum = crc32c(&out[..payload_end]);
-        out[payload_end..payload_end + RECORD_CHECKSUM_LEN].copy_from_slice(&checksum.to_be_bytes());
+        out[payload_end..payload_end + RECORD_CHECKSUM_LEN]
+            .copy_from_slice(&checksum.to_be_bytes());
 
         Ok(total_len)
     }
@@ -179,7 +180,10 @@ mod tests {
 
     #[test]
     fn event_type_rejects_unknown_discriminator() {
-        assert_eq!(EventType::from_u8(0xff), Err(LedgerError::UnsupportedVersion));
+        assert_eq!(
+            EventType::from_u8(0xff),
+            Err(LedgerError::UnsupportedVersion)
+        );
     }
 
     #[test]
@@ -198,7 +202,10 @@ mod tests {
         assert_eq!(decoded.lsn, Lsn(42));
         assert_eq!(decoded.event_type, EventType::RegistryMutation);
         assert_eq!(decoded.payload, b"payload");
-        assert_eq!(decoded.checksum, crc32c(&buffer[..PAYLOAD_OFFSET + b"payload".len()]));
+        assert_eq!(
+            decoded.checksum,
+            crc32c(&buffer[..PAYLOAD_OFFSET + b"payload".len()])
+        );
     }
 
     #[test]
@@ -240,6 +247,9 @@ mod tests {
 
     #[test]
     fn decode_rejects_truncated_record() {
-        assert_eq!(EventRecord::decode(&[0_u8; 4]), Err(LedgerError::SegmentCorrupted));
+        assert_eq!(
+            EventRecord::decode(&[0_u8; 4]),
+            Err(LedgerError::SegmentCorrupted)
+        );
     }
 }

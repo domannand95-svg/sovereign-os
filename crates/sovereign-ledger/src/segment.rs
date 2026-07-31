@@ -6,6 +6,24 @@ use std::io::{Read, Seek, SeekFrom, Write};
 use std::path::Path;
 use std::sync::atomic::{AtomicU64, Ordering};
 
+/// Synchronizes directory metadata where the standard library exposes that
+/// durability boundary.
+///
+/// Windows does not support opening a directory with `File::open` and then
+/// calling `sync_all` on the resulting handle. The record file itself is
+/// synchronized before its atomic hard-link publication, so Windows treats a
+/// successful publication as the strongest portable commit boundary available
+/// through `std`.
+#[cfg(windows)]
+pub(crate) fn sync_directory(_directory: &Path) -> std::io::Result<()> {
+    Ok(())
+}
+
+#[cfg(not(windows))]
+pub(crate) fn sync_directory(directory: &Path) -> std::io::Result<()> {
+    File::open(directory).and_then(|handle| handle.sync_all())
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum AtomicPublishStage {
     PendingSynced,
@@ -73,7 +91,7 @@ impl LedgerSegment {
             max_size,
             bytes,
             observer,
-            |directory| File::open(directory).and_then(|handle| handle.sync_all()),
+            sync_directory,
         )
     }
 
