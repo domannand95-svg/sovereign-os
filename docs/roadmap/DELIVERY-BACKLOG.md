@@ -53,6 +53,9 @@ workspace, and Linux/Windows CI.
 - **Acceptance:** Canonical encoding and content roots are stable; ambiguous or
   incomplete identities are rejected.
 - **Prerequisites:** A02.
+- **Checkpoint:** Implemented locally with the proposed
+  [`SPEC-ID-001`](../specs/SPEC-ID-001-Canonical-Identity-and-Lineage.md);
+  acceptance requires full verification and owner-approved merge.
 
 ### A04 — Research artifact and evidence schemas
 
