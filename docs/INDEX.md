@@ -37,6 +37,8 @@ The Engineering Handbook is the authoritative documentation set describing the p
   capability, trust, enforcement, and governed-learning architecture
 - `adr/0002-authority-separation.md` - proposed constitutional authority roles,
   independence rules, prohibited combinations, and negative cases
+- `specs/SPEC-ID-001-Canonical-Identity-and-Lineage.md` - proposed canonical
+  identifiers, kind tags, lineage records, validation, and stability vectors
 
 ---
 
