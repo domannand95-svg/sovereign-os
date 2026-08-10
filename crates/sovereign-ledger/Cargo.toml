@@ -2,8 +2,9 @@
 name = "sovereign-ledger"
 version = "0.1.0"
 edition = "2021"
+publish = false
 
 [dependencies]
-sovereign-core-asm = { path = "../sovereign-core-asm" }
+sovereign-core-asm = { version = "0.1.0", path = "../sovereign-core-asm" }
 blake3.workspace = true
 crc32c.workspace = true

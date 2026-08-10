@@ -2,9 +2,10 @@
 name = "sovereign-engine"
 version = "0.1.0"
 edition = "2021"
+publish = false
 
 [dependencies]
-sovereign-core-asm = { path = "../sovereign-core-asm" }
-sovereign-ledger = { path = "../sovereign-ledger" }
-sovereign-policy = { path = "../sovereign-policy" }
-sovereign-registry = { path = "../sovereign-registry" }
+sovereign-core-asm = { version = "0.1.0", path = "../sovereign-core-asm" }
+sovereign-ledger = { version = "0.1.0", path = "../sovereign-ledger" }
+sovereign-policy = { version = "0.1.0", path = "../sovereign-policy" }
+sovereign-registry = { version = "0.1.0", path = "../sovereign-registry" }
