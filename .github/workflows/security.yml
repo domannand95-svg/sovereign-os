@@ -14,6 +14,19 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  fuzz-smoke:
+    name: Decoder fuzz smoke
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+      - name: Install nightly Rust
+        run: rustup toolchain install nightly --profile minimal
+      - name: Install cargo-fuzz
+        run: cargo install cargo-fuzz --version 0.13.2 --locked
+      - name: Exercise decoder boundaries
+        run: cargo +nightly fuzz run decoder_boundaries -- -runs=1000
+
   rust-policy:
     name: Rust dependency policy
     runs-on: ubuntu-latest

@@ -12,3 +12,7 @@
 
 # Runtime snapshot metadata
 crates/network-service/snapshot_metadata.json
+
+# cargo-fuzz local evidence
+/fuzz/artifacts/
+/fuzz/corpus/

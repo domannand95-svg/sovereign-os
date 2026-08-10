@@ -27,7 +27,7 @@ Updated: 2026-08-07
 - [x] Line coverage exceeds 90 percent
 - [x] CycloneDX software bill of materials can be generated
 - [ ] Repository licence selected and declared by the owner
-- [ ] Decoder fuzz targets implemented and exercised
+- [x] Decoder fuzz targets implemented and exercised through the bounded Ubuntu CI smoke gate
 - [ ] Reproducible packaged-node acceptance test implemented
 - [ ] Independent clean-machine release reproduction completed
 - [ ] Release artifact signing policy approved and exercised
