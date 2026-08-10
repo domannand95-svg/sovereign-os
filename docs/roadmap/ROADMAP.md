@@ -40,9 +40,9 @@ The product authority and evidence model is defined in
 
 ## Current
 
-- Adopt the governed-agentic-research constitutional architecture.
-- Define versioned agent, evidence, trust, tool, resource, and governance
-  schemas.
+- Close the implemented v0.1 deterministic engine baseline against its current
+  verification evidence.
+- Define versioned research-artifact and evidence schemas (`A04`).
 - Classify and extract useful prototype contracts without inheriting duplicate
   authority.
 

@@ -48,10 +48,14 @@ Multi-node consensus is a separate release track. It is required for the distrib
 
 - PR #119 merged Gate 8 restoration into `main`.
 - Ledger restoration, snapshot discovery, tail scanning, checkpoint replay, and failure-atomic restoration are merged.
-- The current `feature/v0.1-engine-bootstrap` working tree implements boot, registry reconstruction, policy admission, atomic append publication, restart reconstruction, and crash-boundary tests.
-- Current validation evidence: 76 ledger unit tests pass; the exact boot/restart exit test passes with three parent tests and one ignored subprocess helper; full workspace tests, strict Clippy, and `git diff --check` pass.
+- The authoritative `main` branch implements boot, registry reconstruction,
+  policy admission, atomic append publication, restart reconstruction, and
+  crash-boundary tests.
+- Current validation evidence at commit `014a748`: formatting and strict Clippy
+  pass; 180 tests pass with one intentionally ignored subprocess helper; Rust
+  and security/coverage workflows pass on the current Windows/Linux baseline.
 
-### Assumed until inspected
+### Inspected non-production components
 
 The following crates exist but their production maturity must be established by inspection rather than percentage estimates:
 
@@ -63,7 +67,10 @@ The following crates exist but their production maturity must be established by 
 - `registry-service`
 - `network-service`
 
-No maturity claim for an assumed component becomes authoritative until its API, tests, dependencies, and runtime behavior have been inspected.
+`sovereign-audit` and `sovereign-discovery` are authoritative workspace
+scaffolds without implemented runtime behavior. The five preserved prototype
+crates remain outside the authoritative workspace and do not establish current
+capabilities.
 
 ## 4. Delivery Model
 
@@ -99,21 +106,17 @@ Reviewers never modify the authoritative checkout directly. Findings require fil
 
 A bootable single-node engine restores canonical state, reconstructs the registry, applies policy to a directive, persists an admitted event atomically, restarts, and reconstructs the identical state root.
 
-### Remaining work
+### Closure state
 
-1. Remove the temporary review archive after external reviews are complete.
-2. Split the current working tree into independently reviewable commits:
-   - `feat(policy): add deterministic directive admission`;
-   - `feat(ledger): publish append records atomically and recover restart state`;
-   - `feat(engine): add boot, restore, registry, and directive orchestration`;
-   - `test(engine): prove restart and crash-boundary behavior`;
-   - `docs: define the v0.1 acceptance contract`.
-3. Rerun all gates after the split.
-4. Push the branch and open a PR against `main`.
-5. Complete the Kimi strengthening pass.
-6. Complete the Fable adversarial pass.
-7. Reconcile findings and merge.
-8. Tag `v0.1.0` only after merge and clean-checkout verification.
+The deterministic engine outcome and exit gate are implemented. Remaining work
+before a `v0.1.0` release is repository and release governance rather than core
+engine behavior:
+
+1. merge the v0.1 closure record after independent review;
+2. select and declare the repository licence;
+3. exercise decoder fuzz targets;
+4. reproduce a packaged-node artifact from a clean environment; and
+5. approve and exercise artifact signing before creating the release tag.
 
 ### Exit gate
 
@@ -321,14 +324,13 @@ Any change to constitutional authority, canonical identity, state-root computati
 
 ## 9. Immediate Next Actions
 
-1. Approve this plan as the program baseline or request edits.
-2. Finish v0.1 using the five-commit sequence.
-3. Push and open the v0.1 PR.
-4. Run the Kimi strengthening review.
-5. Reconcile and update the PR.
-6. Run the Fable adversarial review.
-7. Reconcile, rerun all gates, merge, and tag v0.1.0.
-8. Inspect `sovereign-discovery` and begin the v0.2 capability-firewall contract.
+1. Merge the v0.1 closure record after review and passing gates.
+2. Protect `main` with required review and all current CI/security checks.
+3. Record the owner-selected repository licence.
+4. Implement and exercise decoder fuzz targets.
+5. Define A04 research-artifact and evidence schemas.
+6. Continue A05–A07 before implementing canonical governance events.
+7. Add packaged-node and release-signing evidence before tagging `v0.1.0`.
 
 ## 10. Goal-Setting Recommendation
 
