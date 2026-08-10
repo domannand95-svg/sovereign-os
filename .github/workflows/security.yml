@@ -1,0 +1,81 @@
+name: Security and Coverage
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: security-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  rust-policy:
+    name: Rust dependency policy
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+      - name: Install cargo-audit
+        run: cargo install cargo-audit --locked
+      - name: Check RustSec advisories
+        run: cargo audit
+      - name: Install cargo-deny
+        run: cargo install cargo-deny --locked
+      - name: Check licenses, bans, and sources
+        run: cargo deny check
+
+  coverage:
+    name: Workspace coverage
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+      - name: Install LLVM coverage tools
+        run: |
+          rustup component add llvm-tools-preview
+          cargo install cargo-llvm-cov --locked
+      - name: Enforce 90 percent line coverage
+        run: cargo llvm-cov --workspace --all-targets --locked --fail-under-lines 90
+
+  filesystem-security:
+    name: Filesystem security scan
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+      - name: Scan for high and critical findings
+        run: >-
+          docker run --rm
+          -v "$PWD:/workspace"
+          aquasec/trivy:0.73.0
+          fs --scanners vuln,secret,misconfig
+          --severity HIGH,CRITICAL
+          --exit-code 1
+          --no-progress
+          /workspace
+
+  sbom:
+    name: Generate CycloneDX SBOM
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+      - name: Generate SBOM
+        run: >-
+          docker run --rm
+          -v "$PWD:/workspace"
+          anchore/syft:v1.49.0
+          dir:/workspace
+          -o cyclonedx-json=/workspace/sovereign-os-sbom.cdx.json
+      - name: Upload SBOM
+        uses: actions/upload-artifact@v6
+        with:
+          name: sovereign-os-sbom
+          path: sovereign-os-sbom.cdx.json
+          if-no-files-found: error
+          retention-days: 30

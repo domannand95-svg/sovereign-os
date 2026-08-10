@@ -2,7 +2,8 @@
 name = "sovereign-registry"
 version = "0.1.0"
 edition = "2021"
+publish = false
 
 [dependencies]
 blake3.workspace = true
-sovereign-ledger = { path = "../sovereign-ledger" }
+sovereign-ledger = { version = "0.1.0", path = "../sovereign-ledger" }
