@@ -18,6 +18,7 @@ Updated: 2026-08-07
 - [x] Ollama and Open WebUI local AI environment
 - [x] cargo-audit, cargo-deny, cargo-llvm-cov, and cargo-fuzz
 - [x] Trivy, Syft, and Cosign
+- [ ] Visual Studio C++ AddressSanitizer/LLVM runtime installed and Windows libFuzzer smoke run verified
 
 ## Verified baseline
 
