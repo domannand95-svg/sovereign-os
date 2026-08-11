@@ -10,9 +10,11 @@ use std::fmt;
 
 mod claim;
 mod objective;
+mod source;
 
 pub use claim::{ClaimError, ClaimKind, ClaimPayload, Substantiation};
 pub use objective::{ObjectiveError, ObjectivePayload, MAX_LIST_ITEMS, MAX_TEXT_FIELD_LEN};
+pub use source::{DigestAlgorithm, SourceError, SourcePayload};
 
 pub const EVIDENCE_SCHEMA_VERSION: u16 = 1;
 pub const MAX_EVIDENCE_PARENTS: usize = 64;
@@ -95,6 +97,23 @@ pub struct EvidenceRecord {
 }
 
 impl EvidenceRecord {
+    pub fn new_source(
+        issuer_id: IdentityId,
+        subject_id: IdentityId,
+        policy_id: IdentityId,
+        parent_ids: Vec<RecordId>,
+        payload: SourcePayload,
+    ) -> Result<Self, EvidenceError> {
+        Self::new(
+            RecordKind::Source,
+            issuer_id,
+            subject_id,
+            policy_id,
+            parent_ids,
+            payload.encode(),
+        )
+    }
+
     pub fn new_claim(
         issuer_id: IdentityId,
         subject_id: IdentityId,
@@ -205,6 +224,16 @@ impl EvidenceRecord {
             });
         }
         ClaimPayload::decode(&self.payload).map_err(EvidencePayloadError::Claim)
+    }
+
+    pub fn decode_source_payload(&self) -> Result<SourcePayload, EvidencePayloadError> {
+        if self.kind != RecordKind::Source {
+            return Err(EvidencePayloadError::WrongRecordKind {
+                expected: RecordKind::Source,
+                actual: self.kind,
+            });
+        }
+        SourcePayload::decode(&self.payload).map_err(EvidencePayloadError::Source)
     }
 
     pub fn encode(&self) -> Vec<u8> {
@@ -323,6 +352,7 @@ pub enum EvidencePayloadError {
     },
     Objective(ObjectiveError),
     Claim(ClaimError),
+    Source(SourceError),
 }
 
 impl fmt::Display for EvidencePayloadError {
@@ -337,6 +367,7 @@ impl std::error::Error for EvidencePayloadError {
             Self::WrongRecordKind { .. } => None,
             Self::Objective(error) => Some(error),
             Self::Claim(error) => Some(error),
+            Self::Source(error) => Some(error),
         }
     }
 }
@@ -453,6 +484,18 @@ mod tests {
         .unwrap()
     }
 
+    fn source_payload() -> SourcePayload {
+        SourcePayload::new(
+            "https://example.invalid/source".to_owned(),
+            DigestAlgorithm::Sha256,
+            [11; ID_LEN],
+            1_786_406_400,
+            "application/pdf".to_owned(),
+            Some("Published 1890".to_owned()),
+        )
+        .unwrap()
+    }
+
     #[test]
     fn typed_objective_record_round_trips_without_kind_confusion() {
         let payload = objective_payload();
@@ -514,6 +557,40 @@ mod tests {
             EvidencePayloadError::WrongRecordKind {
                 expected: RecordKind::Claim,
                 actual: RecordKind::Objective,
+            }
+        );
+    }
+
+    #[test]
+    fn typed_source_record_round_trips_without_kind_confusion() {
+        let payload = source_payload();
+        let record = EvidenceRecord::new_source(
+            identity(1),
+            identity(2),
+            identity(3),
+            vec![RecordId::from_bytes([4; ID_LEN])],
+            payload.clone(),
+        )
+        .unwrap();
+
+        assert_eq!(record.kind(), RecordKind::Source);
+        assert_eq!(
+            record.id().to_string(),
+            "da049df7f223861cf14810b46c557c60ce6b7bf4e1991874bdde0319734e33da"
+        );
+        assert_eq!(record.decode_source_payload().unwrap(), payload);
+        let decoded = EvidenceRecord::decode(&record.encode()).unwrap();
+        assert_eq!(decoded.decode_source_payload().unwrap(), payload);
+    }
+
+    #[test]
+    fn source_decoder_rejects_record_kind_confusion() {
+        let claim = record(RecordKind::Claim);
+        assert_eq!(
+            claim.decode_source_payload().unwrap_err(),
+            EvidencePayloadError::WrongRecordKind {
+                expected: RecordKind::Source,
+                actual: RecordKind::Claim,
             }
         );
     }
