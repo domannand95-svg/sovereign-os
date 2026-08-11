@@ -139,12 +139,18 @@ A Claim payload contains:
 | `objective_id` | Required Objective record ID |
 | `statement` | Required bounded proposition |
 | `claim_kind` | Observation, inference, prediction, recommendation, or normative claim |
+| `substantiation` | Explicit `UNSUBSTANTIATED` (`0x00`) or `EVIDENCE_CITED` (`0x01`) state |
 | `supporting_evidence_ids` | Ordered unique evidence record IDs |
 | `counter_evidence_ids` | Ordered unique evidence record IDs |
 | `uncertainty_ids` | Ordered unique Uncertainty record IDs |
 
 A claim with no supporting evidence is permitted only as explicitly
 `UNSUBSTANTIATED`. It cannot be silently treated as verified.
+
+`UNSUBSTANTIATED` requires an empty supporting-evidence list.
+`EVIDENCE_CITED` requires a non-empty supporting-evidence list and asserts only
+that identifiers are present; it confers no validity, truth, review, or
+disposition authority. Other substantiation values fail closed.
 
 ## 8. Source Record
 

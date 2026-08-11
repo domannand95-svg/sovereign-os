@@ -8,8 +8,10 @@ use sovereign_registry::IdentityId;
 use std::collections::HashSet;
 use std::fmt;
 
+mod claim;
 mod objective;
 
+pub use claim::{ClaimError, ClaimKind, ClaimPayload, Substantiation};
 pub use objective::{ObjectiveError, ObjectivePayload, MAX_LIST_ITEMS, MAX_TEXT_FIELD_LEN};
 
 pub const EVIDENCE_SCHEMA_VERSION: u16 = 1;
@@ -93,6 +95,23 @@ pub struct EvidenceRecord {
 }
 
 impl EvidenceRecord {
+    pub fn new_claim(
+        issuer_id: IdentityId,
+        subject_id: IdentityId,
+        policy_id: IdentityId,
+        parent_ids: Vec<RecordId>,
+        payload: ClaimPayload,
+    ) -> Result<Self, EvidenceError> {
+        Self::new(
+            RecordKind::Claim,
+            issuer_id,
+            subject_id,
+            policy_id,
+            parent_ids,
+            payload.encode(),
+        )
+    }
+
     pub fn new_objective(
         issuer_id: IdentityId,
         subject_id: IdentityId,
@@ -176,6 +195,16 @@ impl EvidenceRecord {
             });
         }
         ObjectivePayload::decode(&self.payload).map_err(EvidencePayloadError::Objective)
+    }
+
+    pub fn decode_claim_payload(&self) -> Result<ClaimPayload, EvidencePayloadError> {
+        if self.kind != RecordKind::Claim {
+            return Err(EvidencePayloadError::WrongRecordKind {
+                expected: RecordKind::Claim,
+                actual: self.kind,
+            });
+        }
+        ClaimPayload::decode(&self.payload).map_err(EvidencePayloadError::Claim)
     }
 
     pub fn encode(&self) -> Vec<u8> {
@@ -293,6 +322,7 @@ pub enum EvidencePayloadError {
         actual: RecordKind,
     },
     Objective(ObjectiveError),
+    Claim(ClaimError),
 }
 
 impl fmt::Display for EvidencePayloadError {
@@ -306,6 +336,7 @@ impl std::error::Error for EvidencePayloadError {
         match self {
             Self::WrongRecordKind { .. } => None,
             Self::Objective(error) => Some(error),
+            Self::Claim(error) => Some(error),
         }
     }
 }
@@ -409,6 +440,19 @@ mod tests {
         .unwrap()
     }
 
+    fn claim_payload() -> ClaimPayload {
+        ClaimPayload::new(
+            RecordId::from_bytes([9; ID_LEN]),
+            "The encoding is deterministic".to_owned(),
+            ClaimKind::Observation,
+            Substantiation::EvidenceCited,
+            vec![RecordId::from_bytes([10; ID_LEN])],
+            vec![],
+            vec![],
+        )
+        .unwrap()
+    }
+
     #[test]
     fn typed_objective_record_round_trips_without_kind_confusion() {
         let payload = objective_payload();
@@ -440,6 +484,36 @@ mod tests {
             EvidencePayloadError::WrongRecordKind {
                 expected: RecordKind::Objective,
                 actual: RecordKind::Claim,
+            }
+        );
+    }
+
+    #[test]
+    fn typed_claim_record_round_trips_without_kind_confusion() {
+        let payload = claim_payload();
+        let record = EvidenceRecord::new_claim(
+            identity(1),
+            identity(2),
+            identity(3),
+            vec![RecordId::from_bytes([4; ID_LEN])],
+            payload.clone(),
+        )
+        .unwrap();
+
+        assert_eq!(record.kind(), RecordKind::Claim);
+        assert_eq!(record.decode_claim_payload().unwrap(), payload);
+        let decoded = EvidenceRecord::decode(&record.encode()).unwrap();
+        assert_eq!(decoded.decode_claim_payload().unwrap(), payload);
+    }
+
+    #[test]
+    fn claim_decoder_rejects_record_kind_confusion() {
+        let objective = record(RecordKind::Objective);
+        assert_eq!(
+            objective.decode_claim_payload().unwrap_err(),
+            EvidencePayloadError::WrongRecordKind {
+                expected: RecordKind::Claim,
+                actual: RecordKind::Objective,
             }
         );
     }
