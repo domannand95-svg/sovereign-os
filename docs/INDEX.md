@@ -1,12 +1,12 @@
 ---
 Document: Engineering Handbook Index
 ID: DOC-INDEX-001
-Version: 2.0
+Version: 2.1
 Status: Stable
 Owner: Repository Maintainer
 Reviewers:
   - Core Reviewers
-Last Updated: 2026-07-07
+Last Updated: 2026-08-11
 Depends On:
   - GOV-CORE-001
 Supersedes:
@@ -35,10 +35,13 @@ The Engineering Handbook is the authoritative documentation set describing the p
 - Runtime Architecture
 - `architecture/governed-agentic-research.md` - proposed agent, evidence,
   capability, trust, enforcement, and governed-learning architecture
-- `adr/0002-authority-separation.md` - proposed constitutional authority roles,
+- `adr/0002-authority-separation.md` - merged constitutional authority roles,
   independence rules, prohibited combinations, and negative cases
-- `specs/SPEC-ID-001-Canonical-Identity-and-Lineage.md` - proposed canonical
+- `specs/SPEC-ID-001-Canonical-Identity-and-Lineage.md` - canonical
   identifiers, kind tags, lineage records, validation, and stability vectors
+- `specs/SPEC-EV-001-Governed-Research-Artifacts-and-Evidence.md` - proposed
+  canonical research-artifact, provenance, review, dispute, and disposition
+  schemas
 
 ---
 
@@ -94,4 +97,6 @@ Research documentation:
 
 ## Changelog
 
+- **v2.1 (2026-08-11)** Added the A04 governed evidence schema contract and
+  reconciled merged A02/A03 status labels.
 - **v2.0 (2026-07-07)** Handbook cross-linking and verification.
