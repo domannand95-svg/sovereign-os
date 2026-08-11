@@ -57,12 +57,13 @@ jobs:
         run: python -m pip install -r bki/requirements.txt
 
       - name: Verify BKI boundary tests
+        working-directory: bki
         run: >-
           python -m pytest
-          bki/tests/test_read_only_cli.py
-          bki/tests/test_result_serialization.py
-          bki/tests/test_sovereign_profile_schema.py
-          bki/tests/test_sovereign_profile_translation.py
+          tests/test_read_only_cli.py
+          tests/test_result_serialization.py
+          tests/test_sovereign_profile_schema.py
+          tests/test_sovereign_profile_translation.py
           -p no:cacheprovider
 
       - name: Verify live cross-repository fixtures
