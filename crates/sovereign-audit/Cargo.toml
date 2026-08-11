@@ -5,3 +5,5 @@ edition = "2021"
 publish = false
 
 [dependencies]
+blake3 = { workspace = true }
+sovereign-registry = { path = "../sovereign-registry" }
