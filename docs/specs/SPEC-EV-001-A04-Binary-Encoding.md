@@ -110,3 +110,21 @@ of 32 `0x01` bytes, `statement="C"`, `claim_kind=OBSERVATION`,
 
 The explicit substantiation byte is structural only. `EVIDENCE_CITED` never
 asserts that cited evidence is true, sufficient, reviewed, or accepted.
+
+## 9. Source Fixed Vector
+
+Source v1 encodes fields in this order: exact locator text, one-byte digest
+algorithm, exactly 32 digest bytes, required `u64` retrieval time, lowercase
+bare media type, and optional descriptive publication-date text.
+
+The minimal fixture `locator="L"`, SHA-256, a digest of 32 `0x02` bytes,
+`retrieved_at=42`, `media_type="text/plain"`, and no publication text is:
+
+`000000014c010202020202020202020202020202020202020202020202020202020202020202000000000000002a0000000a746578742f706c61696e00`
+
+The typed governed Source record fixture in the Rust test suite has record ID:
+
+`da049df7f223861cf14810b46c557c60ce6b7bf4e1991874bdde0319734e33da`
+
+Changing this vector requires a new schema version rather than reinterpretation
+of version 1.

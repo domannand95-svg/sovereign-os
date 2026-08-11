@@ -162,6 +162,17 @@ A Source payload contains:
 | `content_digest` | Required algorithm tag and digest of retrieved bytes |
 | `retrieved_at` | Required asserted UTC instant |
 | `media_type` | Required bounded media type |
+| `publication_date_text` | Optional exact descriptive publication date text |
+
+Source v1 preserves the exact asserted locator without normalization. Its
+digest is one algorithm byte (`0x01` SHA-256 or `0x02` BLAKE3) followed by
+exactly 32 bytes. `retrieved_at` is required unsigned Unix seconds. Media type
+is a lowercase ASCII `type/subtype` without parameters. Historical publication
+text is optional, descriptive, and never parsed as an execution timestamp.
+
+A Source asserts only that matching bytes were retrieved at the asserted time
+from the asserted locator. It does not prove retrieval, continued resolvability,
+authenticity, truth, claim support, verification, or promotion authority.
 | `licence` | Required bounded licence expression or explicit `UNKNOWN` |
 | `access_class` | Public, internal, confidential, restricted, or unknown |
 | `custodian_id` | Required canonical identity |
