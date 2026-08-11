@@ -99,3 +99,14 @@ The first typed Objective slice freezes these v1 vectors:
 
 Changing either vector requires a new schema version rather than reinterpretation
 of version 1.
+
+## 8. Claim Fixed Vector
+
+The typed Claim slice freezes the minimal fixture with an Objective identifier
+of 32 `0x01` bytes, `statement="C"`, `claim_kind=OBSERVATION`,
+`substantiation=UNSUBSTANTIATED`, and three empty evidence lists:
+
+`010101010101010101010101010101010101010101010101010101010101010100000001430000000000000000`
+
+The explicit substantiation byte is structural only. `EVIDENCE_CITED` never
+asserts that cited evidence is true, sufficient, reviewed, or accepted.
