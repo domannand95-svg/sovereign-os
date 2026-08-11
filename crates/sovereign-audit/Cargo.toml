@@ -6,4 +6,4 @@ publish = false
 
 [dependencies]
 blake3 = { workspace = true }
-sovereign-registry = { path = "../sovereign-registry" }
+sovereign-registry = { version = "0.1.0", path = "../sovereign-registry" }
