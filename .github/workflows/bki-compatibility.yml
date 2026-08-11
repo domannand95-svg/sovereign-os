@@ -1,0 +1,80 @@
+name: BKI Compatibility
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/bki-compatibility.yml"
+      - "docs/integration/**"
+      - "tests/compatibility/**"
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/bki-compatibility.yml"
+      - "docs/integration/**"
+      - "tests/compatibility/**"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: bki-compatibility-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  compatibility:
+    name: Read-only boundary (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - name: Check out Sovereign OS
+        uses: actions/checkout@v6
+        with:
+          path: sovereign
+          persist-credentials: false
+
+      - name: Check out pinned BKI
+        uses: actions/checkout@v6
+        with:
+          repository: domannand95-svg/knowledge-infrastructure-bootstrap-kit
+          ref: 0ace31f9071969825b75187d31c5f418212e9ae9
+          ssh-key: ${{ secrets.BKI_READ_DEPLOY_KEY }}
+          path: bki
+          persist-credentials: false
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: bki/requirements.txt
+
+      - name: Install pinned BKI dependencies
+        run: python -m pip install -r bki/requirements.txt
+
+      - name: Verify BKI boundary tests
+        working-directory: bki
+        run: >-
+          python -m pytest
+          tests/test_read_only_cli.py
+          tests/test_result_serialization.py
+          tests/test_sovereign_profile_schema.py
+          tests/test_sovereign_profile_translation.py
+          -p no:cacheprovider
+
+      - name: Verify live cross-repository fixtures
+        env:
+          BKI_ROOT: ${{ github.workspace }}/bki
+        run: >-
+          python -m pytest
+          sovereign/tests/compatibility
+          -p no:cacheprovider
+
+      - name: Assert both repositories remain unchanged
+        run: |
+          git -C sovereign diff --exit-code
+          git -C bki diff --exit-code
