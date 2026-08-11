@@ -29,14 +29,13 @@ or execution authority.
 | Item | Value |
 | --- | --- |
 | Profile version | `bki.sovereign.profile.v1` |
-| BKI contract commit | `e7937b4` |
+| BKI contract commit | `27d75a5c33a5e40bbbd0359704fe10ef52bdf1f2` |
 | Schema | `bki-sovereign-profile-v1.schema.json` |
 | Schema SHA-256 | `1a513455e09063f41d03023688ffc7b89bdababaf8ed9d1a78c101edb7b8845d` |
 | Activation | Not activated |
 
-The commit is a review candidate until the corresponding BKI pull request is
-merged. Beta activation must replace it with the immutable merged commit and a
-tagged BKI pre-release.
+The commit is the immutable merge result of BKI PR 13. Beta activation still
+requires a tagged BKI pre-release and all gates defined below.
 
 ## Metadata Mapping
 
@@ -77,7 +76,7 @@ capability creation, or promotion.
 Activation requires:
 
 1. merge and tag of the BKI profile and read-only adapter;
-2. replacement of the candidate commit with the merged immutable commit;
+2. verification of the pinned merged BKI commit against its release tag;
 3. matching schema bytes and SHA-256 digest in both repositories;
 4. positive and negative compatibility fixtures on Windows and Linux;
 5. fail-closed handling of unknown profiles, schema drift, malformed output,
