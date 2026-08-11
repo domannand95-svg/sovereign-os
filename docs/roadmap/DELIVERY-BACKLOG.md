@@ -27,6 +27,8 @@ workspace, and Linux/Windows CI.
 
 ### A01 — Adopt the corrected mission and delivery controls
 
+- **Status:** Complete — merged through PR #126 and its governing document set.
+
 - **Outcome:** Merge the governed research architecture, README, execution plan,
   legacy matrix, backlog, and contributor workflow.
 - **Runtime change:** None.
@@ -36,28 +38,35 @@ workspace, and Linux/Windows CI.
 
 ### A02 — Authority separation ADR
 
+- **Status:** Complete — merged through PR #127.
+
 - **Outcome:** Decide the proposer, executor, evaluator, reviewer, policy,
   promotion, incident, and human constitutional authority boundaries.
 - **Runtime change:** None.
 - **Acceptance:** Self-promotion, self-review, silent evidence mutation, and
   unilateral constitutional changes are explicitly prohibited.
 - **Prerequisites:** A01.
-- **Checkpoint:** Proposed in
-  [`ADR-0002`](../adr/0002-authority-separation.md); acceptance requires
-  owner-approved merge.
+- **Checkpoint:** [`ADR-0002`](../adr/0002-authority-separation.md) is merged;
+  runtime enforcement remains delegated to later schema and policy items.
 
 ### A03 — Identity and lineage types
+
+- **Status:** Complete — merged in canonical identity and lineage recovery
+  commit `2caa151`.
 
 - **Outcome:** Add deterministic identifiers for agents, model versions, tools,
   datasets, policies, evaluators, and institutions.
 - **Acceptance:** Canonical encoding and content roots are stable; ambiguous or
   incomplete identities are rejected.
 - **Prerequisites:** A02.
-- **Checkpoint:** Implemented locally with the proposed
-  [`SPEC-ID-001`](../specs/SPEC-ID-001-Canonical-Identity-and-Lineage.md);
-  acceptance requires full verification and owner-approved merge.
+- **Checkpoint:** [`SPEC-ID-001`](../specs/SPEC-ID-001-Canonical-Identity-and-Lineage.md)
+  and deterministic identity/lineage types are present in the authoritative
+  workspace and covered by the full verification gate.
 
 ### A04 — Research artifact and evidence schemas
+
+- **Status:** Next approved dependency-correct architecture slice after v0.1
+  closure.
 
 - **Outcome:** Define objectives, claims, sources, methods, uncertainty, failed
   attempts, reviewer findings, disputes, and dispositions.

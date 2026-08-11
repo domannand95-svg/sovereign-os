@@ -4,6 +4,10 @@ This document identifies the authoritative build boundary for Sovereign OS. It
 prevents implemented, prototype, scaffolded, and research capabilities from
 being conflated.
 
+The deterministic v0.1 engine acceptance boundary is implemented and is a
+closure candidate. This is not a packaged beta or production release; licensing,
+fuzzing, clean-build reproduction, packaging, and signing remain separate gates.
+
 ## Authoritative workspace
 
 The root `Cargo.toml` and `Cargo.lock` define the active build:

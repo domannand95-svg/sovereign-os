@@ -2,17 +2,27 @@
 Document: Canonical Identity and Lineage Contract
 ID: SPEC-ID-001
 Version: 1.0
-Status: Proposed
+Status: Implemented
 Owner: domannand95-svg
 Reviewers:
 - Core Reviewers
-Last Updated: 2026-07-31
+Last Updated: 2026-08-11
+Evidence:
+- Commit 2caa151
+- 35 sovereign-registry tests in the v0.1 closure baseline
 Depends On:
 - ADR-0002
 Supersedes: None
 ---
 
 # SPEC-ID-001: Canonical Identity and Lineage
+
+## Implementation Status
+
+The version-one identity and lineage types, canonical encodings, fixed vectors,
+and malformed-input rejection tests are implemented in the authoritative
+`sovereign-registry` workspace crate. Runtime authority beyond these identity
+contracts remains outside this specification.
 
 ## Scope
 
