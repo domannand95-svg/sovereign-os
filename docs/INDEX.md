@@ -1,7 +1,7 @@
 ---
 Document: Engineering Handbook Index
 ID: DOC-INDEX-001
-Version: 2.1
+Version: 2.2
 Status: Stable
 Owner: Repository Maintainer
 Reviewers:
@@ -42,6 +42,8 @@ The Engineering Handbook is the authoritative documentation set describing the p
 - `specs/SPEC-EV-001-Governed-Research-Artifacts-and-Evidence.md` - proposed
   canonical research-artifact, provenance, review, dispute, and disposition
   schemas
+- `integration/BKI-SOS-PROFILE-001.md` - proposed versioned metadata and
+  language boundary for read-only BKI compatibility
 
 ---
 
@@ -97,6 +99,8 @@ Research documentation:
 
 ## Changelog
 
+- **v2.2 (2026-08-11)** Added the proposed BKI and Sovereign OS language
+  compatibility profile and pinned schema candidate.
 - **v2.1 (2026-08-11)** Added the A04 governed evidence schema contract and
   reconciled merged A02/A03 status labels.
 - **v2.0 (2026-07-07)** Handbook cross-linking and verification.
