@@ -13,10 +13,10 @@ external models while retaining local control of policy, data boundaries,
 research evidence, agent authority, and institution-developed models.
 
 > [!IMPORTANT]
-> The governed research, tool authority, adversarial review, enforcement, and
-> learning layers are planned architecture, not implemented production
-> features. The implemented baseline is the deterministic single-node core
-> described below.
+> The governed research record layer is now partially implemented: the A04
+> common envelope plus canonical Objective and Claim payloads are merged. Tool
+> authority, governed admission, adversarial review, enforcement, and learning
+> remain planned architecture rather than production features.
 
 ## Mission
 
@@ -66,12 +66,17 @@ The authoritative workspace currently provides:
 - deterministic, fail-closed directive admission;
 - single-node boot, directive submission, and restart reconstruction;
 - fail-closed handling of ambiguous persistence outcomes; and
-- corruption and interrupted-publication tests.
+- corruption and interrupted-publication tests;
+- the canonical A04 governed-evidence envelope;
+- bounded, deterministic Objective and Claim payload encodings with fixed
+  vectors and kind-confusion protection; and
+- a pinned, read-only `bki.validation.v1` compatibility boundary with the
+  Knowledge Infrastructure Bootstrap Kit.
 
 This baseline supplies canonical state, persistence, recovery, and policy
-boundaries. Agent trust, research evidence, tool grants, adversarial review,
-enforcement, governed learning, and institutional interfaces remain staged
-work.
+boundaries. Governed evidence encoding is in progress. Record admission, agent
+trust, tool grants, adversarial review, enforcement, governed learning, and
+institutional interfaces remain staged work.
 
 ## Current architecture
 
@@ -125,7 +130,7 @@ crates/
 |-- sovereign-registry/   content-addressed derived registry graph
 |-- sovereign-policy/     deterministic directive admission
 |-- sovereign-engine/     single-node boot and command orchestration
-|-- sovereign-audit/      scaffold; not implemented
+|-- sovereign-audit/      governed-evidence envelope, Objective, and Claim
 |-- sovereign-discovery/  scaffold; not implemented
 `-- service prototypes/   excluded; classified for extraction or retirement
 ```
@@ -148,7 +153,11 @@ cargo clippy --workspace --all-targets --locked -- -D warnings
 cargo test --workspace --all-targets --locked
 ```
 
-GitHub Actions runs the same active-workspace checks on Linux and Windows.
+GitHub Actions runs the active-workspace checks on Linux and Windows. Security
+CI also enforces decoder fuzz smoke testing, at least 90% workspace line
+coverage, Rust dependency policy, filesystem scanning, and CycloneDX SBOM
+generation. Boundary-affecting changes additionally run the read-only BKI
+compatibility suite on both platforms.
 
 ## Delivery plan
 
@@ -163,14 +172,15 @@ later merges.
 
 The immediate direction is:
 
-1. adopt the governed-agentic-research architecture;
-2. define constitutional identities, evidence, grants, trust, and governance;
-3. extract useful prototype contracts and retire duplicate authority;
-4. implement default-deny tool and resource grants;
-5. add evidence provenance and adversarial review;
-6. add trust enforcement and institution-controlled learning;
-7. harden and package the single-node product; and
-8. defer distributed consensus until single-node authority is dependable.
+1. implement the remaining A04 payloads in dependency order, beginning with
+   Source;
+2. add governed admission and cross-record lifecycle validation;
+3. implement the minimal read-only Capability Firewall path;
+4. define the Untrusted Model Harness threat model and governed memory flow;
+5. run joint BKI-Sovereign OS compatibility and adversarial beta testing;
+6. harden privacy, recovery, key management, licensing, and release operations;
+   and
+7. defer distributed consensus until single-node authority is dependable.
 
 ## Institutional design boundary
 
@@ -186,6 +196,5 @@ include the verification performed. See
 
 ## License
 
-License information will be published with the first stable release. Until a
-license is added, no open-source reuse rights are granted by default.
+Licensed under the [Apache License 2.0](LICENSE).
 
