@@ -30,12 +30,17 @@ or execution authority.
 | --- | --- |
 | Profile version | `bki.sovereign.profile.v1` |
 | BKI contract commit | `27d75a5c33a5e40bbbd0359704fe10ef52bdf1f2` |
+| BKI compatibility runtime commit | `0ace31f9071969825b75187d31c5f418212e9ae9` |
 | Schema | `bki-sovereign-profile-v1.schema.json` |
 | Schema SHA-256 | `1a513455e09063f41d03023688ffc7b89bdababaf8ed9d1a78c101edb7b8845d` |
 | Activation | Not activated |
 
 The commit is the immutable merge result of BKI PR 13. Beta activation still
 requires a tagged BKI pre-release and all gates defined below.
+
+The schema digest is calculated over canonical repository bytes with LF line
+endings. Compatibility checks normalize checkout line endings before hashing so
+Windows and Linux verify the same governed content.
 
 ## Metadata Mapping
 
@@ -82,5 +87,9 @@ Activation requires:
 5. fail-closed handling of unknown profiles, schema drift, malformed output,
    metadata collisions, timeouts, and process failure; and
 6. explicit owner approval after compatibility evidence is reviewed.
+
+The `BKI Compatibility` workflow exercises this boundary on Windows and Linux
+using a repository-scoped read-only deploy key. It checks out the runtime commit
+above, never a moving branch, and verifies both worktrees remain unchanged.
 
 Until every gate passes, BKI integration remains not activated.
