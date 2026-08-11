@@ -2,12 +2,12 @@
 Document: Constitutional Authority Separation
 ID: ADR-0002
 Version: 1.0
-Status: Proposed
+Status: Accepted
 Owner: domannand95-svg
 Reviewers:
 - Core Reviewers
-Last Updated: 2026-07-31
-Evidence: A02 owner-approved planning checkpoint
+Last Updated: 2026-08-11
+Evidence: PR #127 owner-approved merge
 Depends On:
 - SOV-ARCH-GAR-001
 - HB-CH04
@@ -18,11 +18,11 @@ Supersedes: None
 
 ## Status
 
-Proposed
+Accepted
 
-This decision becomes accepted only after owner-approved merge. It defines
-constitutional contracts for later implementation and does not claim that the
-runtime currently enforces them.
+This decision was accepted through owner-approved PR #127. It defines
+constitutional contracts for later implementation; acceptance does not claim
+that the runtime currently enforces every role or transition described here.
 
 ## Context
 
@@ -305,5 +305,7 @@ A02 is accepted when:
 
 ## Changelog
 
+- **v1.0 status reconciliation (2026-08-11):** Recorded acceptance through
+  owner-approved PR #127 without changing the decision text.
 - **v1.0 (2026-07-31):** Proposed the constitutional authority-separation
   contract for A02.
