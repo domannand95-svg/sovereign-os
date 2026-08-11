@@ -8,6 +8,10 @@ use sovereign_registry::IdentityId;
 use std::collections::HashSet;
 use std::fmt;
 
+mod objective;
+
+pub use objective::{ObjectiveError, ObjectivePayload, MAX_LIST_ITEMS, MAX_TEXT_FIELD_LEN};
+
 pub const EVIDENCE_SCHEMA_VERSION: u16 = 1;
 pub const MAX_EVIDENCE_PARENTS: usize = 64;
 pub const MAX_EVIDENCE_PAYLOAD_LEN: usize = 1024 * 1024;
@@ -89,6 +93,23 @@ pub struct EvidenceRecord {
 }
 
 impl EvidenceRecord {
+    pub fn new_objective(
+        issuer_id: IdentityId,
+        subject_id: IdentityId,
+        policy_id: IdentityId,
+        parent_ids: Vec<RecordId>,
+        payload: ObjectivePayload,
+    ) -> Result<Self, EvidenceError> {
+        Self::new(
+            RecordKind::Objective,
+            issuer_id,
+            subject_id,
+            policy_id,
+            parent_ids,
+            payload.encode(),
+        )
+    }
+
     pub fn new(
         kind: RecordKind,
         issuer_id: IdentityId,
@@ -145,6 +166,16 @@ impl EvidenceRecord {
 
     pub const fn id(&self) -> RecordId {
         self.id
+    }
+
+    pub fn decode_objective_payload(&self) -> Result<ObjectivePayload, EvidencePayloadError> {
+        if self.kind != RecordKind::Objective {
+            return Err(EvidencePayloadError::WrongRecordKind {
+                expected: RecordKind::Objective,
+                actual: self.kind,
+            });
+        }
+        ObjectivePayload::decode(&self.payload).map_err(EvidencePayloadError::Objective)
     }
 
     pub fn encode(&self) -> Vec<u8> {
@@ -255,6 +286,30 @@ impl fmt::Display for EvidenceError {
 
 impl std::error::Error for EvidenceError {}
 
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum EvidencePayloadError {
+    WrongRecordKind {
+        expected: RecordKind,
+        actual: RecordKind,
+    },
+    Objective(ObjectiveError),
+}
+
+impl fmt::Display for EvidencePayloadError {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(formatter, "{self:?}")
+    }
+}
+
+impl std::error::Error for EvidencePayloadError {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        match self {
+            Self::WrongRecordKind { .. } => None,
+            Self::Objective(error) => Some(error),
+        }
+    }
+}
+
 fn validate_parts(
     issuer_id: IdentityId,
     subject_id: IdentityId,
@@ -341,6 +396,52 @@ mod tests {
             b"canonical payload".to_vec(),
         )
         .unwrap()
+    }
+
+    fn objective_payload() -> ObjectivePayload {
+        ObjectivePayload::new(
+            "Bound the research question".to_owned(),
+            "Canonical payload implementation only".to_owned(),
+            vec!["Round-trip bytes remain stable".to_owned()],
+            vec!["No admission authority".to_owned()],
+            Some(1_786_406_400),
+        )
+        .unwrap()
+    }
+
+    #[test]
+    fn typed_objective_record_round_trips_without_kind_confusion() {
+        let payload = objective_payload();
+        let record = EvidenceRecord::new_objective(
+            identity(1),
+            identity(2),
+            identity(3),
+            vec![RecordId::from_bytes([4; ID_LEN])],
+            payload.clone(),
+        )
+        .unwrap();
+
+        assert_eq!(record.kind(), RecordKind::Objective);
+        assert_eq!(
+            record.id().to_string(),
+            "07f6521b9f6105551b1c356ebd92629d1f532298c180d2615b006bbff2264ade"
+        );
+        assert_eq!(record.decode_objective_payload().unwrap(), payload);
+        let decoded_record = EvidenceRecord::decode(&record.encode()).unwrap();
+        assert_eq!(decoded_record.decode_objective_payload().unwrap(), payload);
+    }
+
+    #[test]
+    fn objective_decoder_rejects_record_kind_confusion() {
+        let claim = record(RecordKind::Claim);
+
+        assert_eq!(
+            claim.decode_objective_payload().unwrap_err(),
+            EvidencePayloadError::WrongRecordKind {
+                expected: RecordKind::Objective,
+                actual: RecordKind::Claim,
+            }
+        );
     }
 
     #[test]
