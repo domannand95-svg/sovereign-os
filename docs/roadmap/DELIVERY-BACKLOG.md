@@ -65,8 +65,8 @@ workspace, and Linux/Windows CI.
 
 ### A04 — Research artifact and evidence schemas
 
-- **Status:** Next approved dependency-correct architecture slice after v0.1
-  closure.
+- **Status:** In progress — common envelope and approved v1 binary-encoding
+  baseline complete; typed payload implementation proceeds by record kind.
 
 - **Outcome:** Define objectives, claims, sources, methods, uncertainty, failed
   attempts, reviewer findings, disputes, and dispositions.

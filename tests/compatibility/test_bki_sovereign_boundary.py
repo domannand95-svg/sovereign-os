@@ -127,7 +127,10 @@ def test_actual_a04_spec_translates_to_namespaced_profile():
         "profile_version": "bki.sovereign.profile.v1",
         "document_id": "SPEC-EV-001",
         "version": "0.1",
-        "status": {"namespace": "sovereign", "value": "Proposed"},
+        "status": {
+            "namespace": "sovereign",
+            "value": "Approved Implementation Baseline",
+        },
         "last_revised": "2026-08-11",
     }
 

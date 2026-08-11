@@ -2,7 +2,7 @@
 Document: Governed Research Artifacts and Evidence
 ID: SPEC-EV-001
 Version: 0.1
-Status: Proposed
+Status: Approved Implementation Baseline
 Owner: Repository Maintainer
 Reviewers:
 - Core Reviewers
@@ -112,8 +112,9 @@ Decoders shall reject trailing bytes, truncation, integer overflow, invalid
 UTF-8, unsupported discriminators, non-canonical ordering, and declared lengths
 that exceed the remaining input or governed maximum.
 
-Exact maximum lengths and fixed test vectors shall be frozen in the Rust
-implementation PR before this specification can advance from Proposed.
+Exact maximum lengths and temporal rules are frozen by
+[`SPEC-EV-001-ENC-001`](SPEC-EV-001-A04-Binary-Encoding.md). Fixed vectors are
+frozen with each typed Rust payload implementation.
 
 ## 6. Objective Record
 
@@ -308,6 +309,6 @@ integration remain separate later items.
 
 ## 18. Acceptance Decision
 
-This proposed specification advances only after owner-approved merge. The merge
-authorizes the A04 schema implementation slice; it does not activate any runtime
-authority described elsewhere in the Sovereign OS architecture.
+The owner-approved encoding baseline authorizes the A04 schema implementation
+slice. It does not activate any runtime authority described elsewhere in the
+Sovereign OS architecture.
