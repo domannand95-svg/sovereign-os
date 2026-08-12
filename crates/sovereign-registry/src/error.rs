@@ -11,6 +11,11 @@ pub enum RegistryError {
     IdentityDescriptorTooLarge,
     UnknownIdentityKind(u8),
     UnsupportedIdentityVersion(u16),
+    IdentityKindNotPermittedForVersion { version: u16, kind: u8 },
+    UnsupportedEnvironmentSchema(u8),
+    UnallocatedEnvironmentNamespace(u8),
+    UnsupportedEnvironmentDigestAlgorithm(u8),
+    InvalidEnvironmentDescriptorLength(usize),
     TruncatedIdentityEncoding,
     TrailingIdentityBytes,
     ZeroIdentity,
@@ -52,6 +57,26 @@ impl fmt::Display for RegistryError {
             Self::UnsupportedIdentityVersion(version) => write!(
                 f,
                 "Registry Error: Unsupported identity encoding version {version}."
+            ),
+            Self::IdentityKindNotPermittedForVersion { version, kind } => write!(
+                f,
+                "Registry Error: Identity kind tag {kind} is not permitted for identity encoding version {version}."
+            ),
+            Self::UnsupportedEnvironmentSchema(version) => write!(
+                f,
+                "Registry Error: Unsupported Environment descriptor schema version {version}."
+            ),
+            Self::UnallocatedEnvironmentNamespace(namespace) => write!(
+                f,
+                "Registry Error: Environment definition namespace {namespace} is not allocated."
+            ),
+            Self::UnsupportedEnvironmentDigestAlgorithm(algorithm) => write!(
+                f,
+                "Registry Error: Unsupported Environment digest algorithm {algorithm}."
+            ),
+            Self::InvalidEnvironmentDescriptorLength(length) => write!(
+                f,
+                "Registry Error: Environment descriptor length {length} is invalid; expected exactly 35 bytes."
             ),
             Self::TruncatedIdentityEncoding => {
                 write!(f, "Registry Error: Identity encoding is truncated.")
