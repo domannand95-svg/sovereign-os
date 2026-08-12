@@ -500,7 +500,7 @@ mod tests {
             SourcePayload::decode(&trailing).unwrap_err(),
             SourceError::TrailingBytes
         );
-       }
+    }
 
     #[test]
     fn oversized_payload_is_rejected_before_decoding_fields() {
