@@ -1,5 +1,15 @@
-use crate::{Caid, RegistryError, RegistryGraph, RegistryNode, RegistryNodeType};
+use crate::{
+    deserialize_edge_v2, Caid, RegistryEdge, RegistryError, RegistryGraph, RegistryNode,
+    RegistryNodeType, VersionedRegistryNode, REGISTRY_EDGE_MAGIC_V2, REGISTRY_NODE_MAGIC_V2,
+};
 use sovereign_ledger::{EventRecord, EventType};
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum RegistryWireRecord {
+    LegacyNode(RegistryNode),
+    VersionedNode(VersionedRegistryNode),
+    VersionedEdge(RegistryEdge),
+}
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub struct RegistryLedgerSync;
@@ -69,6 +79,21 @@ impl RegistryLedgerSync {
             bytes[cursor..cursor + payload_len].to_vec(),
             parents,
         )
+    }
+
+    pub fn decode_wire_record(bytes: &[u8]) -> Result<RegistryWireRecord, RegistryError> {
+        let leading = *bytes.first().ok_or(RegistryError::SchemaViolation)?;
+
+        match leading {
+            0x01..=0x03 => Self::deserialize_node(bytes).map(RegistryWireRecord::LegacyNode),
+            REGISTRY_NODE_MAGIC_V2 => {
+                VersionedRegistryNode::decode(bytes).map(RegistryWireRecord::VersionedNode)
+            }
+            REGISTRY_EDGE_MAGIC_V2 => {
+                deserialize_edge_v2(bytes).map(RegistryWireRecord::VersionedEdge)
+            }
+            _ => Err(RegistryError::SchemaViolation),
+        }
     }
 
     pub fn ingest_record(
@@ -180,6 +205,64 @@ mod tests {
             let node = RegistryLedgerSync::deserialize_node(&bytes).unwrap();
             assert_eq!(node.node_type(), expected_type);
         }
+    }
+
+    #[test]
+    fn wire_router_preserves_legacy_v1_path() {
+        let node = RegistryNode::new(RegistryNodeType::Actor, vec![0xFF], vec![]).unwrap();
+
+        let encoded = RegistryLedgerSync::serialize_node(&node);
+
+        assert_eq!(
+            RegistryLedgerSync::decode_wire_record(&encoded).unwrap(),
+            RegistryWireRecord::LegacyNode(node)
+        );
+    }
+
+    #[test]
+    fn wire_router_selects_v2_node_path() {
+        let node = VersionedRegistryNode::new(
+            crate::ObjectClass::Specification,
+            vec![Caid([0xAA; 32])],
+            vec![0xFF],
+        )
+        .unwrap();
+
+        let encoded = node.encode();
+
+        assert_eq!(
+            RegistryLedgerSync::decode_wire_record(&encoded).unwrap(),
+            RegistryWireRecord::VersionedNode(node)
+        );
+    }
+
+    #[test]
+    fn wire_router_selects_v2_edge_path() {
+        let edge = RegistryEdge::new(
+            Caid([0xAA; 32]),
+            Caid([0xBB; 32]),
+            crate::RelationType::DerivedFrom,
+        );
+
+        let encoded = crate::serialize_edge_v2(&edge);
+
+        assert_eq!(
+            RegistryLedgerSync::decode_wire_record(&encoded).unwrap(),
+            RegistryWireRecord::VersionedEdge(edge)
+        );
+    }
+
+    #[test]
+    fn wire_router_rejects_unknown_and_empty_payloads() {
+        assert_eq!(
+            RegistryLedgerSync::decode_wire_record(&[]),
+            Err(RegistryError::SchemaViolation)
+        );
+
+        assert_eq!(
+            RegistryLedgerSync::decode_wire_record(&[0xFC]),
+            Err(RegistryError::SchemaViolation)
+        );
     }
 
     #[test]

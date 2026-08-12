@@ -24,4 +24,4 @@ pub use identity::{
     MAX_LINEAGE_PARENTS,
 };
 pub use node::{RegistryNode, RegistryNodeType};
-pub use sync::RegistryLedgerSync;
+pub use sync::{RegistryLedgerSync, RegistryWireRecord};
