@@ -501,4 +501,174 @@ mod tests {
             SourceError::TrailingBytes
         );
     }
+
+    #[test]
+    fn oversized_payload_is_rejected_before_decoding_fields() {
+        let oversized = vec![0_u8; MAX_EVIDENCE_PAYLOAD_LEN + 1];
+
+        assert_eq!(
+            SourcePayload::decode(&oversized).unwrap_err(),
+            SourceError::PayloadTooLarge
+        );
+    }
+
+    #[test]
+    fn present_publication_text_rejects_nul_invalid_utf8_and_oversized_length() {
+        let payload = SourcePayload::new(
+            "L".into(),
+            DigestAlgorithm::Sha256,
+            [1; 32],
+            0,
+            "text/plain".into(),
+            Some("x".into()),
+        )
+        .unwrap();
+
+        let encoded = payload.encode();
+
+        // Layout for this deliberately small fixture:
+        //
+        // locator:
+        //   4-byte length
+        //   1 byte "L"
+        //
+        // digest algorithm:
+        //   1 byte
+        //
+        // digest:
+        //   32 bytes
+        //
+        // retrieved_at:
+        //   8 bytes
+        //
+        // media type:
+        //   4-byte length
+        //   10 bytes "text/plain"
+        //
+        // publication marker:
+        //   1 byte
+        //
+        // publication text:
+        //   4-byte length
+        //   bytes
+        let publication_marker_index = 4 + 1 + 1 + 32 + 8 + 4 + "text/plain".len();
+        let publication_length_index = publication_marker_index + 1;
+        let publication_text_index = publication_length_index + 4;
+
+        assert_eq!(encoded[publication_marker_index], 1);
+
+        let mut nul = encoded.clone();
+        nul[publication_text_index] = 0;
+        assert_eq!(
+            SourcePayload::decode(&nul).unwrap_err(),
+            SourceError::NulText
+        );
+
+        let mut invalid_utf8 = encoded.clone();
+        invalid_utf8[publication_text_index] = 0xff;
+        assert_eq!(
+            SourcePayload::decode(&invalid_utf8).unwrap_err(),
+            SourceError::InvalidUtf8
+        );
+
+        let mut oversized_length = encoded;
+        oversized_length[publication_length_index..publication_text_index]
+            .copy_from_slice(&((MAX_TEXT_FIELD_LEN + 1) as u32).to_be_bytes());
+
+        assert_eq!(
+            SourcePayload::decode(&oversized_length).unwrap_err(),
+            SourceError::TextTooLarge
+        );
+    }
+
+    #[test]
+    fn digest_wire_boundary_rejects_31_and_33_byte_layouts() {
+        let payload = SourcePayload::new(
+            "L".into(),
+            DigestAlgorithm::Sha256,
+            [0x42; 32],
+            42,
+            "text/plain".into(),
+            None,
+        )
+        .unwrap();
+
+        let encoded = payload.encode();
+
+        // For locator "L":
+        //
+        // 4-byte locator length
+        // + 1-byte locator
+        // + 1-byte digest algorithm
+        //
+        // therefore digest begins at byte 6 and occupies exactly 32 bytes.
+        let digest_start = 4 + 1 + 1;
+        let digest_end = digest_start + 32;
+
+        // Remove one digest byte. Because Source v1 has no digest-length prefix,
+        // the decoder will still attempt to consume exactly 32 bytes. This shifts
+        // the following fields and must fail closed.
+        let mut digest_31 = encoded.clone();
+        digest_31.remove(digest_end - 1);
+
+        assert!(
+            SourcePayload::decode(&digest_31).is_err(),
+            "31-byte digest wire layout must fail closed"
+        );
+
+        // Insert one additional digest byte. The decoder must not reinterpret a
+        // 33-byte digest as valid canonical Source v1 content.
+        let mut digest_33 = encoded;
+        digest_33.insert(digest_end, 0x42);
+
+        assert!(
+            SourcePayload::decode(&digest_33).is_err(),
+            "33-byte digest wire layout must fail closed"
+        );
+    }
+
+    #[test]
+    fn media_type_rejects_extended_noncanonical_and_invalid_token_corpus() {
+        for invalid in [
+            "TEXT/plain",
+            "text/PLAIN",
+            "text//plain",
+            "text/ plain",
+            "text/plain ",
+            " text/plain",
+            "text/\tplain",
+            "text/plain\t",
+            "text/plain; charset=utf-8",
+            "text/plain;charset=utf-8",
+            "text/pl@in",
+            "text/pl:ain",
+            "text/pl?ain",
+            "text/pl,ain",
+            "text/pl=ain",
+            "text/pl(ain",
+            "text/pl)ain",
+            "text/pl[ain",
+            "text/pl]ain",
+            "text/pl{ain",
+            "text/pl}ain",
+            "text/pl\"ain",
+            "text/pl\\ain",
+            "tęxt/plain",
+            "text/pläin",
+        ] {
+            assert_eq!(
+                SourcePayload::new(
+                    "L".into(),
+                    DigestAlgorithm::Sha256,
+                    [1; 32],
+                    0,
+                    invalid.into(),
+                    None,
+                )
+                .unwrap_err(),
+                SourceError::InvalidMediaType,
+                "unexpectedly accepted invalid media type: {invalid}"
+            );
+        }
+    }
 }
