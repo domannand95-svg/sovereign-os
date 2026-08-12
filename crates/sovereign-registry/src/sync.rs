@@ -109,6 +109,80 @@ mod tests {
     }
 
     #[test]
+    fn legacy_v1_capability_fixed_wire_vector() {
+        let parent = Caid([0xAA; 32]);
+        let node =
+            RegistryNode::new(RegistryNodeType::Capability, vec![0xFF], vec![parent]).unwrap();
+
+        let encoded = RegistryLedgerSync::serialize_node(&node);
+
+        let mut expected = Vec::new();
+        expected.push(0x01);
+        expected.extend_from_slice(&1_u32.to_be_bytes());
+        expected.extend_from_slice(&[0xAA; 32]);
+        expected.extend_from_slice(&1_u32.to_be_bytes());
+        expected.push(0xFF);
+
+        assert_eq!(encoded.len(), 42);
+        assert_eq!(encoded, expected);
+    }
+
+    #[test]
+    fn legacy_v1_capability_fixed_caid_vector() {
+        let node = RegistryNode::new(
+            RegistryNodeType::Capability,
+            vec![0xFF],
+            vec![Caid([0xAA; 32])],
+        )
+        .unwrap();
+
+        let expected = Caid([
+            0xB6, 0xDB, 0x69, 0x14, 0xF7, 0x80, 0x92, 0x98, 0x0C, 0x96, 0x23, 0x61, 0xC8, 0x7B,
+            0x21, 0xD9, 0xE3, 0xA6, 0x37, 0x15, 0x41, 0xD9, 0xD1, 0xD2, 0x76, 0x17, 0x91, 0x68,
+            0x75, 0x90, 0xCB, 0x46,
+        ]);
+
+        assert_eq!(node.caid(), expected);
+    }
+
+    #[test]
+    fn legacy_v1_round_trip_is_byte_identical() {
+        let node = RegistryNode::new(
+            RegistryNodeType::Capability,
+            vec![0xFF],
+            vec![Caid([0xAA; 32])],
+        )
+        .unwrap();
+
+        let original = RegistryLedgerSync::serialize_node(&node);
+        let decoded = RegistryLedgerSync::deserialize_node(&original).unwrap();
+        let reencoded = RegistryLedgerSync::serialize_node(&decoded);
+
+        assert_eq!(reencoded, original);
+        assert_eq!(decoded.caid(), node.caid());
+    }
+
+    #[test]
+    fn legacy_v1_type_discriminators_remain_frozen() {
+        let cases = [
+            (0x01, RegistryNodeType::Capability),
+            (0x02, RegistryNodeType::Actor),
+            (0x03, RegistryNodeType::DataManifest),
+        ];
+
+        for (tag, expected_type) in cases {
+            let mut bytes = Vec::new();
+            bytes.push(tag);
+            bytes.extend_from_slice(&0_u32.to_be_bytes());
+            bytes.extend_from_slice(&1_u32.to_be_bytes());
+            bytes.push(0xFF);
+
+            let node = RegistryLedgerSync::deserialize_node(&bytes).unwrap();
+            assert_eq!(node.node_type(), expected_type);
+        }
+    }
+
+    #[test]
     fn ingest_spurious_record_types_skipped_safely() {
         let mut graph = RegistryGraph::new();
 
