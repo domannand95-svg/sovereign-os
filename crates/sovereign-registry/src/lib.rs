@@ -2,6 +2,7 @@
 //! graph identity substrate for Sovereign OS.
 
 pub mod caid;
+pub mod edge;
 pub mod error;
 pub mod graph;
 pub mod identity;
@@ -9,6 +10,7 @@ pub mod node;
 pub mod sync;
 
 pub use caid::Caid;
+pub use edge::{ObjectClass, RegistryEdge, RelationType};
 pub use error::RegistryError;
 pub use graph::RegistryGraph;
 pub use identity::{
