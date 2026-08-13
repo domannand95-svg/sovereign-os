@@ -9,6 +9,7 @@ pub mod graph;
 pub mod identity;
 pub mod node;
 pub mod sync;
+mod validation;
 
 pub use caid::Caid;
 pub use edge::{ObjectClass, RegistryEdge, RelationType};
@@ -25,3 +26,4 @@ pub use identity::{
 };
 pub use node::{RegistryNode, RegistryNodeType};
 pub use sync::{RegistryLedgerSync, RegistryWireRecord};
+pub use validation::validate_governed_reference;

@@ -1,3 +1,4 @@
+use crate::edge::ObjectClass;
 use std::error::Error;
 use std::fmt;
 
@@ -5,13 +6,21 @@ use std::fmt;
 pub enum RegistryError {
     DuplicateEntity,
     UnresolvedReference,
+    ObjectClassMismatch {
+        expected: ObjectClass,
+        actual: ObjectClass,
+    },
+    ObjectClassUnavailable,
     SchemaViolation,
     GraphCycleDetected,
     EmptyIdentityDescriptor,
     IdentityDescriptorTooLarge,
     UnknownIdentityKind(u8),
     UnsupportedIdentityVersion(u16),
-    IdentityKindNotPermittedForVersion { version: u16, kind: u8 },
+    IdentityKindNotPermittedForVersion {
+        version: u16,
+        kind: u8,
+    },
     UnsupportedEnvironmentSchema(u8),
     UnallocatedEnvironmentNamespace(u8),
     UnsupportedEnvironmentDigestAlgorithm(u8),
@@ -36,6 +45,14 @@ impl fmt::Display for RegistryError {
             Self::UnresolvedReference => write!(
                 f,
                 "Registry Error: Targeted capability reference is unresolved."
+            ),
+            Self::ObjectClassMismatch { expected, actual } => write!(
+                f,
+                "Registry Error: Object class mismatch; expected {expected:?}, got {actual:?}."
+            ),
+            Self::ObjectClassUnavailable => write!(
+                f,
+                "Registry Error: Referenced object does not expose a v2 ObjectClass."
             ),
             Self::SchemaViolation => write!(
                 f,
