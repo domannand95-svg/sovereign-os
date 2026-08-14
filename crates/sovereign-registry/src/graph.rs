@@ -1,5 +1,19 @@
+use crate::encoding::RegistryGenesisPayloadV1;
 use crate::{Caid, ObjectClass, RegistryEdge, RegistryError, RegistryNode, VersionedRegistryNode};
 use std::collections::{HashMap, HashSet};
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub struct RegistryBootstrapConfig {
+    expected_genesis_caid: Caid,
+}
+
+impl RegistryBootstrapConfig {
+    pub const fn new(expected_genesis_caid: Caid) -> Self {
+        Self {
+            expected_genesis_caid,
+        }
+    }
+}
 
 #[derive(Debug, Clone, Default)]
 pub struct RegistryGraph {
@@ -7,11 +21,19 @@ pub struct RegistryGraph {
     versioned_nodes: HashMap<Caid, VersionedRegistryNode>,
     dependents: HashMap<Caid, Vec<Caid>>,
     edges: HashSet<RegistryEdge>,
+    bootstrap_config: Option<RegistryBootstrapConfig>,
 }
 
 impl RegistryGraph {
     pub fn new() -> Self {
         Self::default()
+    }
+
+    pub fn new_v2_bootstrap(config: RegistryBootstrapConfig) -> Self {
+        Self {
+            bootstrap_config: Some(config),
+            ..Self::default()
+        }
     }
 
     pub fn contains(&self, caid: &Caid) -> bool {
@@ -38,6 +60,33 @@ impl RegistryGraph {
     ) -> Result<(), RegistryError> {
         let node_caid = node.caid();
 
+        if node.class() == ObjectClass::RegistryGenesis {
+            RegistryGenesisPayloadV1::decode(node.payload())?;
+
+            if !node.parents().is_empty() {
+                return Err(RegistryError::InvalidGenesisProvenance);
+            }
+
+            let config = match self.bootstrap_config {
+                Some(config) => config,
+                None => return Err(RegistryError::UnauthorizedGenesis),
+            };
+
+            if node_caid != config.expected_genesis_caid {
+                return Err(RegistryError::UnauthorizedGenesis);
+            }
+
+            if self.versioned_nodes.contains_key(&node_caid) {
+                return Err(RegistryError::GenesisAlreadyEstablished);
+            }
+
+            if self.has_admitted_nodes() {
+                return Err(RegistryError::GenesisNotPermittedInExistingGraph);
+            }
+        } else if node.parents().is_empty() {
+            return Err(RegistryError::MissingProvenance);
+        }
+
         if self.nodes.contains_key(&node_caid) || self.versioned_nodes.contains_key(&node_caid) {
             return Err(RegistryError::DuplicateEntity);
         }
@@ -57,6 +106,10 @@ impl RegistryGraph {
         self.versioned_nodes.insert(node_caid, node);
 
         Ok(())
+    }
+
+    fn has_admitted_nodes(&self) -> bool {
+        !self.nodes.is_empty() || !self.versioned_nodes.is_empty()
     }
 
     fn contains_admitted_node(&self, caid: &Caid) -> bool {
@@ -686,7 +739,8 @@ mod v2_node_admission_tests {
     fn v2_node_can_be_admitted_and_retrieved() {
         let mut graph = RegistryGraph::new();
 
-        let node = versioned_node(ObjectClass::Workflow, 0x11, vec![]);
+        let legacy_parent = insert_legacy_node(&mut graph, 0x10);
+        let node = versioned_node(ObjectClass::Workflow, 0x11, vec![legacy_parent]);
         let caid = node.caid();
 
         graph.insert_versioned_node(node.clone()).unwrap();
@@ -729,7 +783,8 @@ mod v2_node_admission_tests {
     fn v2_node_accepts_admitted_v2_parent() {
         let mut graph = RegistryGraph::new();
 
-        let parent = versioned_node(ObjectClass::Dataset, 0x41, vec![]);
+        let legacy_parent = insert_legacy_node(&mut graph, 0x40);
+        let parent = versioned_node(ObjectClass::Dataset, 0x41, vec![legacy_parent]);
         let parent_caid = parent.caid();
 
         graph.insert_versioned_node(parent).unwrap();
@@ -749,7 +804,8 @@ mod v2_node_admission_tests {
     fn duplicate_v2_node_admission_fails_closed() {
         let mut graph = RegistryGraph::new();
 
-        let node = versioned_node(ObjectClass::Policy, 0x51, vec![]);
+        let legacy_parent = insert_legacy_node(&mut graph, 0x50);
+        let node = versioned_node(ObjectClass::Policy, 0x51, vec![legacy_parent]);
 
         graph.insert_versioned_node(node.clone()).unwrap();
 
@@ -763,7 +819,8 @@ mod v2_node_admission_tests {
     fn v2_node_does_not_masquerade_as_legacy_registry_node() {
         let mut graph = RegistryGraph::new();
 
-        let node = versioned_node(ObjectClass::Event, 0x61, vec![]);
+        let legacy_parent = insert_legacy_node(&mut graph, 0x60);
+        let node = versioned_node(ObjectClass::Event, 0x61, vec![legacy_parent]);
         let caid = node.caid();
 
         graph.insert_versioned_node(node).unwrap();
@@ -805,9 +862,21 @@ mod v2_cross_version_graph_tests {
     fn semantic_edge_accepts_v2_to_v2_endpoints() {
         let mut graph = RegistryGraph::new();
 
-        let parent = insert_v2_node(&mut graph, ObjectClass::Specification, 0x71, vec![]);
+        let provenance_anchor = insert_legacy_node(&mut graph, 0x70);
 
-        let child = insert_v2_node(&mut graph, ObjectClass::Workflow, 0x72, vec![]);
+        let parent = insert_v2_node(
+            &mut graph,
+            ObjectClass::Specification,
+            0x71,
+            vec![provenance_anchor],
+        );
+
+        let child = insert_v2_node(
+            &mut graph,
+            ObjectClass::Workflow,
+            0x72,
+            vec![provenance_anchor],
+        );
 
         let edge = RegistryEdge::new(parent, child, RelationType::Governs);
 
@@ -820,9 +889,15 @@ mod v2_cross_version_graph_tests {
     fn semantic_edge_accepts_legacy_to_v2_endpoints() {
         let mut graph = RegistryGraph::new();
 
+        let provenance_anchor = insert_legacy_node(&mut graph, 0x80);
         let parent = insert_legacy_node(&mut graph, 0x81);
 
-        let child = insert_v2_node(&mut graph, ObjectClass::EvidencePackage, 0x82, vec![]);
+        let child = insert_v2_node(
+            &mut graph,
+            ObjectClass::EvidencePackage,
+            0x82,
+            vec![provenance_anchor],
+        );
 
         let edge = RegistryEdge::new(parent, child, RelationType::Produces);
 
@@ -835,7 +910,13 @@ mod v2_cross_version_graph_tests {
     fn semantic_edge_accepts_v2_to_legacy_endpoints() {
         let mut graph = RegistryGraph::new();
 
-        let parent = insert_v2_node(&mut graph, ObjectClass::Policy, 0x91, vec![]);
+        let provenance_anchor = insert_legacy_node(&mut graph, 0x90);
+        let parent = insert_v2_node(
+            &mut graph,
+            ObjectClass::Policy,
+            0x91,
+            vec![provenance_anchor],
+        );
 
         let child = insert_legacy_node(&mut graph, 0x92);
 
@@ -850,7 +931,13 @@ mod v2_cross_version_graph_tests {
     fn semantic_edge_rejects_cycle_through_v2_provenance() {
         let mut graph = RegistryGraph::new();
 
-        let parent = insert_v2_node(&mut graph, ObjectClass::Dataset, 0xA1, vec![]);
+        let provenance_anchor = insert_legacy_node(&mut graph, 0xA0);
+        let parent = insert_v2_node(
+            &mut graph,
+            ObjectClass::Dataset,
+            0xA1,
+            vec![provenance_anchor],
+        );
 
         let child = insert_v2_node(&mut graph, ObjectClass::Workflow, 0xA2, vec![parent]);
 

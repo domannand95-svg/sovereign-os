@@ -330,6 +330,8 @@ the expected Genesis CAID.
 
 A Registry instance establishing a native Registry v2 graph SHALL be initialized with the governance-approved expected Genesis CAID before Genesis admission is attempted.
 
+If Genesis admission is attempted when no governance-approved expected Genesis CAID has been provisioned for the Registry instance, admission MUST fail closed with `RegistryError::UnauthorizedGenesis`.
+
 A candidate `RegistryGenesis` node MUST satisfy:
 
     candidate.caid == expected_genesis_caid

@@ -29,7 +29,12 @@ mod tests {
     use crate::{RegistryNode, RegistryNodeType, VersionedRegistryNode};
 
     fn insert_v2_node(graph: &mut RegistryGraph, class: ObjectClass, seed: u8) -> Caid {
-        let node = VersionedRegistryNode::new(class, vec![], vec![seed]).unwrap();
+        let legacy_parent =
+            RegistryNode::new(RegistryNodeType::Capability, vec![0xA0, seed], vec![]).unwrap();
+        let parent_caid = legacy_parent.caid();
+        graph.insert_node(legacy_parent).unwrap();
+
+        let node = VersionedRegistryNode::new(class, vec![parent_caid], vec![seed]).unwrap();
         let caid = node.caid();
 
         graph.insert_versioned_node(node).unwrap();

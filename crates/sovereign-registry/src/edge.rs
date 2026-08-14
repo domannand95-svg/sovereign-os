@@ -15,6 +15,7 @@ pub enum ObjectClass {
     Workflow = 0x06,
     VerificationArtifact = 0x07,
     EvidencePackage = 0x08,
+    RegistryGenesis = 0x09,
 }
 
 impl ObjectClass {
@@ -32,6 +33,7 @@ impl ObjectClass {
             0x06 => Some(Self::Workflow),
             0x07 => Some(Self::VerificationArtifact),
             0x08 => Some(Self::EvidencePackage),
+            0x09 => Some(Self::RegistryGenesis),
             _ => None,
         }
     }
@@ -116,6 +118,7 @@ mod tests {
             (ObjectClass::Workflow, 0x06),
             (ObjectClass::VerificationArtifact, 0x07),
             (ObjectClass::EvidencePackage, 0x08),
+            (ObjectClass::RegistryGenesis, 0x09),
         ];
 
         for (class, tag) in cases {
@@ -124,7 +127,7 @@ mod tests {
         }
 
         assert_eq!(ObjectClass::from_u8(0x00), None);
-        assert_eq!(ObjectClass::from_u8(0x09), None);
+        assert_eq!(ObjectClass::from_u8(0x0A), None);
     }
 
     #[test]
