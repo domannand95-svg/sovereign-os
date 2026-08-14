@@ -7,6 +7,116 @@ pub const REGISTRY_ENCODING_VERSION_V2: u16 = 0x0002;
 const REGISTRY_NODE_DOMAIN_V2: &[u8] = b"SOVEREIGN_REGISTRY_NODE_V2";
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+pub struct RegistryGenesisPayloadV1 {
+    environment_id: Vec<u8>,
+    root_policy_caid: Option<Caid>,
+}
+
+impl RegistryGenesisPayloadV1 {
+    pub fn decode(bytes: &[u8]) -> Result<Self, RegistryError> {
+        if bytes.len() < 5 {
+            return Err(RegistryError::MalformedGenesisPayload);
+        }
+
+        let environment_len = u16::from_be_bytes([bytes[0], bytes[1]]) as usize;
+        let environment_start = 2_usize;
+        let environment_end = environment_start
+            .checked_add(environment_len)
+            .ok_or(RegistryError::MalformedGenesisPayload)?;
+
+        let fixed_end = environment_end
+            .checked_add(3)
+            .ok_or(RegistryError::MalformedGenesisPayload)?;
+
+        if bytes.len() < fixed_end {
+            return Err(RegistryError::MalformedGenesisPayload);
+        }
+
+        let environment_id = &bytes[environment_start..environment_end];
+
+        if std::str::from_utf8(environment_id).is_err() {
+            return Err(RegistryError::MalformedGenesisPayload);
+        }
+
+        let protocol_version =
+            u16::from_be_bytes([bytes[environment_end], bytes[environment_end + 1]]);
+
+        if protocol_version != REGISTRY_ENCODING_VERSION_V2 {
+            return Err(RegistryError::MalformedGenesisPayload);
+        }
+
+        let root_policy_present = bytes[environment_end + 2];
+
+        let root_policy_caid = match root_policy_present {
+            0x00 => {
+                if bytes.len() != fixed_end {
+                    return Err(RegistryError::MalformedGenesisPayload);
+                }
+
+                None
+            }
+            0x01 => {
+                let expected_end = fixed_end
+                    .checked_add(32)
+                    .ok_or(RegistryError::MalformedGenesisPayload)?;
+
+                if bytes.len() != expected_end {
+                    return Err(RegistryError::MalformedGenesisPayload);
+                }
+
+                let mut caid = [0_u8; 32];
+                caid.copy_from_slice(&bytes[fixed_end..expected_end]);
+                Some(Caid(caid))
+            }
+            _ => return Err(RegistryError::MalformedGenesisPayload),
+        };
+
+        Ok(Self {
+            environment_id: environment_id.to_vec(),
+            root_policy_caid,
+        })
+    }
+
+    pub fn environment_id(&self) -> &[u8] {
+        &self.environment_id
+    }
+
+    pub const fn protocol_version(&self) -> u16 {
+        REGISTRY_ENCODING_VERSION_V2
+    }
+
+    pub const fn root_policy_caid(&self) -> Option<Caid> {
+        self.root_policy_caid
+    }
+
+    pub fn encode(&self) -> Vec<u8> {
+        let environment_len = u16::try_from(self.environment_id.len())
+            .expect("decoded Genesis environment length must remain representable as u16");
+
+        let root_policy_len = if self.root_policy_caid.is_some() {
+            32
+        } else {
+            0
+        };
+        let mut buffer = Vec::with_capacity(5 + self.environment_id.len() + root_policy_len);
+
+        buffer.extend_from_slice(&environment_len.to_be_bytes());
+        buffer.extend_from_slice(&self.environment_id);
+        buffer.extend_from_slice(&REGISTRY_ENCODING_VERSION_V2.to_be_bytes());
+
+        match self.root_policy_caid {
+            Some(caid) => {
+                buffer.push(0x01);
+                buffer.extend_from_slice(&caid.0);
+            }
+            None => buffer.push(0x00),
+        }
+
+        buffer
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct VersionedRegistryNode {
     class: ObjectClass,
     parents: Vec<Caid>,
@@ -335,7 +445,7 @@ mod tests {
         .unwrap();
 
         let mut encoded = node.encode();
-        encoded[3] = 0x09;
+        encoded[3] = 0x0A;
 
         assert_eq!(
             VersionedRegistryNode::decode(&encoded),

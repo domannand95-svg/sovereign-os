@@ -6,6 +6,12 @@ use std::fmt;
 pub enum RegistryError {
     DuplicateEntity,
     UnresolvedReference,
+    MissingProvenance,
+    InvalidGenesisProvenance,
+    UnauthorizedGenesis,
+    MalformedGenesisPayload,
+    GenesisAlreadyEstablished,
+    GenesisNotPermittedInExistingGraph,
     ObjectClassMismatch {
         expected: ObjectClass,
         actual: ObjectClass,
@@ -45,6 +51,30 @@ impl fmt::Display for RegistryError {
             Self::UnresolvedReference => write!(
                 f,
                 "Registry Error: Targeted capability reference is unresolved."
+            ),
+            Self::MissingProvenance => write!(
+                f,
+                "Registry Error: Registry v2 non-genesis node requires at least one provenance parent."
+            ),
+            Self::InvalidGenesisProvenance => write!(
+                f,
+                "Registry Error: Registry v2 Genesis object must not declare provenance parents."
+            ),
+            Self::UnauthorizedGenesis => write!(
+                f,
+                "Registry Error: Genesis candidate does not match the governance-provisioned expected identity."
+            ),
+            Self::MalformedGenesisPayload => write!(
+                f,
+                "Registry Error: Registry v2 Genesis payload violates the canonical schema."
+            ),
+            Self::GenesisAlreadyEstablished => write!(
+                f,
+                "Registry Error: The authorized Registry v2 Genesis object is already established."
+            ),
+            Self::GenesisNotPermittedInExistingGraph => write!(
+                f,
+                "Registry Error: Genesis admission is not permitted in an already populated Registry graph."
             ),
             Self::ObjectClassMismatch { expected, actual } => write!(
                 f,
