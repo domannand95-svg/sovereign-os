@@ -1,6 +1,7 @@
 use crate::{
     Caid, CapabilityPayloadV1, FilesystemReadScopeV1, FilesystemWriteScopeV1, IdentityResolver,
-    NetworkScopeV1, ObjectClass, RegistryError, RegistryGraph, TargetScopeV1,
+    IssuerOperationalEligibility, IssuerStateResolver, NetworkScopeV1, ObjectClass, RegistryError,
+    RegistryGraph, TargetScopeV1,
 };
 
 pub fn validate_governed_reference(
@@ -101,12 +102,32 @@ pub fn validate_capability_temporal(
     Ok(())
 }
 
+pub fn validate_capability_issuer<R: IssuerStateResolver>(
+    resolver: &R,
+    capability: &CapabilityPayloadV1,
+    state_ref: &R::StateRef,
+) -> Result<(), RegistryError> {
+    let issuer_state = resolver
+        .resolve_issuer_state(&capability.issuer_identity(), state_ref)
+        .map_err(|_| RegistryError::UnauthorizedCapabilityIssuer)?;
+
+    if issuer_state.operational_eligibility() != IssuerOperationalEligibility::Eligible {
+        return Err(RegistryError::UnauthorizedCapabilityIssuer);
+    }
+
+    if !issuer_state.has_capability_v1_issuer_authority() {
+        return Err(RegistryError::UnauthorizedCapabilityIssuer);
+    }
+
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::{
-        IdentityId, IdentityKind, IdentityRecord, IdentityStateRef, RegistryNode, RegistryNodeType,
-        ResolvedIdentity, VersionedRegistryNode,
+        IdentityId, IdentityKind, IdentityRecord, IdentityStateRef, IssuerStateRef, RegistryNode,
+        RegistryNodeType, ResolvedIdentity, ResolvedIssuerState, VersionedRegistryNode,
     };
     use std::cell::RefCell;
 
@@ -448,6 +469,143 @@ mod tests {
         );
 
         assert_eq!(resolver.calls.borrow().len(), 1);
+    }
+
+    #[derive(Debug, Clone, PartialEq, Eq)]
+    struct TestIssuerStateRef([u8; 4]);
+
+    impl IssuerStateRef for TestIssuerStateRef {}
+
+    struct RecordingIssuerStateResolver {
+        outcome: Result<ResolvedIssuerState, RegistryError>,
+        calls: RefCell<Vec<(IdentityId, TestIssuerStateRef)>>,
+    }
+
+    impl RecordingIssuerStateResolver {
+        fn resolved(
+            eligibility: IssuerOperationalEligibility,
+            capability_v1_issuer_authority: bool,
+        ) -> Self {
+            Self {
+                outcome: Ok(ResolvedIssuerState::new(
+                    eligibility,
+                    capability_v1_issuer_authority,
+                )),
+                calls: RefCell::new(Vec::new()),
+            }
+        }
+
+        fn unavailable() -> Self {
+            Self {
+                outcome: Err(RegistryError::IdentityStateUnavailable),
+                calls: RefCell::new(Vec::new()),
+            }
+        }
+    }
+
+    impl IssuerStateResolver for RecordingIssuerStateResolver {
+        type StateRef = TestIssuerStateRef;
+
+        fn resolve_issuer_state(
+            &self,
+            issuer_identity: &IdentityId,
+            state_ref: &Self::StateRef,
+        ) -> Result<ResolvedIssuerState, RegistryError> {
+            self.calls
+                .borrow_mut()
+                .push((*issuer_identity, state_ref.clone()));
+
+            self.outcome
+        }
+    }
+
+    #[test]
+    fn capability_issuer_validation_accepts_eligible_authorized_issuer_and_replays() {
+        let issuer = IdentityRecord::new(IdentityKind::Agent, b"gate5:issuer".to_vec()).unwrap();
+        let subject = IdentityRecord::new(IdentityKind::Tool, b"gate5:subject".to_vec()).unwrap();
+        let payload = capability_payload_for_identity_test(issuer.id(), subject.id());
+        let resolver =
+            RecordingIssuerStateResolver::resolved(IssuerOperationalEligibility::Eligible, true);
+        let state_ref = TestIssuerStateRef([0xA1, 0x05, 0x0B, 0x01]);
+
+        let first = validate_capability_issuer(&resolver, &payload, &state_ref);
+        let replay = validate_capability_issuer(&resolver, &payload, &state_ref);
+
+        assert_eq!(first, Ok(()));
+        assert_eq!(replay, first);
+        assert_eq!(
+            resolver.calls.borrow().as_slice(),
+            &[
+                (issuer.id(), state_ref.clone()),
+                (issuer.id(), state_ref.clone()),
+            ]
+        );
+    }
+
+    #[test]
+    fn capability_issuer_validation_rejects_ineligible_issuer() {
+        let issuer =
+            IdentityRecord::new(IdentityKind::Agent, b"gate5:ineligible".to_vec()).unwrap();
+        let subject = IdentityRecord::new(IdentityKind::Tool, b"gate5:subject".to_vec()).unwrap();
+        let payload = capability_payload_for_identity_test(issuer.id(), subject.id());
+        let resolver =
+            RecordingIssuerStateResolver::resolved(IssuerOperationalEligibility::Ineligible, true);
+        let state_ref = TestIssuerStateRef([0xA1, 0x05, 0x0B, 0x02]);
+
+        assert_eq!(
+            validate_capability_issuer(&resolver, &payload, &state_ref),
+            Err(RegistryError::UnauthorizedCapabilityIssuer)
+        );
+    }
+
+    #[test]
+    fn capability_issuer_validation_rejects_missing_issuer_authority() {
+        let issuer =
+            IdentityRecord::new(IdentityKind::Agent, b"gate5:no-authority".to_vec()).unwrap();
+        let subject = IdentityRecord::new(IdentityKind::Tool, b"gate5:subject".to_vec()).unwrap();
+        let payload = capability_payload_for_identity_test(issuer.id(), subject.id());
+        let resolver =
+            RecordingIssuerStateResolver::resolved(IssuerOperationalEligibility::Eligible, false);
+        let state_ref = TestIssuerStateRef([0xA1, 0x05, 0x0B, 0x03]);
+
+        assert_eq!(
+            validate_capability_issuer(&resolver, &payload, &state_ref),
+            Err(RegistryError::UnauthorizedCapabilityIssuer)
+        );
+    }
+
+    #[test]
+    fn capability_issuer_validation_rejects_ineligible_unauthorized_issuer() {
+        let issuer = IdentityRecord::new(IdentityKind::Agent, b"gate5:neither".to_vec()).unwrap();
+        let subject = IdentityRecord::new(IdentityKind::Tool, b"gate5:subject".to_vec()).unwrap();
+        let payload = capability_payload_for_identity_test(issuer.id(), subject.id());
+        let resolver =
+            RecordingIssuerStateResolver::resolved(IssuerOperationalEligibility::Ineligible, false);
+        let state_ref = TestIssuerStateRef([0xA1, 0x05, 0x0B, 0x04]);
+
+        assert_eq!(
+            validate_capability_issuer(&resolver, &payload, &state_ref),
+            Err(RegistryError::UnauthorizedCapabilityIssuer)
+        );
+    }
+
+    #[test]
+    fn capability_issuer_validation_maps_resolver_failure_to_unauthorized_issuer() {
+        let issuer =
+            IdentityRecord::new(IdentityKind::Agent, b"gate5:unavailable".to_vec()).unwrap();
+        let subject = IdentityRecord::new(IdentityKind::Tool, b"gate5:subject".to_vec()).unwrap();
+        let payload = capability_payload_for_identity_test(issuer.id(), subject.id());
+        let resolver = RecordingIssuerStateResolver::unavailable();
+        let state_ref = TestIssuerStateRef([0xA1, 0x05, 0x0B, 0x05]);
+
+        assert_eq!(
+            validate_capability_issuer(&resolver, &payload, &state_ref),
+            Err(RegistryError::UnauthorizedCapabilityIssuer)
+        );
+        assert_eq!(
+            resolver.calls.borrow().as_slice(),
+            &[(issuer.id(), state_ref)]
+        );
     }
 
     #[test]
