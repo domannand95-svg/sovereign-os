@@ -116,6 +116,10 @@ impl RegistryGraph {
         self.nodes.contains_key(caid) || self.versioned_nodes.contains_key(caid)
     }
 
+    pub fn contains_admitted_reference(&self, caid: &Caid) -> bool {
+        self.contains_admitted_node(caid)
+    }
+
     pub fn insert_node(&mut self, node: RegistryNode) -> Result<(), RegistryError> {
         node.validate_identity()?;
 
