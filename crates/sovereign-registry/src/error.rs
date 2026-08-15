@@ -11,6 +11,7 @@ pub enum RegistryError {
     UnauthorizedGenesis,
     MalformedGenesisPayload,
     MalformedCapabilityPayload,
+    CapabilitySemanticViolation,
     GenesisAlreadyEstablished,
     GenesisNotPermittedInExistingGraph,
     ObjectClassMismatch {
@@ -72,6 +73,10 @@ impl fmt::Display for RegistryError {
             Self::MalformedCapabilityPayload => write!(
                 f,
                 "Registry Error: Registry v2 Capability payload violates the canonical schema."
+            ),
+            Self::CapabilitySemanticViolation => write!(
+                f,
+                "Registry Error: Registry v2 Capability payload violates internal coherence rules."
             ),
             Self::GenesisAlreadyEstablished => write!(
                 f,

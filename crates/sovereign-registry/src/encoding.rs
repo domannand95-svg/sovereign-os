@@ -300,6 +300,32 @@ impl CapabilityPayloadV1 {
     pub const fn governing_policy(&self) -> Caid {
         self.governing_policy
     }
+
+    pub fn validate_internal_coherence(&self) -> Result<(), RegistryError> {
+        if self.operation == OperationCodeV1::Create
+            && matches!(&self.target_scope, TargetScopeV1::ExactObject(_))
+        {
+            return Err(RegistryError::CapabilitySemanticViolation);
+        }
+
+        if self.authorized_executable.is_some() && self.operation != OperationCodeV1::Execute {
+            return Err(RegistryError::CapabilitySemanticViolation);
+        }
+
+        if let Some(budget) = self.execution_budget {
+            if self.resource_constraints.network.is_none() && budget.network_egress_bytes > 0 {
+                return Err(RegistryError::CapabilitySemanticViolation);
+            }
+
+            if self.resource_constraints.filesystem_write.is_none()
+                && budget.filesystem_write_bytes > 0
+            {
+                return Err(RegistryError::CapabilitySemanticViolation);
+            }
+        }
+
+        Ok(())
+    }
 }
 
 struct CapabilityCursor<'a> {
@@ -1171,6 +1197,125 @@ mod tests {
         assert_eq!(decoded.execution_budget().unwrap().wall_time_ms(), u64::MAX);
         assert_eq!(decoded.expiry(), Some(5));
         assert_eq!(decoded.governing_policy(), Caid([0x33; 32]));
+    }
+
+    #[test]
+    fn capability_payload_v1_gate2_rejects_create_exact_object() {
+        let mut target = vec![0x01];
+        target.extend_from_slice(&[0x44; 32]);
+
+        let absent = [0x00];
+        let resources = [0x01, 0x00, 0x00, 0x00];
+
+        let mut payload =
+            capability_payload_with_components(&target, &absent, &resources, &absent, &absent);
+
+        payload[66..68].copy_from_slice(&(OperationCodeV1::Create as u16).to_be_bytes());
+
+        let decoded = CapabilityPayloadV1::decode(&payload).unwrap();
+
+        assert_eq!(
+            decoded.validate_internal_coherence(),
+            Err(RegistryError::CapabilitySemanticViolation)
+        );
+    }
+
+    #[test]
+    fn capability_payload_v1_gate2_rejects_authorized_executable_for_non_execute() {
+        let target = [0x02, 0x00, 0x01, b'x'];
+
+        let mut executable = vec![0x01];
+        executable.extend_from_slice(&[0x44; 32]);
+
+        let resources = [0x01, 0x00, 0x00, 0x00];
+        let absent = [0x00];
+
+        let payload =
+            capability_payload_with_components(&target, &executable, &resources, &absent, &absent);
+
+        let decoded = CapabilityPayloadV1::decode(&payload).unwrap();
+
+        assert_eq!(
+            decoded.validate_internal_coherence(),
+            Err(RegistryError::CapabilitySemanticViolation)
+        );
+    }
+
+    #[test]
+    fn capability_payload_v1_gate2_rejects_network_budget_when_network_denied() {
+        let target = [0x02, 0x00, 0x01, b'x'];
+        let absent = [0x00];
+        let resources = [0x01, 0x00, 0x00, 0x00];
+
+        let mut budget = vec![0x01, 0x01];
+        budget.extend_from_slice(&0_u64.to_be_bytes());
+        budget.extend_from_slice(&0_u64.to_be_bytes());
+        budget.extend_from_slice(&1_u64.to_be_bytes());
+        budget.extend_from_slice(&0_u64.to_be_bytes());
+
+        let payload =
+            capability_payload_with_components(&target, &absent, &resources, &budget, &absent);
+
+        let decoded = CapabilityPayloadV1::decode(&payload).unwrap();
+
+        assert_eq!(
+            decoded.validate_internal_coherence(),
+            Err(RegistryError::CapabilitySemanticViolation)
+        );
+    }
+
+    #[test]
+    fn capability_payload_v1_gate2_rejects_write_budget_when_filesystem_write_denied() {
+        let target = [0x02, 0x00, 0x01, b'x'];
+        let absent = [0x00];
+        let resources = [0x01, 0x00, 0x00, 0x00];
+
+        let mut budget = vec![0x01, 0x01];
+        budget.extend_from_slice(&0_u64.to_be_bytes());
+        budget.extend_from_slice(&0_u64.to_be_bytes());
+        budget.extend_from_slice(&0_u64.to_be_bytes());
+        budget.extend_from_slice(&1_u64.to_be_bytes());
+
+        let payload =
+            capability_payload_with_components(&target, &absent, &resources, &budget, &absent);
+
+        let decoded = CapabilityPayloadV1::decode(&payload).unwrap();
+
+        assert_eq!(
+            decoded.validate_internal_coherence(),
+            Err(RegistryError::CapabilitySemanticViolation)
+        );
+    }
+
+    #[test]
+    fn capability_payload_v1_gate2_allows_execute_without_authorized_executable() {
+        let mut payload = minimal_capability_payload();
+
+        payload[66..68].copy_from_slice(&(OperationCodeV1::Execute as u16).to_be_bytes());
+
+        let decoded = CapabilityPayloadV1::decode(&payload).unwrap();
+
+        assert_eq!(decoded.validate_internal_coherence(), Ok(()));
+    }
+
+    #[test]
+    fn capability_payload_v1_gate2_allows_zero_budget_for_denied_resources() {
+        let target = [0x02, 0x00, 0x01, b'x'];
+        let absent = [0x00];
+        let resources = [0x01, 0x00, 0x00, 0x00];
+
+        let mut budget = vec![0x01, 0x01];
+        budget.extend_from_slice(&0_u64.to_be_bytes());
+        budget.extend_from_slice(&0_u64.to_be_bytes());
+        budget.extend_from_slice(&0_u64.to_be_bytes());
+        budget.extend_from_slice(&0_u64.to_be_bytes());
+
+        let payload =
+            capability_payload_with_components(&target, &absent, &resources, &budget, &absent);
+
+        let decoded = CapabilityPayloadV1::decode(&payload).unwrap();
+
+        assert_eq!(decoded.validate_internal_coherence(), Ok(()));
     }
 
     #[test]
