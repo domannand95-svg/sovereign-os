@@ -14,8 +14,12 @@ mod validation;
 pub use caid::Caid;
 pub use edge::{ObjectClass, RegistryEdge, RelationType};
 pub use encoding::{
-    deserialize_edge_v2, serialize_edge_v2, RegistryGenesisPayloadV1, VersionedRegistryNode,
-    REGISTRY_EDGE_MAGIC_V2, REGISTRY_ENCODING_VERSION_V2, REGISTRY_NODE_MAGIC_V2,
+    deserialize_edge_v2, serialize_edge_v2, CapabilityPayloadV1, ExecutionBudgetV1,
+    FilesystemReadScopeV1, FilesystemWriteScopeV1, NetworkScopeV1, OperationCodeV1,
+    RegistryGenesisPayloadV1, ResourceConstraintsV1, TargetScopeV1, VersionedRegistryNode,
+    CAPABILITY_PAYLOAD_MAX_LEN_V1, CAPABILITY_PAYLOAD_MIN_LEN_V1,
+    CAPABILITY_PAYLOAD_SCHEMA_VERSION_V1, REGISTRY_EDGE_MAGIC_V2, REGISTRY_ENCODING_VERSION_V2,
+    REGISTRY_NODE_MAGIC_V2,
 };
 pub use error::RegistryError;
 pub use graph::{RegistryBootstrapConfig, RegistryGraph};
