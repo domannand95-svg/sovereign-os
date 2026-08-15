@@ -30,4 +30,6 @@ pub use identity::{
 };
 pub use node::{RegistryNode, RegistryNodeType};
 pub use sync::{RegistryLedgerSync, RegistryWireRecord};
-pub use validation::validate_governed_reference;
+pub use validation::{
+    validate_capability_reference, validate_capability_references, validate_governed_reference,
+};
