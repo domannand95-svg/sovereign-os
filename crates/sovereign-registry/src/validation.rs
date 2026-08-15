@@ -88,6 +88,19 @@ pub fn validate_capability_identities<R: IdentityResolver>(
     Ok(())
 }
 
+pub fn validate_capability_temporal(
+    capability: &CapabilityPayloadV1,
+    admission_context_time: u64,
+) -> Result<(), RegistryError> {
+    if let Some(expiry) = capability.expiry() {
+        if admission_context_time >= expiry {
+            return Err(RegistryError::CapabilitySemanticViolation);
+        }
+    }
+
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -435,6 +448,89 @@ mod tests {
         );
 
         assert_eq!(resolver.calls.borrow().len(), 1);
+    }
+
+    #[test]
+    fn capability_temporal_validation_accepts_absent_expiry() {
+        let payload = capability_payload_for_temporal_test(None);
+
+        assert_eq!(validate_capability_temporal(&payload, u64::MAX), Ok(()));
+    }
+
+    #[test]
+    fn capability_temporal_validation_accepts_time_before_expiry() {
+        let payload = capability_payload_for_temporal_test(Some(100));
+
+        assert_eq!(validate_capability_temporal(&payload, 99), Ok(()));
+    }
+
+    #[test]
+    fn capability_temporal_validation_rejects_time_equal_to_expiry() {
+        let payload = capability_payload_for_temporal_test(Some(100));
+
+        assert_eq!(
+            validate_capability_temporal(&payload, 100),
+            Err(RegistryError::CapabilitySemanticViolation)
+        );
+    }
+
+    #[test]
+    fn capability_temporal_validation_rejects_time_after_expiry() {
+        let payload = capability_payload_for_temporal_test(Some(100));
+
+        assert_eq!(
+            validate_capability_temporal(&payload, 101),
+            Err(RegistryError::CapabilitySemanticViolation)
+        );
+    }
+
+    #[test]
+    fn capability_temporal_validation_preserves_max_value_and_replay() {
+        let payload = capability_payload_for_temporal_test(Some(u64::MAX));
+
+        let first = validate_capability_temporal(&payload, u64::MAX - 1);
+        let replay = validate_capability_temporal(&payload, u64::MAX - 1);
+
+        assert_eq!(first, Ok(()));
+        assert_eq!(replay, first);
+        assert_eq!(
+            validate_capability_temporal(&payload, u64::MAX),
+            Err(RegistryError::CapabilitySemanticViolation)
+        );
+    }
+
+    fn capability_payload_for_temporal_test(expiry: Option<u64>) -> CapabilityPayloadV1 {
+        let mut bytes = Vec::new();
+
+        bytes.extend_from_slice(&1_u16.to_be_bytes());
+        bytes.extend_from_slice(&[0x11; 32]);
+        bytes.extend_from_slice(&[0x22; 32]);
+        bytes.extend_from_slice(&1_u16.to_be_bytes());
+
+        bytes.push(0x02);
+        bytes.extend_from_slice(&1_u16.to_be_bytes());
+        bytes.push(b'x');
+
+        bytes.push(0x00);
+
+        bytes.push(0x01);
+        bytes.push(0x00);
+        bytes.push(0x00);
+        bytes.push(0x00);
+
+        bytes.push(0x00);
+
+        match expiry {
+            Some(expiry) => {
+                bytes.push(0x01);
+                bytes.extend_from_slice(&expiry.to_be_bytes());
+            }
+            None => bytes.push(0x00),
+        }
+
+        bytes.extend_from_slice(&[0xFE; 32]);
+
+        CapabilityPayloadV1::decode(&bytes).unwrap()
     }
 
     fn capability_payload_for_identity_test(
