@@ -13,6 +13,8 @@ pub enum RegistryError {
     MalformedCapabilityPayload,
     CapabilitySemanticViolation,
     UnresolvedCapabilityReference,
+    IdentityNotFound,
+    IdentityStateUnavailable,
     GenesisAlreadyEstablished,
     GenesisNotPermittedInExistingGraph,
     ObjectClassMismatch {
@@ -82,6 +84,14 @@ impl fmt::Display for RegistryError {
             Self::UnresolvedCapabilityReference => write!(
                 f,
                 "Registry Error: Registry v2 Capability references an unresolved admitted Registry object."
+            ),
+            Self::IdentityNotFound => write!(
+                f,
+                "Registry Error: Identity does not exist in the referenced authoritative identity state."
+            ),
+            Self::IdentityStateUnavailable => write!(
+                f,
+                "Registry Error: Referenced authoritative identity state is unavailable."
             ),
             Self::GenesisAlreadyEstablished => write!(
                 f,
