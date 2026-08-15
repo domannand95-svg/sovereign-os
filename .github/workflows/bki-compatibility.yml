@@ -32,13 +32,13 @@ jobs:
 
     steps:
       - name: Check out Sovereign OS
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           path: sovereign
           persist-credentials: false
 
       - name: Check out pinned BKI
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           repository: domannand95-svg/knowledge-infrastructure-bootstrap-kit
           ref: 0ace31f9071969825b75187d31c5f418212e9ae9
@@ -47,7 +47,7 @@ jobs:
           persist-credentials: false
 
       - name: Set up Python 3.11
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@v7
         with:
           python-version: "3.11"
           cache: pip
