@@ -1,200 +1,365 @@
-# Sovereign OS
+# Sovereign Operating Layer (SOL)
 
-> Provider-neutral infrastructure for governed agentic research, reproducible
-> evidence, bounded authority, and progressively earned trust.
+**Probabilistic intelligence; deterministic authority.**
 
-Sovereign OS is an experimental Rust platform for coordinating AI agents under
-explicit governance. Its objective is not to declare agents trustworthy. It is
-to make their authority, evidence, tool use, resource consumption, review
-history, and promotion or demotion decisions inspectable and reproducible.
+Sovereign Operating Layer (SOL) is an experimental Rust control plane for governed agentic systems, reproducible evidence, bounded authority, deterministic admission, and progressively earned trust.
 
-The long-term platform is intended for institutions that want to use capable
-external models while retaining local control of policy, data boundaries,
-research evidence, agent authority, and institution-developed models.
+SOL does not attempt to make probabilistic models deterministic. Instead, it places deterministic, auditable, fail-closed authority around probabilistic components.
 
-> [!IMPORTANT]
-> The governed research record layer is now partially implemented: the A04
-> common envelope plus canonical Objective and Claim payloads are merged. Tool
-> authority, governed admission, adversarial review, enforcement, and learning
-> remain planned architecture rather than production features.
+Models may reason, propose, classify, search, and request capabilities. The surrounding control plane determines what authority exists, which state is authoritative, what may be admitted, what may cause external effects, and what must be retained for audit and replay.
 
-## Mission
+> **Intelligence may explore beyond the boundary. Effects may not.**
 
-Sovereign OS is designed around four pillars:
+---
 
-1. **Governed agentic research** — claims move through declared objectives,
-   evidence requirements, independent challenge, and recorded decisions.
-2. **Capability, tool, and resource authority** — agents receive only explicitly
-   granted operations, targets, data, network access, and budgets.
-3. **Evidence-based trust and adversarial scrutiny** — trust is scoped, earned
-   through observable conduct, independently reviewed, and revocable.
-4. **Governed local model development** — authorised and verified evidence may
-   support institution-controlled models without making training equivalent to
-   trust.
+## Current Status
 
-The complete proposed authority model is documented in
-[Governed Agentic Research Architecture](docs/architecture/governed-agentic-research.md).
+The currently implemented authority boundary is **Capability V1 admission through Gates 1â€“6**.
 
-## Core principles
+The active admission pipeline is:
 
-- Proposers cannot approve themselves.
-- Agents cannot grant themselves tools, resources, trust, or promotion.
-- Confidence and model reputation are not substitutes for evidence.
-- Important claims preserve sources, methods, uncertainty, failed attempts,
-  reviewer findings, and reproducibility results.
-- Tool, data, network, and resource access is default-deny, narrow, expiring,
-  monitored, and revocable.
-- Ordinary mistakes support correction and remediation.
-- Persistent cheating, evidence manipulation, or serious boundary violations
-  support restriction, suspension, revocation, and removal.
-- Local models and commercial models pass through the same governed trust
-  process.
-- Human constitutional authority remains available at high-impact boundaries.
-- External models may be nondeterministic; the platform must record enough
-  context to describe honestly what was replayed or reproduced.
+1. **Gate 1 â€” Structural Decoding**
+2. **Gate 2 â€” Internal Coherence**
+3. **Gate 3A â€” Registry Reference Resolution**
+4. **Gate 3B â€” Authoritative Identity Resolution**
+5. **Gate 4 â€” Deterministic Temporal Validation**
+6. **Gate 5 â€” Issuer Operational Eligibility and Competency**
+7. **Gate 6 â€” Authoritative Governing-Policy Authorization**
 
-## Implemented baseline
+This sequence forms the present deterministic Capability V1 admission boundary.
 
-The authoritative workspace currently provides:
+The broader runtime, orchestration, policy language, multi-agent ecosystem, institutional interfaces, and distributed architecture remain under development. Completion of the current admission boundary must not be interpreted as completion of the entire Sovereign Operating Layer.
 
-- append-only ledger records with checksums and strict sequence ordering;
-- deterministic replay and state reconstruction;
-- crash-atomic, explicitly versioned snapshots;
-- snapshot integrity, state-root validation, and legacy-format recovery;
-- safe fallback from invalid or unsupported snapshots to ledger replay;
-- content-addressed registry nodes and deterministic ledger projection;
-- deterministic, fail-closed directive admission;
-- single-node boot, directive submission, and restart reconstruction;
-- fail-closed handling of ambiguous persistence outcomes; and
-- corruption and interrupted-publication tests;
-- the canonical A04 governed-evidence envelope;
-- bounded, deterministic Objective and Claim payload encodings with fixed
-  vectors and kind-confusion protection; and
-- a pinned, read-only `bki.validation.v1` compatibility boundary with the
-  Knowledge Infrastructure Bootstrap Kit.
+---
 
-This baseline supplies canonical state, persistence, recovery, and policy
-boundaries. Governed evidence encoding is in progress. Record admission, agent
-trust, tool grants, adversarial review, enforcement, governed learning, and
-institutional interfaces remain staged work.
+## Core Architectural Principle
 
-## Current architecture
+SOL separates intelligence from authority.
+
+External or local models may remain probabilistic, adaptive, and provider-neutral. Authority is instead constrained through deterministic infrastructure:
+
+- explicit schemas;
+- canonical encoding;
+- content-addressed objects;
+- authoritative state references;
+- fail-closed validation;
+- bounded capabilities;
+- deterministic replay;
+- recorded provenance; and
+- independently reviewable policy decisions.
+
+The governing rule is:
+
+> **Proposal is not authorization. Capability is not permission. Intelligence is not authority.**
+
+Ambient authority is not inferred.
+
+Missing, unresolved, substituted, stale, malformed, unauthorized, or context-disconnected inputs fail closed.
+
+---
+
+## Capability V1 Admission
+
+Capability V1 is the currently implemented governed admission path.
+
+### Gate 1 â€” Structural Decoding
+
+Candidate bytes must decode according to the allocated Capability V1 schema.
+
+Malformed structure is rejected before semantic interpretation.
+
+### Gate 2 â€” Internal Coherence
+
+Decoded fields must satisfy their allocated semantic relationships and constraints.
+
+Structurally valid but internally invalid candidates are rejected.
+
+### Gate 3A â€” Registry Reference Resolution
+
+Registry-backed references must resolve to admitted objects through the authoritative registry context.
+
+Unresolved references fail closed.
+
+The governing-policy reference is deliberately reserved for Gate 6 rather than treated as an ordinary Gate 3A reference.
+
+### Gate 3B â€” Authoritative Identity Resolution
+
+Issuer and subject identities are resolved against an explicit authoritative identity-state reference.
+
+Ambient or implicitly current identity state is not substituted.
+
+### Gate 4 â€” Deterministic Temporal Validation
+
+Temporal admission uses explicit admission-context time rather than ambient wall-clock time.
+
+Where an expiry is present, a candidate is valid only while:
 
 ```text
-Directive
-    |
-    v
-Deterministic policy
-    |
-    v
-Append-only canonical ledger
-    |
-    +------------------+
-    |                  |
-    v                  v
-Authoritative state    Registry projection
-    |                  |
-    +---------+--------+
-              |
-              v
-      Single-node engine
+admission_context_time < expiry
 ```
 
-Snapshots accelerate restoration. They are validated caches; the ledger remains
-canonical.
+Historical replay therefore evaluates against the original admission context rather than whatever time happens to be current during replay.
 
-## Target governed research flow
+### Gate 5 â€” Issuer Operational Eligibility and Competency
+
+The issuer must be operationally eligible and possess the authority required to issue Capability V1 grants.
+
+Gate 5 establishes issuer competency. It does not itself authorize the exact requested grant.
+
+### Gate 6 â€” Authoritative Governing-Policy Authorization
+
+Gate 6 resolves the exact `governing_policy` CAID against an explicit authoritative policy-state reference.
+
+The resolved object must:
+
+- match the exact requested CAID;
+- be an admitted Registry v2 `ObjectClass::Policy`; and
+- authorize the complete, unchanged Capability V1 candidate.
+
+Resolution and evaluation remain bound to the same authoritative policy-state reference.
+
+Only an explicit authorized result succeeds.
+
+Resolution failures, evaluator failures, policy substitution, wrong object class, or explicit non-authorization fail closed as:
+
+```text
+RegistryError::InvalidGoverningPolicy
+```
+
+No implicit root policy, current policy, latest policy, default policy, inherited grant, wildcard expansion, or ambient fallback is inferred by this boundary.
+
+---
+
+## Deterministic Replay
+
+Replay is a core architectural requirement.
+
+SOL does not define replay as â€œrun the same model again and expect identical prose.â€ Probabilistic inference may remain nondeterministic.
+
+Instead, deterministic authority requires that admission decisions be reproducible when supplied with the same:
+
+- candidate bytes;
+- authoritative registry state;
+- identity-state reference;
+- admission-context time;
+- issuer-state reference;
+- policy-state reference; and
+- allocated validation rules.
+
+The authority path should therefore reproduce the same admission result without silently consulting ambient current state.
+
+---
+
+## Governed Research and Evidence
+
+SOL also contains the foundations of a governed research record layer.
+
+Implemented work includes:
+
+- the canonical A04 governed-evidence envelope;
+- bounded Objective payload encoding;
+- bounded Claim payload encoding;
+- Source payload support;
+- content-addressed records;
+- deterministic encoding and decoding;
+- kind-confusion protection;
+- provenance-preserving structures; and
+- audit-oriented validation boundaries.
+
+The long-term research flow remains:
 
 ```text
 Research objective
-    -> capability-scoped agent work
+    -> capability-scoped work
     -> recorded sources, methods, tools, budgets, and uncertainty
-    -> specialized independent and adversarial review
+    -> independent and adversarial review
     -> verified | disputed | rejected
     -> independently authorized promotion, remediation, or revocation
     -> reproducible evidence and audit history
 ```
 
-Verified evidence may later enter a consented, licensed, versioned training
-corpus. A resulting local model re-enters as an untrusted candidate and must
-earn bounded authority through evaluation.
+Verified evidence may eventually support institution-controlled model development, but training does not confer trust or authority. Any resulting model re-enters the governed system as an untrusted candidate.
 
-## Workspace boundary
+---
 
-The root `Cargo.toml` defines the authoritative seven-crate workspace:
+## Persistence and Canonical State
+
+The repository also provides a deterministic single-node persistence baseline, including:
+
+- append-only ledger records;
+- checksums and strict sequence ordering;
+- deterministic replay and state reconstruction;
+- crash-atomic, explicitly versioned snapshots;
+- snapshot integrity and state-root validation;
+- legacy-format recovery;
+- safe fallback from invalid or unsupported snapshots to ledger replay;
+- content-addressed registry nodes;
+- deterministic registry projection;
+- deterministic directive admission;
+- single-node boot and restart reconstruction;
+- fail-closed handling of ambiguous persistence outcomes; and
+- corruption and interrupted-publication tests.
+
+Snapshots accelerate restoration but do not replace canonical ledger authority.
+
+---
+
+## Workspace
+
+The authoritative root Cargo workspace currently contains seven crates:
 
 ```text
 crates/
 |-- sovereign-core-asm/   deterministic state and snapshot representation
 |-- sovereign-ledger/     append, replay, restore, integrity, and snapshots
-|-- sovereign-registry/   content-addressed derived registry graph
-|-- sovereign-policy/     deterministic directive admission
+|-- sovereign-registry/   registry graph, governed references, identity and Capability V1 admission
+|-- sovereign-policy/     deterministic directive-admission primitives
 |-- sovereign-engine/     single-node boot and command orchestration
-|-- sovereign-audit/      governed-evidence envelope, Objective, and Claim
-|-- sovereign-discovery/  scaffold; not implemented
-`-- service prototypes/   excluded; classified for extraction or retirement
+|-- sovereign-audit/      governed research and evidence records
+`-- sovereign-discovery/  scaffold; not yet implemented
 ```
 
-The older `active-memory`, `event-log`, `registry-service`,
-`governance-wrapper`, and `network-service` crates are not active workspace
-members. They are preserved temporarily while useful contracts and adversarial
-cases are extracted. They must not be treated as production authority.
+Older service prototypes and retired architectural experiments may remain in the repository for extraction, historical comparison, or adversarial test cases. They are not part of the active authority boundary unless included by the root workspace and current normative architecture.
 
-See [Project Status](PROJECT_STATUS.md) and the
-[Legacy Extraction Matrix](docs/roadmap/LEGACY-EXTRACTION-MATRIX.md).
+---
+
+## Important Policy Boundary
+
+The existing `sovereign-policy` crate contains deterministic directive-admission primitives.
+
+It is **not** currently the canonical Capability V1 governing-policy evaluator.
+
+Gate 6 deliberately exposes a storage-neutral governing-policy resolution and evaluation boundary without inventing a Policy V1 payload schema, DSL, bytecode format, rule engine, delegation system, inheritance model, or implicit policy hierarchy.
+
+Those semantics must be explicitly allocated before they can become authority.
+
+---
 
 ## Verification
 
-The repository pins its Rust toolchain. Run:
+The repository pins its Rust toolchain.
 
-```text
+Run:
+
+```bash
 cargo fmt --all -- --check
 cargo clippy --workspace --all-targets --locked -- -D warnings
 cargo test --workspace --all-targets --locked
 ```
 
-GitHub Actions runs the active-workspace checks on Linux and Windows. Security
-CI also enforces decoder fuzz smoke testing, at least 90% workspace line
-coverage, Rust dependency policy, filesystem scanning, and CycloneDX SBOM
-generation. Boundary-affecting changes additionally run the read-only BKI
-compatibility suite on both platforms.
+Boundary-affecting changes should additionally be checked for deterministic replay, fail-closed behavior, substitution resistance, and authoritative-context binding.
 
-## Delivery plan
+GitHub Actions provides the repository CI boundary across supported environments.
 
-Work advances through small, independently reviewable pull requests. The
-project owner approves each merge; approving a plan does not pre-authorize
-later merges.
+---
 
-- [Execution Plan](docs/roadmap/EXECUTION-PLAN.md)
-- [Delivery Backlog](docs/roadmap/DELIVERY-BACKLOG.md)
-- [Legacy Extraction Matrix](docs/roadmap/LEGACY-EXTRACTION-MATRIX.md)
-- [Development and Review Workflow](docs/governance/DEVELOPMENT-WORKFLOW.md)
+## Private Beta Readiness
 
-The immediate direction is:
+The deterministic Capability V1 authority core is substantially implemented.
 
-1. implement the remaining A04 payloads in dependency order, beginning with
-   Source;
-2. add governed admission and cross-record lifecycle validation;
-3. implement the minimal read-only Capability Firewall path;
-4. define the Untrusted Model Harness threat model and governed memory flow;
-5. run joint BKI-Sovereign OS compatibility and adversarial beta testing;
-6. harden privacy, recovery, key management, licensing, and release operations;
-   and
-7. defer distributed consensus until single-node authority is dependable.
+The remaining work before promotion to a formal private-beta baseline is primarily integration and empirical verification rather than foundational admission design.
 
-## Institutional design boundary
+The current beta exit criteria are:
 
-Sovereign OS aims to provide open, exportable technical evidence and locally
-controlled governance. It does not by itself certify legal compliance, research
-truth, model safety, or regulatory approval.
+1. **Integrated commissioning path**
+   Exercise the Knowledge Infrastructure Bootstrap Kit and Sovereign Operating Layer together in the actual beta workflow, with failed commissioning preventing promotion.
+
+2. **Adversarial admission suite**
+   Exercise malformed inputs, unresolved references, substituted objects, stale or mismatched context, unauthorized issuers, denied policy outcomes, evaluator failures, and other fail-closed paths across the complete admission chain.
+
+3. **Replay equivalence**
+   Demonstrate that historical admission decisions reproduce the same result when supplied with the original authoritative admission context and state references.
+
+4. **Clean-environment commissioning**
+   Demonstrate clean clone, build, test, validation, and beta execution on the intended target environment without undocumented local assumptions.
+
+Completion of those criteria will establish:
+
+> **Private Beta Baseline 1 â€” Governed Capability Admission & Commissioning**
+
+This milestone means the governed Capability V1 admission and commissioning baseline has been validated for private beta. It does not mean the wider SOL ecosystem is complete.
+
+---
+
+## Knowledge Infrastructure Bootstrap Kit
+
+The Knowledge Infrastructure Bootstrap Kit (BKI) is being developed as a commissioning and validation boundary around the repository and its governed knowledge artifacts.
+
+Its role is to support deterministic validation, normalization, compatibility checks, quarantine, and commissioning evidence without silently acquiring authority to promote or mutate governed state.
+
+Joint BKIâ€“SOL integration and adversarial commissioning remain part of the private-beta path.
+
+---
+
+## SOL Identity
+
+SOL also has a non-normative identity layer derived from the architecture.
+
+Primary identity axiom:
+
+> **Probabilistic intelligence; deterministic authority.**
+
+Secondary axiom:
+
+> **Intelligence may explore beyond the boundary. Effects may not.**
+
+The project identity uses the language of core, boundary, state, admission, replay, proof, orbit, corona, and solar illumination to describe the architecture without redefining it.
+
+See:
+
+```text
+docs/identity/SOL_Identity_Canon_v0.1.md
+```
+
+The Identity Canon is explicitly subordinate to normative specifications and merged architecture decisions.
+
+Identity language must not introduce or imply technical authority absent from the normative architecture.
+
+---
+
+## Development and Review
+
+Development proceeds through small, independently reviewable pull requests.
+
+Important rules include:
+
+- implemented behavior must remain distinguishable from proposals;
+- specifications and architecture decisions precede authority-bearing implementation;
+- no plan or discussion pre-authorizes later merges;
+- authority-bearing changes require explicit review;
+- failures should be classified before production behavior is modified;
+- deterministic and adversarial tests are preferred over optimistic assumptions; and
+- implementation must fail closed where authoritative context is unavailable.
+
+The project owner retains merge authority.
+
+---
+
+## Institutional Boundary
+
+SOL aims to provide inspectable technical authority, reproducible evidence, and locally controlled governance.
+
+It does not by itself certify:
+
+- research truth;
+- legal compliance;
+- regulatory approval;
+- model safety;
+- institutional accreditation; or
+- fitness for a particular deployment.
+
+Those remain separate human, institutional, scientific, legal, and regulatory responsibilities.
+
+---
 
 ## Contributing
 
-Keep changes focused, distinguish implemented behavior from proposals, and
-include the verification performed. See
-[CONTRIBUTING.md](CONTRIBUTING.md).
+Keep changes focused, preserve the distinction between normative architecture and exploratory proposals, and document the verification performed.
+
+See `CONTRIBUTING.md`.
+
+---
 
 ## License
 
-Licensed under the [Apache License 2.0](LICENSE).
-
+Licensed under the Apache License 2.0.
