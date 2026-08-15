@@ -1,7 +1,8 @@
 use crate::{
-    Caid, CapabilityPayloadV1, FilesystemReadScopeV1, FilesystemWriteScopeV1, IdentityResolver,
-    IssuerOperationalEligibility, IssuerStateResolver, NetworkScopeV1, ObjectClass, RegistryError,
-    RegistryGraph, TargetScopeV1,
+    Caid, CapabilityPayloadV1, FilesystemReadScopeV1, FilesystemWriteScopeV1,
+    GoverningPolicyAuthority, IdentityResolver, IssuerOperationalEligibility, IssuerStateResolver,
+    NetworkScopeV1, ObjectClass, PolicyAuthorizationOutcome, RegistryError, RegistryGraph,
+    TargetScopeV1,
 };
 
 pub fn validate_governed_reference(
@@ -122,12 +123,42 @@ pub fn validate_capability_issuer<R: IssuerStateResolver>(
     Ok(())
 }
 
+pub fn validate_capability_governing_policy<A: GoverningPolicyAuthority>(
+    authority: &A,
+    capability: &CapabilityPayloadV1,
+    state_ref: &A::StateRef,
+) -> Result<(), RegistryError> {
+    let governing_policy = capability.governing_policy();
+
+    let resolved = authority
+        .resolve_policy(&governing_policy, state_ref)
+        .map_err(|_| RegistryError::InvalidGoverningPolicy)?;
+
+    if resolved.node().caid() != governing_policy {
+        return Err(RegistryError::InvalidGoverningPolicy);
+    }
+
+    if resolved.node().class() != ObjectClass::Policy {
+        return Err(RegistryError::InvalidGoverningPolicy);
+    }
+
+    let outcome = authority
+        .evaluate_capability(&resolved, capability, state_ref)
+        .map_err(|_| RegistryError::InvalidGoverningPolicy)?;
+
+    match outcome {
+        PolicyAuthorizationOutcome::Authorized => Ok(()),
+        PolicyAuthorizationOutcome::NotAuthorized => Err(RegistryError::InvalidGoverningPolicy),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::{
-        IdentityId, IdentityKind, IdentityRecord, IdentityStateRef, IssuerStateRef, RegistryNode,
-        RegistryNodeType, ResolvedIdentity, ResolvedIssuerState, VersionedRegistryNode,
+        IdentityId, IdentityKind, IdentityRecord, IdentityStateRef, IssuerStateRef, PolicyStateRef,
+        RegistryNode, RegistryNodeType, ResolvedGoverningPolicy, ResolvedIdentity,
+        ResolvedIssuerState, VersionedRegistryNode,
     };
     use std::cell::RefCell;
 
@@ -472,6 +503,195 @@ mod tests {
     }
 
     #[derive(Debug, Clone, PartialEq, Eq)]
+    struct TestPolicyStateRef([u8; 4]);
+
+    impl PolicyStateRef for TestPolicyStateRef {}
+
+    struct RecordingGoverningPolicyAuthority {
+        resolution: Result<ResolvedGoverningPolicy, RegistryError>,
+        evaluation: Result<PolicyAuthorizationOutcome, RegistryError>,
+        resolution_calls: RefCell<Vec<(Caid, TestPolicyStateRef)>>,
+        evaluation_calls: RefCell<Vec<(Caid, CapabilityPayloadV1, TestPolicyStateRef)>>,
+    }
+
+    impl RecordingGoverningPolicyAuthority {
+        fn new(
+            node: VersionedRegistryNode,
+            evaluation: Result<PolicyAuthorizationOutcome, RegistryError>,
+        ) -> Self {
+            Self {
+                resolution: Ok(ResolvedGoverningPolicy::new(node)),
+                evaluation,
+                resolution_calls: RefCell::new(Vec::new()),
+                evaluation_calls: RefCell::new(Vec::new()),
+            }
+        }
+
+        fn resolution_failure(error: RegistryError) -> Self {
+            Self {
+                resolution: Err(error),
+                evaluation: Ok(PolicyAuthorizationOutcome::Authorized),
+                resolution_calls: RefCell::new(Vec::new()),
+                evaluation_calls: RefCell::new(Vec::new()),
+            }
+        }
+    }
+
+    impl GoverningPolicyAuthority for RecordingGoverningPolicyAuthority {
+        type StateRef = TestPolicyStateRef;
+
+        fn resolve_policy(
+            &self,
+            governing_policy: &Caid,
+            state_ref: &Self::StateRef,
+        ) -> Result<ResolvedGoverningPolicy, RegistryError> {
+            self.resolution_calls
+                .borrow_mut()
+                .push((*governing_policy, state_ref.clone()));
+
+            self.resolution.clone()
+        }
+
+        fn evaluate_capability(
+            &self,
+            policy: &ResolvedGoverningPolicy,
+            capability: &CapabilityPayloadV1,
+            state_ref: &Self::StateRef,
+        ) -> Result<PolicyAuthorizationOutcome, RegistryError> {
+            self.evaluation_calls.borrow_mut().push((
+                policy.node().caid(),
+                capability.clone(),
+                state_ref.clone(),
+            ));
+
+            self.evaluation
+        }
+    }
+
+    fn policy_node(class: ObjectClass, seed: u8) -> VersionedRegistryNode {
+        VersionedRegistryNode::new(class, vec![Caid([seed.wrapping_add(1); 32])], vec![seed])
+            .unwrap()
+    }
+
+    #[test]
+    fn capability_governing_policy_accepts_exact_authorized_policy_and_replays() {
+        let node = policy_node(ObjectClass::Policy, 0xC1);
+        let governing_policy = node.caid();
+        let payload = capability_payload_for_policy_test(governing_policy);
+        let authority = RecordingGoverningPolicyAuthority::new(
+            node,
+            Ok(PolicyAuthorizationOutcome::Authorized),
+        );
+        let state_ref = TestPolicyStateRef([0xA1, 0x06, 0x0B, 0x01]);
+
+        let first = validate_capability_governing_policy(&authority, &payload, &state_ref);
+        let replay = validate_capability_governing_policy(&authority, &payload, &state_ref);
+
+        assert_eq!(first, Ok(()));
+        assert_eq!(replay, first);
+        assert_eq!(
+            authority.resolution_calls.borrow().as_slice(),
+            &[
+                (governing_policy, state_ref.clone()),
+                (governing_policy, state_ref.clone()),
+            ]
+        );
+        assert_eq!(authority.evaluation_calls.borrow().len(), 2);
+        for (resolved_caid, evaluated_capability, evaluated_state_ref) in
+            authority.evaluation_calls.borrow().iter()
+        {
+            assert_eq!(*resolved_caid, governing_policy);
+            assert_eq!(evaluated_capability, &payload);
+            assert_eq!(evaluated_state_ref, &state_ref);
+        }
+    }
+
+    #[test]
+    fn capability_governing_policy_maps_not_authorized_to_invalid_policy() {
+        let node = policy_node(ObjectClass::Policy, 0xC2);
+        let payload = capability_payload_for_policy_test(node.caid());
+        let authority = RecordingGoverningPolicyAuthority::new(
+            node,
+            Ok(PolicyAuthorizationOutcome::NotAuthorized),
+        );
+        let state_ref = TestPolicyStateRef([0xA1, 0x06, 0x0B, 0x02]);
+
+        assert_eq!(
+            validate_capability_governing_policy(&authority, &payload, &state_ref),
+            Err(RegistryError::InvalidGoverningPolicy)
+        );
+    }
+
+    #[test]
+    fn capability_governing_policy_maps_resolution_failure_to_invalid_policy() {
+        let governing_policy = Caid([0xC3; 32]);
+        let payload = capability_payload_for_policy_test(governing_policy);
+        let authority = RecordingGoverningPolicyAuthority::resolution_failure(
+            RegistryError::UnresolvedReference,
+        );
+        let state_ref = TestPolicyStateRef([0xA1, 0x06, 0x0B, 0x03]);
+
+        assert_eq!(
+            validate_capability_governing_policy(&authority, &payload, &state_ref),
+            Err(RegistryError::InvalidGoverningPolicy)
+        );
+        assert!(authority.evaluation_calls.borrow().is_empty());
+    }
+
+    #[test]
+    fn capability_governing_policy_maps_evaluation_failure_to_invalid_policy() {
+        let node = policy_node(ObjectClass::Policy, 0xC4);
+        let payload = capability_payload_for_policy_test(node.caid());
+        let authority = RecordingGoverningPolicyAuthority::new(
+            node,
+            Err(RegistryError::CapabilitySemanticViolation),
+        );
+        let state_ref = TestPolicyStateRef([0xA1, 0x06, 0x0B, 0x04]);
+
+        assert_eq!(
+            validate_capability_governing_policy(&authority, &payload, &state_ref),
+            Err(RegistryError::InvalidGoverningPolicy)
+        );
+    }
+
+    #[test]
+    fn capability_governing_policy_rejects_wrong_object_class_before_evaluation() {
+        let node = policy_node(ObjectClass::Dataset, 0xC5);
+        let payload = capability_payload_for_policy_test(node.caid());
+        let authority = RecordingGoverningPolicyAuthority::new(
+            node,
+            Ok(PolicyAuthorizationOutcome::Authorized),
+        );
+        let state_ref = TestPolicyStateRef([0xA1, 0x06, 0x0B, 0x05]);
+
+        assert_eq!(
+            validate_capability_governing_policy(&authority, &payload, &state_ref),
+            Err(RegistryError::InvalidGoverningPolicy)
+        );
+        assert!(authority.evaluation_calls.borrow().is_empty());
+    }
+
+    #[test]
+    fn capability_governing_policy_rejects_substituted_policy_caid_before_evaluation() {
+        let requested_policy = Caid([0xC6; 32]);
+        let substituted_node = policy_node(ObjectClass::Policy, 0xC7);
+        assert_ne!(substituted_node.caid(), requested_policy);
+
+        let payload = capability_payload_for_policy_test(requested_policy);
+        let authority = RecordingGoverningPolicyAuthority::new(
+            substituted_node,
+            Ok(PolicyAuthorizationOutcome::Authorized),
+        );
+        let state_ref = TestPolicyStateRef([0xA1, 0x06, 0x0B, 0x06]);
+
+        assert_eq!(
+            validate_capability_governing_policy(&authority, &payload, &state_ref),
+            Err(RegistryError::InvalidGoverningPolicy)
+        );
+        assert!(authority.evaluation_calls.borrow().is_empty());
+    }
+
+    #[derive(Debug, Clone, PartialEq, Eq)]
     struct TestIssuerStateRef([u8; 4]);
 
     impl IssuerStateRef for TestIssuerStateRef {}
@@ -655,6 +875,33 @@ mod tests {
             validate_capability_temporal(&payload, u64::MAX),
             Err(RegistryError::CapabilitySemanticViolation)
         );
+    }
+
+    fn capability_payload_for_policy_test(governing_policy: Caid) -> CapabilityPayloadV1 {
+        let mut bytes = Vec::new();
+
+        bytes.extend_from_slice(&1_u16.to_be_bytes());
+        bytes.extend_from_slice(&[0x11; 32]);
+        bytes.extend_from_slice(&[0x22; 32]);
+        bytes.extend_from_slice(&1_u16.to_be_bytes());
+
+        bytes.push(0x02);
+        bytes.extend_from_slice(&1_u16.to_be_bytes());
+        bytes.push(b'x');
+
+        bytes.push(0x00);
+
+        bytes.push(0x01);
+        bytes.push(0x00);
+        bytes.push(0x00);
+        bytes.push(0x00);
+
+        bytes.push(0x00);
+        bytes.push(0x00);
+
+        bytes.extend_from_slice(&governing_policy.0);
+
+        CapabilityPayloadV1::decode(&bytes).unwrap()
     }
 
     fn capability_payload_for_temporal_test(expiry: Option<u64>) -> CapabilityPayloadV1 {
