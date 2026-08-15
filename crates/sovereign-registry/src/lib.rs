@@ -7,6 +7,7 @@ pub mod encoding;
 pub mod error;
 pub mod graph;
 pub mod identity;
+mod identity_resolution;
 pub mod node;
 pub mod sync;
 mod validation;
@@ -28,8 +29,10 @@ pub use identity::{
     IDENTITY_ENCODING_VERSION, LINEAGE_ENCODING_VERSION, MAX_IDENTITY_DESCRIPTOR_LEN,
     MAX_LINEAGE_PARENTS,
 };
+pub use identity_resolution::{IdentityResolver, IdentityStateRef, ResolvedIdentity};
 pub use node::{RegistryNode, RegistryNodeType};
 pub use sync::{RegistryLedgerSync, RegistryWireRecord};
 pub use validation::{
-    validate_capability_reference, validate_capability_references, validate_governed_reference,
+    validate_capability_identities, validate_capability_reference, validate_capability_references,
+    validate_governed_reference,
 };

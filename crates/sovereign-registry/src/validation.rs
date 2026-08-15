@@ -1,6 +1,6 @@
 use crate::{
-    Caid, CapabilityPayloadV1, FilesystemReadScopeV1, FilesystemWriteScopeV1, NetworkScopeV1,
-    ObjectClass, RegistryError, RegistryGraph, TargetScopeV1,
+    Caid, CapabilityPayloadV1, FilesystemReadScopeV1, FilesystemWriteScopeV1, IdentityResolver,
+    NetworkScopeV1, ObjectClass, RegistryError, RegistryGraph, TargetScopeV1,
 };
 
 pub fn validate_governed_reference(
@@ -77,10 +77,25 @@ pub fn validate_capability_references(
     Ok(())
 }
 
+pub fn validate_capability_identities<R: IdentityResolver>(
+    resolver: &R,
+    capability: &CapabilityPayloadV1,
+    state_ref: &R::StateRef,
+) -> Result<(), RegistryError> {
+    resolver.resolve(&capability.issuer_identity(), state_ref)?;
+    resolver.resolve(&capability.subject_identity(), state_ref)?;
+
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{RegistryNode, RegistryNodeType, VersionedRegistryNode};
+    use crate::{
+        IdentityId, IdentityKind, IdentityRecord, IdentityStateRef, RegistryNode, RegistryNodeType,
+        ResolvedIdentity, VersionedRegistryNode,
+    };
+    use std::cell::RefCell;
 
     fn insert_v2_node(graph: &mut RegistryGraph, class: ObjectClass, seed: u8) -> Caid {
         let legacy_parent =
@@ -278,6 +293,178 @@ mod tests {
                 Err(RegistryError::UnresolvedCapabilityReference)
             );
         }
+    }
+
+    #[derive(Debug, Clone, PartialEq, Eq)]
+    struct TestIdentityStateRef([u8; 4]);
+
+    impl IdentityStateRef for TestIdentityStateRef {}
+
+    struct RecordingIdentityResolver {
+        records: Vec<IdentityRecord>,
+        calls: RefCell<Vec<(IdentityId, TestIdentityStateRef)>>,
+        unavailable: bool,
+    }
+
+    impl RecordingIdentityResolver {
+        fn new(records: Vec<IdentityRecord>) -> Self {
+            Self {
+                records,
+                calls: RefCell::new(Vec::new()),
+                unavailable: false,
+            }
+        }
+
+        fn unavailable() -> Self {
+            Self {
+                records: Vec::new(),
+                calls: RefCell::new(Vec::new()),
+                unavailable: true,
+            }
+        }
+    }
+
+    impl IdentityResolver for RecordingIdentityResolver {
+        type StateRef = TestIdentityStateRef;
+
+        fn resolve(
+            &self,
+            identity_id: &IdentityId,
+            state_ref: &Self::StateRef,
+        ) -> Result<ResolvedIdentity, RegistryError> {
+            self.calls
+                .borrow_mut()
+                .push((*identity_id, state_ref.clone()));
+
+            if self.unavailable {
+                return Err(RegistryError::IdentityStateUnavailable);
+            }
+
+            self.records
+                .iter()
+                .find(|record| record.id() == *identity_id)
+                .and_then(|record| ResolvedIdentity::from_record(identity_id, record))
+                .ok_or(RegistryError::IdentityNotFound)
+        }
+    }
+
+    #[test]
+    fn capability_identity_validation_resolves_issuer_then_subject_against_same_state() {
+        let issuer = IdentityRecord::new(IdentityKind::Agent, b"gate3b:issuer".to_vec()).unwrap();
+        let subject = IdentityRecord::new(IdentityKind::Tool, b"gate3b:subject".to_vec()).unwrap();
+
+        let payload = capability_payload_for_identity_test(issuer.id(), subject.id());
+        let resolver = RecordingIdentityResolver::new(vec![issuer.clone(), subject.clone()]);
+        let state_ref = TestIdentityStateRef([0xA1, 0x03, 0x0B, 0x01]);
+
+        assert_eq!(
+            validate_capability_identities(&resolver, &payload, &state_ref),
+            Ok(())
+        );
+
+        assert_eq!(
+            resolver.calls.borrow().as_slice(),
+            &[
+                (issuer.id(), state_ref.clone()),
+                (subject.id(), state_ref.clone()),
+            ]
+        );
+    }
+
+    #[test]
+    fn capability_identity_validation_fails_closed_when_issuer_is_missing() {
+        let issuer =
+            IdentityRecord::new(IdentityKind::Agent, b"gate3b:missing-issuer".to_vec()).unwrap();
+        let subject =
+            IdentityRecord::new(IdentityKind::Tool, b"gate3b:subject-present".to_vec()).unwrap();
+
+        let payload = capability_payload_for_identity_test(issuer.id(), subject.id());
+        let resolver = RecordingIdentityResolver::new(vec![subject]);
+        let state_ref = TestIdentityStateRef([0xA1, 0x03, 0x0B, 0x02]);
+
+        assert_eq!(
+            validate_capability_identities(&resolver, &payload, &state_ref),
+            Err(RegistryError::IdentityNotFound)
+        );
+
+        assert_eq!(resolver.calls.borrow().len(), 1);
+        assert_eq!(resolver.calls.borrow()[0].0, issuer.id());
+    }
+
+    #[test]
+    fn capability_identity_validation_fails_closed_when_subject_is_missing() {
+        let issuer =
+            IdentityRecord::new(IdentityKind::Agent, b"gate3b:issuer-present".to_vec()).unwrap();
+        let subject =
+            IdentityRecord::new(IdentityKind::Tool, b"gate3b:missing-subject".to_vec()).unwrap();
+
+        let payload = capability_payload_for_identity_test(issuer.id(), subject.id());
+        let resolver = RecordingIdentityResolver::new(vec![issuer.clone()]);
+        let state_ref = TestIdentityStateRef([0xA1, 0x03, 0x0B, 0x03]);
+
+        assert_eq!(
+            validate_capability_identities(&resolver, &payload, &state_ref),
+            Err(RegistryError::IdentityNotFound)
+        );
+
+        assert_eq!(
+            resolver.calls.borrow().as_slice(),
+            &[
+                (issuer.id(), state_ref.clone()),
+                (subject.id(), state_ref.clone()),
+            ]
+        );
+    }
+
+    #[test]
+    fn capability_identity_validation_propagates_state_unavailable() {
+        let issuer =
+            IdentityRecord::new(IdentityKind::Agent, b"gate3b:issuer-unavailable".to_vec())
+                .unwrap();
+        let subject =
+            IdentityRecord::new(IdentityKind::Tool, b"gate3b:subject-unavailable".to_vec())
+                .unwrap();
+
+        let payload = capability_payload_for_identity_test(issuer.id(), subject.id());
+        let resolver = RecordingIdentityResolver::unavailable();
+        let state_ref = TestIdentityStateRef([0xA1, 0x03, 0x0B, 0x04]);
+
+        assert_eq!(
+            validate_capability_identities(&resolver, &payload, &state_ref),
+            Err(RegistryError::IdentityStateUnavailable)
+        );
+
+        assert_eq!(resolver.calls.borrow().len(), 1);
+    }
+
+    fn capability_payload_for_identity_test(
+        issuer_identity: IdentityId,
+        subject_identity: IdentityId,
+    ) -> CapabilityPayloadV1 {
+        let mut bytes = Vec::new();
+
+        bytes.extend_from_slice(&1_u16.to_be_bytes());
+        bytes.extend_from_slice(issuer_identity.as_bytes());
+        bytes.extend_from_slice(subject_identity.as_bytes());
+        bytes.extend_from_slice(&1_u16.to_be_bytes());
+
+        bytes.push(0x02);
+        bytes.extend_from_slice(&1_u16.to_be_bytes());
+        bytes.push(b'x');
+
+        bytes.push(0x00);
+
+        bytes.push(0x01);
+        bytes.push(0x00);
+        bytes.push(0x00);
+        bytes.push(0x00);
+
+        bytes.push(0x00);
+        bytes.push(0x00);
+
+        bytes.extend_from_slice(&[0xFE; 32]);
+
+        CapabilityPayloadV1::decode(&bytes).unwrap()
     }
 
     fn capability_payload_for_reference_test(
