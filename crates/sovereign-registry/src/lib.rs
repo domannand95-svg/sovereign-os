@@ -8,6 +8,7 @@ pub mod error;
 pub mod graph;
 pub mod identity;
 mod identity_resolution;
+mod issuer_state_resolution;
 pub mod node;
 pub mod sync;
 mod validation;
@@ -30,9 +31,12 @@ pub use identity::{
     MAX_LINEAGE_PARENTS,
 };
 pub use identity_resolution::{IdentityResolver, IdentityStateRef, ResolvedIdentity};
+pub use issuer_state_resolution::{
+    IssuerOperationalEligibility, IssuerStateRef, IssuerStateResolver, ResolvedIssuerState,
+};
 pub use node::{RegistryNode, RegistryNodeType};
 pub use sync::{RegistryLedgerSync, RegistryWireRecord};
 pub use validation::{
-    validate_capability_identities, validate_capability_reference, validate_capability_references,
-    validate_capability_temporal, validate_governed_reference,
+    validate_capability_identities, validate_capability_issuer, validate_capability_reference,
+    validate_capability_references, validate_capability_temporal, validate_governed_reference,
 };
