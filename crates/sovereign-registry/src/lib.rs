@@ -5,6 +5,7 @@ pub mod caid;
 pub mod edge;
 pub mod encoding;
 pub mod error;
+mod governing_policy_resolution;
 pub mod graph;
 pub mod identity;
 mod identity_resolution;
@@ -24,6 +25,9 @@ pub use encoding::{
     REGISTRY_NODE_MAGIC_V2,
 };
 pub use error::RegistryError;
+pub use governing_policy_resolution::{
+    GoverningPolicyAuthority, PolicyAuthorizationOutcome, PolicyStateRef, ResolvedGoverningPolicy,
+};
 pub use graph::{RegistryBootstrapConfig, RegistryGraph};
 pub use identity::{
     IdentityId, IdentityKind, IdentityRecord, LineageRecord, LineageRoot,
@@ -37,6 +41,7 @@ pub use issuer_state_resolution::{
 pub use node::{RegistryNode, RegistryNodeType};
 pub use sync::{RegistryLedgerSync, RegistryWireRecord};
 pub use validation::{
-    validate_capability_identities, validate_capability_issuer, validate_capability_reference,
-    validate_capability_references, validate_capability_temporal, validate_governed_reference,
+    validate_capability_governing_policy, validate_capability_identities,
+    validate_capability_issuer, validate_capability_reference, validate_capability_references,
+    validate_capability_temporal, validate_governed_reference,
 };

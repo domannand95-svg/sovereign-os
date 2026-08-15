@@ -16,6 +16,7 @@ pub enum RegistryError {
     IdentityNotFound,
     IdentityStateUnavailable,
     UnauthorizedCapabilityIssuer,
+    InvalidGoverningPolicy,
     GenesisAlreadyEstablished,
     GenesisNotPermittedInExistingGraph,
     ObjectClassMismatch {
@@ -97,6 +98,10 @@ impl fmt::Display for RegistryError {
             Self::UnauthorizedCapabilityIssuer => write!(
                 f,
                 "Registry Error: Capability issuer is not authoritatively eligible and authorized to issue Capability V1 artifacts."
+            ),
+            Self::InvalidGoverningPolicy => write!(
+                f,
+                "Registry Error: Capability governing policy is invalid or does not authorize the exact Capability V1 grant."
             ),
             Self::GenesisAlreadyEstablished => write!(
                 f,
