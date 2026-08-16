@@ -182,3 +182,32 @@ of any proposal or dispute.
 
 Changing this vector requires a new schema version rather than reinterpretation
 of version 1.
+
+## 12. Failed Attempt Fixed Vector
+
+Failed Attempt v1 encodes fields in this order: Objective record identifier,
+Method record identifier, one-byte failure-kind discriminator, observed-result
+text, ordered unique evidence record identifiers, and an optional retry-of
+record identifier.
+
+Failure-kind discriminators are Invalid Input `0x00`, Method Failure `0x01`,
+Tool Failure `0x02`, Timeout `0x03`, Inconclusive `0x04`, and Policy Denial
+`0x05`.
+
+The minimal fixture uses an Objective identifier of 32 `0x01` bytes, a Method
+identifier of 32 `0x02` bytes, Invalid Input, `observed_result="F"`, no evidence
+identifiers, and no retry reference:
+
+`01010101010101010101010101010101010101010101010101010101010101010202020202020202020202020202020202020202020202020202020202020202000000000146000000`
+
+The typed governed Failed Attempt record fixture in the Rust test suite has
+record ID:
+
+`aa792bd0335d98430c41b86ac3ea9289c3e09813ef82a4ed15dd4d286d0c4c48`
+
+Failure kind, observed result, evidence, and retry lineage are descriptive
+evidence only. They do not admit the record, expand policy, grant capabilities,
+authorize retries, or exercise execution authority.
+
+Changing this vector requires a new schema version rather than reinterpretation
+of version 1.

@@ -240,6 +240,13 @@ A Failed Attempt payload contains:
 
 Retries append evidence. They do not replace the failed attempt.
 
+The order of `evidence_ids` is preserved and duplicates are invalid. An empty
+list is permitted when the bounded observed result is the only evidence
+available at record construction. The optional `retry_of` reference describes
+lineage only; record-kind, temporal ordering, and cycle checks remain admission
+policy concerns. A policy-denial failure records an observed denial and does not
+itself grant, expand, revoke, or exercise authority.
+
 ## 12. Reviewer Finding Record
 
 A Reviewer Finding payload contains:
