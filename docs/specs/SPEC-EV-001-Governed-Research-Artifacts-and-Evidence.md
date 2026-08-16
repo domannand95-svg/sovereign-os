@@ -311,9 +311,15 @@ validates graph relationships and shall reject:
   unresolved dispute required by policy;
 - cycles in supersession, retry, or resolution relationships;
 - use of an A05 budget or grant reference before its governing schema is active;
-- a policy, criteria, tool, dataset, or environment reference lacking canonical
+- a policy, criteria, tool, or environment reference lacking canonical
   identity; and
 - retroactive mutation of an admitted record.
+
+Dataset and artifact material does not acquire external `IdentityId` semantics
+merely by being referenced by an A04 record. Governed evidence and input
+relationships remain `RecordId`-based where the applicable A04 payload allocates
+a record reference, while externally stored source content remains bound by its
+canonical source representation and digest requirements.
 
 ## 16. Required Implementation Tests
 

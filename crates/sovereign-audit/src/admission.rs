@@ -875,9 +875,10 @@ fn map_payload_error(_: EvidencePayloadError) -> EvidenceAdmissionError {
 mod tests {
     use super::*;
     use crate::{
-        ClaimKind, ClaimPayload, DispositionDecision, DispositionPayload, DisputePayload,
-        DisputeStatus, FailedAttemptPayload, FailureKind, FindingKind, FindingSeverity,
-        IndependenceResult, ReviewerFindingPayload, Substantiation,
+        ClaimKind, ClaimPayload, DigestAlgorithm, DispositionDecision, DispositionPayload,
+        DisputePayload, DisputeStatus, FailedAttemptPayload, FailureKind, FindingKind,
+        FindingSeverity, IndependenceResult, MethodPayload, ObjectivePayload,
+        ReviewerFindingPayload, SourcePayload, Substantiation, UncertaintyKind, UncertaintyPayload,
     };
     use sovereign_registry::{IdentityKind, IdentityRecord};
     use std::cell::RefCell;
@@ -1319,6 +1320,26 @@ mod tests {
     }
 
     #[test]
+    fn successful_admission_returns_only_admissible_without_state_transition() {
+        let state = TestStateRef(1);
+        let authority = TestAuthority::new(state.clone());
+
+        let candidate = generic_record(RecordKind::Objective, 247, identity(17), vec![]);
+        let candidate_id = candidate.id();
+        let candidate_before = candidate.encode();
+        let governed_state_before = authority.records.clone();
+
+        assert!(!authority.records.contains_key(&candidate_id));
+
+        let result = evaluate_admission(&candidate, &authority, &state);
+
+        assert_eq!(result, Ok(EvidenceAdmissionResult::Admissible));
+        assert_eq!(authority.records, governed_state_before);
+        assert!(!authority.records.contains_key(&candidate_id));
+        assert_eq!(candidate.encode(), candidate_before);
+    }
+
+    #[test]
     fn absent_parent_fails_closed() {
         let state = TestStateRef(1);
         let authority = TestAuthority::new(state.clone());
@@ -1536,6 +1557,221 @@ mod tests {
         assert_eq!(first, Ok(EvidenceAdmissionResult::Admissible));
         assert_eq!(first, second);
         assert_eq!(candidate.encode(), before);
+    }
+
+    #[test]
+    fn every_valid_record_kind_preserves_candidate_bytes_during_admission() {
+        let state = TestStateRef(1);
+        let mut authority = TestAuthority::new(state.clone());
+
+        let objective_ref = generic_record(RecordKind::Objective, 240, identity(10), vec![]);
+        let method_ref = generic_record(RecordKind::Method, 241, identity(11), vec![]);
+        let reviewed = generic_record(RecordKind::Claim, 242, identity(12), vec![]);
+        let disputed = generic_record(RecordKind::Objective, 243, identity(13), vec![]);
+        let claim_position = generic_record(RecordKind::Claim, 244, identity(14), vec![]);
+        let finding_position =
+            generic_record(RecordKind::ReviewerFinding, 245, identity(15), vec![]);
+        let decided = generic_record(RecordKind::Claim, 246, identity(16), vec![]);
+
+        for supporting_record in [
+            objective_ref.clone(),
+            method_ref.clone(),
+            reviewed.clone(),
+            disputed.clone(),
+            claim_position.clone(),
+            finding_position.clone(),
+            decided.clone(),
+        ] {
+            authority.insert(supporting_record);
+        }
+
+        let objective = EvidenceRecord::new_objective(
+            identity(20),
+            identity(21),
+            identity(22),
+            vec![],
+            ObjectivePayload::new(
+                "objective".to_owned(),
+                "bounded test scope".to_owned(),
+                vec!["preserve candidate bytes".to_owned()],
+                vec![],
+                None,
+            )
+            .unwrap(),
+        )
+        .unwrap();
+
+        let claim = EvidenceRecord::new_claim(
+            identity(23),
+            identity(24),
+            identity(25),
+            vec![],
+            ClaimPayload::new(
+                objective_ref.id(),
+                "observation".to_owned(),
+                ClaimKind::Observation,
+                Substantiation::Unsubstantiated,
+                vec![],
+                vec![],
+                vec![],
+            )
+            .unwrap(),
+        )
+        .unwrap();
+
+        let source = EvidenceRecord::new_source(
+            identity(26),
+            identity(27),
+            identity(28),
+            vec![],
+            SourcePayload::new(
+                "canonical test source".to_owned(),
+                DigestAlgorithm::Sha256,
+                [0x11; 32],
+                1,
+                "application/pdf".to_owned(),
+                None,
+            )
+            .unwrap(),
+        )
+        .unwrap();
+
+        let method = EvidenceRecord::new_method(
+            identity(29),
+            identity(30),
+            identity(31),
+            vec![],
+            MethodPayload::new(
+                objective_ref.id(),
+                "bounded test procedure".to_owned(),
+                vec![],
+                vec![identity(32)],
+                identity(33),
+                DigestAlgorithm::Sha256,
+                [0x22; 32],
+                None,
+            )
+            .unwrap(),
+        )
+        .unwrap();
+
+        let uncertainty = EvidenceRecord::new_uncertainty(
+            identity(34),
+            identity(35),
+            identity(36),
+            vec![],
+            UncertaintyPayload::new(
+                reviewed.id(),
+                UncertaintyKind::Measurement,
+                "bounded measurement uncertainty".to_owned(),
+                None,
+                None,
+                "test basis".to_owned(),
+            )
+            .unwrap(),
+        )
+        .unwrap();
+
+        let failed_attempt = EvidenceRecord::new_failed_attempt(
+            identity(37),
+            identity(38),
+            identity(39),
+            vec![],
+            FailedAttemptPayload::new(
+                objective_ref.id(),
+                method_ref.id(),
+                FailureKind::MethodFailure,
+                "bounded failed attempt".to_owned(),
+                vec![],
+                None,
+            )
+            .unwrap(),
+        )
+        .unwrap();
+
+        let reviewer_finding = EvidenceRecord::new_reviewer_finding(
+            identity(40),
+            reviewed.subject_id(),
+            identity(41),
+            vec![],
+            ReviewerFindingPayload::new(
+                reviewed.id(),
+                identity(42),
+                FindingKind::Support,
+                FindingSeverity::Informational,
+                "bounded review".to_owned(),
+                vec![],
+                "NONE_DECLARED".to_owned(),
+                IndependenceResult::Unknown,
+            )
+            .unwrap(),
+        )
+        .unwrap();
+
+        let dispute = EvidenceRecord::new_dispute(
+            identity(43),
+            disputed.subject_id(),
+            identity(44),
+            vec![],
+            DisputePayload::new(
+                disputed.id(),
+                vec![claim_position.id(), finding_position.id()],
+                identity(45),
+                DisputeStatus::Open,
+                None,
+            )
+            .unwrap(),
+        )
+        .unwrap();
+
+        let disposition = EvidenceRecord::new_disposition(
+            identity(46),
+            decided.subject_id(),
+            identity(47),
+            vec![],
+            DispositionPayload::new(
+                decided.id(),
+                DispositionDecision::Defer,
+                identity(48),
+                identity(49),
+                vec![],
+                vec![],
+                "bounded disposition".to_owned(),
+                None,
+            )
+            .unwrap(),
+        )
+        .unwrap();
+
+        let candidates = [
+            ("Objective", objective),
+            ("Claim", claim),
+            ("Source", source),
+            ("Method", method),
+            ("Uncertainty", uncertainty),
+            ("FailedAttempt", failed_attempt),
+            ("ReviewerFinding", reviewer_finding),
+            ("Dispute", dispute),
+            ("Disposition", disposition),
+        ];
+
+        assert_eq!(candidates.len(), 9);
+
+        for (kind, candidate) in &candidates {
+            let before = candidate.encode();
+
+            assert_eq!(
+                evaluate_admission(candidate, &authority, &state),
+                Ok(EvidenceAdmissionResult::Admissible),
+                "{kind} candidate must be admissible"
+            );
+
+            assert_eq!(
+                candidate.encode(),
+                before,
+                "{kind} candidate bytes changed during admission evaluation"
+            );
+        }
     }
 
     #[test]
@@ -1914,7 +2150,7 @@ mod tests {
     }
 
     #[test]
-    fn authoritative_conflict_fails_closed_when_independence_is_required() {
+    fn disqualifying_common_controller_conflict_overrides_payload_established() {
         let state = TestStateRef(1);
         let mut authority = TestAuthority::new(state.clone());
         authority.independence_requirement = ReviewerIndependenceRequirement::Required;
@@ -3207,10 +3443,16 @@ mod tests {
 
         authority.admitted_equivalence = AdmittedRecordEquivalence::AdmittedDifferent;
 
+        let governed_state_before = authority.records.clone();
+        let candidate_before = candidate.encode();
+
         assert_eq!(
             evaluate_admission(&candidate, &authority, &state),
             Err(EvidenceAdmissionError::RetroactiveMutationAttempt)
         );
+
+        assert_eq!(authority.records, governed_state_before);
+        assert_eq!(candidate.encode(), candidate_before);
     }
 
     #[test]
