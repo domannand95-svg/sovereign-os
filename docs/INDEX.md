@@ -1,7 +1,7 @@
 ---
 Document: Engineering Handbook Index
 ID: DOC-INDEX-001
-Version: 2.3
+Version: 2.4
 Status: Stable
 Owner: Repository Maintainer
 Reviewers:
@@ -35,6 +35,8 @@ The Engineering Handbook is the authoritative documentation set describing the p
 - Runtime Architecture
 - `architecture/governed-agentic-research.md` - proposed agent, evidence,
   capability, trust, enforcement, and governed-learning architecture
+- `architecture/authority-epistemics-separation.md` - baseline separating
+  proposals and epistemic evaluation from consequential authority
 - `adr/0002-authority-separation.md` - merged constitutional authority roles,
   independence rules, prohibited combinations, and negative cases
 - `specs/SPEC-ID-001-Canonical-Identity-and-Lineage.md` - canonical
@@ -101,6 +103,7 @@ Research documentation:
 
 ## Changelog
 
+- **v2.4 (2026-08-16)** Added the Authority-Epistemics Separation baseline.
 - **v2.3 (2026-08-11)** Recorded the owner-approved A04 v1 binary-encoding
   baseline and advanced the evidence schema to implementation.
 - **v2.2 (2026-08-11)** Added the proposed BKI and Sovereign OS language
