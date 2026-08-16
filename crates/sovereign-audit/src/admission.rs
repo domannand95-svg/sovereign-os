@@ -83,6 +83,17 @@ impl DispositionEvidenceRequirements {
     }
 }
 
+/// Authoritative validity of a resolved Dispute's resolution relationship.
+///
+/// `Valid` means the supplied authoritative state establishes that the exact
+/// resolution record is a valid later Disposition for the exact Dispute.
+/// The evaluator does not infer this relationship from payload fields.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum AuthoritativeDisputeResolution {
+    Valid,
+    Invalid,
+}
+
 /// Storage-neutral authority boundary used by A04 cross-record admission.
 ///
 /// The first implementation increment allocates only exact governed-record
@@ -144,6 +155,20 @@ pub trait EvidenceAdmissionAuthority {
         decided_id: &RecordId,
         state_ref: &Self::StateRef,
     ) -> Result<DispositionEvidenceRequirements, EvidenceAdmissionAuthorityError>;
+
+    /// Resolve whether an exact Dispute-to-Disposition resolution relationship
+    /// is valid in the explicitly supplied authoritative state.
+    ///
+    /// This includes the normative requirement that the resolution be a later
+    /// valid Disposition. The evaluator does not invent a `decided_id`
+    /// relationship or use ambient ordering.
+    fn dispute_resolution_relationship(
+        &self,
+        dispute_id: &RecordId,
+        disputed_id: &RecordId,
+        resolution_id: &RecordId,
+        state_ref: &Self::StateRef,
+    ) -> Result<AuthoritativeDisputeResolution, EvidenceAdmissionAuthorityError>;
 }
 
 /// Normative kind requirement for a typed A04 record reference.
@@ -471,6 +496,21 @@ fn evaluate_dispute<A: EvidenceAdmissionAuthority>(
             &resolution_id,
             RecordKindRequirement::Disposition,
         )?;
+
+        let dispute_id = candidate.id();
+        let disputed_id = payload.disputed_id();
+
+        match authority.dispute_resolution_relationship(
+            &dispute_id,
+            &disputed_id,
+            &resolution_id,
+            state_ref,
+        )? {
+            AuthoritativeDisputeResolution::Valid => {}
+            AuthoritativeDisputeResolution::Invalid => {
+                return Err(EvidenceAdmissionError::InvalidResolvedDisputeRelationship);
+            }
+        }
     }
 
     Ok(())
@@ -611,6 +651,12 @@ mod tests {
         disposition_requirements_error: Option<EvidenceAdmissionAuthorityError>,
         expected_criteria_id: Option<IdentityId>,
         expected_decided_id: Option<RecordId>,
+        dispute_resolution: AuthoritativeDisputeResolution,
+        dispute_resolution_error: Option<EvidenceAdmissionAuthorityError>,
+        forbid_dispute_resolution_lookup: bool,
+        expected_dispute_id: Option<RecordId>,
+        expected_disputed_id: Option<RecordId>,
+        expected_resolution_id: Option<RecordId>,
     }
 
     impl TestAuthority {
@@ -633,6 +679,12 @@ mod tests {
                 disposition_requirements_error: None,
                 expected_criteria_id: None,
                 expected_decided_id: None,
+                dispute_resolution: AuthoritativeDisputeResolution::Valid,
+                dispute_resolution_error: None,
+                forbid_dispute_resolution_lookup: false,
+                expected_dispute_id: None,
+                expected_disputed_id: None,
+                expected_resolution_id: None,
             }
         }
 
@@ -749,6 +801,48 @@ mod tests {
             }
 
             Ok(self.disposition_requirements.clone())
+        }
+
+        fn dispute_resolution_relationship(
+            &self,
+            dispute_id: &RecordId,
+            disputed_id: &RecordId,
+            resolution_id: &RecordId,
+            state_ref: &Self::StateRef,
+        ) -> Result<AuthoritativeDisputeResolution, EvidenceAdmissionAuthorityError> {
+            self.validate_state_ref(state_ref)?;
+
+            assert!(
+                !self.forbid_dispute_resolution_lookup,
+                "dispute resolution relationship lookup must not occur"
+            );
+
+            if let Some(expected_dispute_id) = self.expected_dispute_id {
+                assert_eq!(
+                    *dispute_id, expected_dispute_id,
+                    "resolution validation must use the exact candidate Dispute ID"
+                );
+            }
+
+            if let Some(expected_disputed_id) = self.expected_disputed_id {
+                assert_eq!(
+                    *disputed_id, expected_disputed_id,
+                    "resolution validation must use the exact disputed_id"
+                );
+            }
+
+            if let Some(expected_resolution_id) = self.expected_resolution_id {
+                assert_eq!(
+                    *resolution_id, expected_resolution_id,
+                    "resolution validation must use the exact resolution_id"
+                );
+            }
+
+            if let Some(error) = self.dispute_resolution_error {
+                return Err(error);
+            }
+
+            Ok(self.dispute_resolution)
         }
     }
 
@@ -1201,6 +1295,7 @@ mod tests {
     fn resolved_dispute_resolution_requires_disposition_kind() {
         let state = TestStateRef(1);
         let mut authority = TestAuthority::new(state.clone());
+        authority.forbid_dispute_resolution_lookup = true;
 
         let disputed = generic_record(RecordKind::Objective, 33, identity(130), vec![]);
         let first_position = generic_record(RecordKind::Claim, 34, identity(131), vec![]);
@@ -1716,6 +1811,216 @@ mod tests {
             vec![],
             vec![],
         );
+
+        assert_eq!(
+            evaluate_admission(&candidate, &authority, &state),
+            Ok(EvidenceAdmissionResult::Admissible)
+        );
+    }
+    fn dispute_resolution_fixture(
+        authority: &mut TestAuthority,
+        disputed_seed: u8,
+    ) -> (
+        EvidenceRecord,
+        EvidenceRecord,
+        EvidenceRecord,
+        EvidenceRecord,
+    ) {
+        let disputed = generic_record(RecordKind::Objective, disputed_seed, identity(210), vec![]);
+        let first_position = generic_record(
+            RecordKind::Claim,
+            disputed_seed.wrapping_add(1),
+            identity(211),
+            vec![],
+        );
+        let second_position = generic_record(
+            RecordKind::ReviewerFinding,
+            disputed_seed.wrapping_add(2),
+            identity(212),
+            vec![],
+        );
+        let resolution = generic_record(
+            RecordKind::Disposition,
+            disputed_seed.wrapping_add(3),
+            identity(213),
+            vec![],
+        );
+
+        authority.insert(disputed.clone());
+        authority.insert(first_position.clone());
+        authority.insert(second_position.clone());
+        authority.insert(resolution.clone());
+
+        (disputed, first_position, second_position, resolution)
+    }
+
+    fn resolved_dispute_candidate(
+        disputed: &EvidenceRecord,
+        first_position: &EvidenceRecord,
+        second_position: &EvidenceRecord,
+        resolution: &EvidenceRecord,
+    ) -> EvidenceRecord {
+        let payload = DisputePayload::new(
+            disputed.id(),
+            vec![first_position.id(), second_position.id()],
+            identity(214),
+            DisputeStatus::Resolved,
+            Some(resolution.id()),
+        )
+        .unwrap();
+
+        EvidenceRecord::new_dispute(
+            identity(215),
+            disputed.subject_id(),
+            identity(216),
+            vec![],
+            payload,
+        )
+        .unwrap()
+    }
+
+    #[test]
+    fn authoritative_valid_resolution_relationship_is_admissible() {
+        let state = TestStateRef(1);
+        let mut authority = TestAuthority::new(state.clone());
+
+        let (disputed, first_position, second_position, resolution) =
+            dispute_resolution_fixture(&mut authority, 62);
+
+        let candidate =
+            resolved_dispute_candidate(&disputed, &first_position, &second_position, &resolution);
+
+        authority.expected_dispute_id = Some(candidate.id());
+        authority.expected_disputed_id = Some(disputed.id());
+        authority.expected_resolution_id = Some(resolution.id());
+        authority.dispute_resolution = AuthoritativeDisputeResolution::Valid;
+
+        assert_eq!(
+            evaluate_admission(&candidate, &authority, &state),
+            Ok(EvidenceAdmissionResult::Admissible)
+        );
+    }
+
+    #[test]
+    fn authoritative_invalid_resolution_relationship_is_rejected() {
+        let state = TestStateRef(1);
+        let mut authority = TestAuthority::new(state.clone());
+
+        let (disputed, first_position, second_position, resolution) =
+            dispute_resolution_fixture(&mut authority, 66);
+
+        let candidate =
+            resolved_dispute_candidate(&disputed, &first_position, &second_position, &resolution);
+
+        authority.dispute_resolution = AuthoritativeDisputeResolution::Invalid;
+
+        assert_eq!(
+            evaluate_admission(&candidate, &authority, &state),
+            Err(EvidenceAdmissionError::InvalidResolvedDisputeRelationship)
+        );
+    }
+
+    #[test]
+    fn unavailable_resolution_relationship_fails_closed() {
+        let state = TestStateRef(1);
+        let mut authority = TestAuthority::new(state.clone());
+
+        let (disputed, first_position, second_position, resolution) =
+            dispute_resolution_fixture(&mut authority, 70);
+
+        let candidate =
+            resolved_dispute_candidate(&disputed, &first_position, &second_position, &resolution);
+
+        authority.dispute_resolution_error =
+            Some(EvidenceAdmissionAuthorityError::RequiredRelationalInformationUnavailable);
+
+        assert_eq!(
+            evaluate_admission(&candidate, &authority, &state),
+            Err(EvidenceAdmissionError::RequiredRelationalInformationUnavailable)
+        );
+    }
+
+    #[test]
+    fn unresolved_dispute_does_not_query_resolution_relationship() {
+        let state = TestStateRef(1);
+        let mut authority = TestAuthority::new(state.clone());
+        authority.forbid_dispute_resolution_lookup = true;
+
+        let disputed = generic_record(RecordKind::Objective, 74, identity(217), vec![]);
+        let first_position = generic_record(RecordKind::Claim, 75, identity(218), vec![]);
+        let second_position =
+            generic_record(RecordKind::ReviewerFinding, 76, identity(219), vec![]);
+
+        authority.insert(disputed.clone());
+        authority.insert(first_position.clone());
+        authority.insert(second_position.clone());
+
+        let payload = DisputePayload::new(
+            disputed.id(),
+            vec![first_position.id(), second_position.id()],
+            identity(220),
+            DisputeStatus::Open,
+            None,
+        )
+        .unwrap();
+
+        let candidate = EvidenceRecord::new_dispute(
+            identity(221),
+            disputed.subject_id(),
+            identity(222),
+            vec![],
+            payload,
+        )
+        .unwrap();
+
+        assert_eq!(
+            evaluate_admission(&candidate, &authority, &state),
+            Ok(EvidenceAdmissionResult::Admissible)
+        );
+    }
+
+    #[test]
+    fn resolution_validity_is_not_inferred_from_disposition_decided_id() {
+        let state = TestStateRef(1);
+        let mut authority = TestAuthority::new(state.clone());
+
+        let disputed = generic_record(RecordKind::Objective, 77, identity(223), vec![]);
+        let unrelated_decided = generic_record(RecordKind::Claim, 78, identity(224), vec![]);
+        let first_position = generic_record(RecordKind::Claim, 79, identity(225), vec![]);
+        let second_position =
+            generic_record(RecordKind::ReviewerFinding, 80, identity(226), vec![]);
+
+        authority.insert(disputed.clone());
+        authority.insert(unrelated_decided.clone());
+        authority.insert(first_position.clone());
+        authority.insert(second_position.clone());
+
+        let resolution_payload = DispositionPayload::new(
+            unrelated_decided.id(),
+            DispositionDecision::Defer,
+            identity(227),
+            identity(228),
+            vec![],
+            vec![],
+            "authoritative resolution relation".to_owned(),
+            None,
+        )
+        .unwrap();
+
+        let resolution = EvidenceRecord::new_disposition(
+            identity(229),
+            unrelated_decided.subject_id(),
+            identity(230),
+            vec![],
+            resolution_payload,
+        )
+        .unwrap();
+
+        authority.insert(resolution.clone());
+        authority.dispute_resolution = AuthoritativeDisputeResolution::Valid;
+
+        let candidate =
+            resolved_dispute_candidate(&disputed, &first_position, &second_position, &resolution);
 
         assert_eq!(
             evaluate_admission(&candidate, &authority, &state),
