@@ -9,6 +9,7 @@ use std::collections::HashSet;
 use std::fmt;
 
 mod claim;
+mod disposition;
 mod dispute;
 mod failed_attempt;
 mod method;
@@ -18,6 +19,7 @@ mod source;
 mod uncertainty;
 
 pub use claim::{ClaimError, ClaimKind, ClaimPayload, Substantiation};
+pub use disposition::{DispositionDecision, DispositionError, DispositionPayload};
 pub use dispute::{DisputeError, DisputePayload, DisputeStatus};
 pub use failed_attempt::{FailedAttemptError, FailedAttemptPayload, FailureKind};
 pub use method::{MethodError, MethodPayload};
@@ -109,6 +111,23 @@ pub struct EvidenceRecord {
 }
 
 impl EvidenceRecord {
+    pub fn new_disposition(
+        issuer_id: IdentityId,
+        subject_id: IdentityId,
+        policy_id: IdentityId,
+        parent_ids: Vec<RecordId>,
+        payload: DispositionPayload,
+    ) -> Result<Self, EvidenceError> {
+        Self::new(
+            RecordKind::Disposition,
+            issuer_id,
+            subject_id,
+            policy_id,
+            parent_ids,
+            payload.encode(),
+        )
+    }
+
     pub fn new_dispute(
         issuer_id: IdentityId,
         subject_id: IdentityId,
@@ -376,6 +395,17 @@ impl EvidenceRecord {
         ReviewerFindingPayload::decode(&self.payload).map_err(EvidencePayloadError::ReviewerFinding)
     }
 
+    pub fn decode_disposition_payload(&self) -> Result<DispositionPayload, EvidencePayloadError> {
+        if self.kind != RecordKind::Disposition {
+            return Err(EvidencePayloadError::WrongRecordKind {
+                expected: RecordKind::Disposition,
+                actual: self.kind,
+            });
+        }
+
+        DispositionPayload::decode(&self.payload).map_err(EvidencePayloadError::Disposition)
+    }
+
     pub fn decode_dispute_payload(&self) -> Result<DisputePayload, EvidencePayloadError> {
         if self.kind != RecordKind::Dispute {
             return Err(EvidencePayloadError::WrongRecordKind {
@@ -507,6 +537,7 @@ pub enum EvidencePayloadError {
     FailedAttempt(FailedAttemptError),
     ReviewerFinding(ReviewerFindingError),
     Dispute(DisputeError),
+    Disposition(DispositionError),
 }
 
 impl fmt::Display for EvidencePayloadError {
@@ -527,6 +558,7 @@ impl std::error::Error for EvidencePayloadError {
             Self::FailedAttempt(error) => Some(error),
             Self::ReviewerFinding(error) => Some(error),
             Self::Dispute(error) => Some(error),
+            Self::Disposition(error) => Some(error),
         }
     }
 }
@@ -980,6 +1012,48 @@ mod tests {
             }
         );
     }
+    #[test]
+    fn typed_disposition_record_round_trips_without_kind_confusion() {
+        let payload = DispositionPayload::new(
+            RecordId::from_bytes([1; ID_LEN]),
+            DispositionDecision::AcceptForReview,
+            identity(2),
+            identity(3),
+            vec![RecordId::from_bytes([4; ID_LEN])],
+            vec![RecordId::from_bytes([5; ID_LEN])],
+            "reason".to_owned(),
+            None,
+        )
+        .unwrap();
+
+        let record = EvidenceRecord::new_disposition(
+            identity(6),
+            identity(7),
+            identity(8),
+            vec![RecordId::from_bytes([9; ID_LEN])],
+            payload.clone(),
+        )
+        .unwrap();
+
+        assert_eq!(record.decode_disposition_payload().unwrap(), payload);
+
+        let decoded = EvidenceRecord::decode(&record.encode()).unwrap();
+        assert_eq!(decoded.decode_disposition_payload().unwrap(), payload);
+    }
+
+    #[test]
+    fn disposition_decoder_rejects_record_kind_confusion() {
+        let dispute = record(RecordKind::Dispute);
+
+        assert_eq!(
+            dispute.decode_disposition_payload().unwrap_err(),
+            EvidencePayloadError::WrongRecordKind {
+                expected: RecordKind::Disposition,
+                actual: RecordKind::Dispute,
+            }
+        );
+    }
+
     #[test]
     fn every_kind_round_trips_canonically() {
         for kind in [
