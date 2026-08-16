@@ -20,11 +20,12 @@ mod source;
 mod uncertainty;
 
 pub use admission::{
-    evaluate_admission, AuthoritativeA05ReferenceActivation, AuthoritativeDisputeResolution,
-    AuthoritativeIndependence, AuthoritativeRelationshipCycle, DispositionEvidenceRequirements,
-    EvidenceAdmissionAuthority, EvidenceAdmissionAuthorityError, EvidenceAdmissionError,
-    EvidenceAdmissionResult, EvidenceAdmissionStateRef, EvidenceRelationshipKind,
-    RecordKindRequirement, ReviewerIndependenceRequirement,
+    evaluate_admission, AuthoritativeA05ReferenceActivation, AuthoritativeCanonicalIdentity,
+    AuthoritativeDisputeResolution, AuthoritativeIndependence, AuthoritativeRelationshipCycle,
+    DispositionEvidenceRequirements, EvidenceAdmissionAuthority, EvidenceAdmissionAuthorityError,
+    EvidenceAdmissionError, EvidenceAdmissionResult, EvidenceAdmissionStateRef,
+    EvidenceRelationshipKind, ExternalIdentityKind, RecordKindRequirement,
+    ReviewerIndependenceRequirement,
 };
 pub use claim::{ClaimError, ClaimKind, ClaimPayload, Substantiation};
 pub use disposition::{DispositionDecision, DispositionError, DispositionPayload};

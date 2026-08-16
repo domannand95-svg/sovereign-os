@@ -125,6 +125,28 @@ pub enum AuthoritativeA05ReferenceActivation {
     Active,
     Inactive,
 }
+
+/// Semantic class of an A04 external identity reference.
+///
+/// These classes describe canonical identity only. They do not convey
+/// capability, execution permission, policy applicability, issuer authority,
+/// resource grants, publication permission, promotion authority, or mutation
+/// authority.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum ExternalIdentityKind {
+    Policy,
+    Criteria,
+    Tool,
+    Environment,
+}
+
+/// Authoritative canonicality result for one exact external identity in one
+/// exact authoritative state.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum AuthoritativeCanonicalIdentity {
+    Canonical,
+    NonCanonical,
+}
 /// Storage-neutral authority boundary used by A04 cross-record admission.
 ///
 /// The first implementation increment allocates only exact governed-record
@@ -226,6 +248,19 @@ pub trait EvidenceAdmissionAuthority {
         reference_id: &RecordId,
         state_ref: &Self::StateRef,
     ) -> Result<AuthoritativeA05ReferenceActivation, EvidenceAdmissionAuthorityError>;
+
+    /// Resolve whether one exact external identity is canonical for the
+    /// supplied semantic class in the exact authoritative state.
+    ///
+    /// Canonicality is identity/class attestation only. It must not be inferred
+    /// from ambient state, record presence, Capability V1 state, tool
+    /// availability, policy authorization, or execution permission.
+    fn canonical_external_identity(
+        &self,
+        identity_kind: ExternalIdentityKind,
+        identity_id: &IdentityId,
+        state_ref: &Self::StateRef,
+    ) -> Result<AuthoritativeCanonicalIdentity, EvidenceAdmissionAuthorityError>;
 }
 /// Normative kind requirement for a typed A04 record reference.
 ///
@@ -345,12 +380,34 @@ pub enum EvidenceAdmissionResult {
 ///
 /// Remaining Section 15 rules are implemented only in later owner-approved
 /// increments.
+fn check_canonical_external_identity<A: EvidenceAdmissionAuthority>(
+    authority: &A,
+    state_ref: &A::StateRef,
+    kind: ExternalIdentityKind,
+    id: &IdentityId,
+) -> Result<(), EvidenceAdmissionError> {
+    match authority.canonical_external_identity(kind, id, state_ref)? {
+        AuthoritativeCanonicalIdentity::Canonical => Ok(()),
+        AuthoritativeCanonicalIdentity::NonCanonical => {
+            Err(EvidenceAdmissionError::NonCanonicalExternalIdentity)
+        }
+    }
+}
+
 pub fn evaluate_admission<A: EvidenceAdmissionAuthority>(
     candidate: &EvidenceRecord,
     authority: &A,
     state_ref: &A::StateRef,
 ) -> Result<EvidenceAdmissionResult, EvidenceAdmissionError> {
     authority.validate_state_ref(state_ref)?;
+
+    let policy_id = candidate.policy_id();
+    check_canonical_external_identity(
+        authority,
+        state_ref,
+        ExternalIdentityKind::Policy,
+        &policy_id,
+    )?;
 
     for parent_id in candidate.parent_ids() {
         resolve_exact(authority, state_ref, parent_id)?;
@@ -416,6 +473,23 @@ fn evaluate_method<A: EvidenceAdmissionAuthority>(
     let payload = candidate
         .decode_method_payload()
         .map_err(map_payload_error)?;
+
+    for tool_id in payload.tool_ids() {
+        check_canonical_external_identity(
+            authority,
+            state_ref,
+            ExternalIdentityKind::Tool,
+            tool_id,
+        )?;
+    }
+
+    let environment_id = payload.environment_id();
+    check_canonical_external_identity(
+        authority,
+        state_ref,
+        ExternalIdentityKind::Environment,
+        &environment_id,
+    )?;
 
     resolve_required_kind(
         authority,
@@ -605,6 +679,14 @@ fn evaluate_disposition<A: EvidenceAdmissionAuthority>(
         .decode_disposition_payload()
         .map_err(map_payload_error)?;
 
+    let criteria_id = payload.criteria_id();
+    check_canonical_external_identity(
+        authority,
+        state_ref,
+        ExternalIdentityKind::Criteria,
+        &criteria_id,
+    )?;
+
     let decided = resolve_exact(authority, state_ref, &payload.decided_id())?;
 
     for evidence_id in payload.evidence_ids() {
@@ -730,6 +812,7 @@ mod tests {
         IndependenceResult, ReviewerFindingPayload, Substantiation,
     };
     use sovereign_registry::{IdentityKind, IdentityRecord};
+    use std::cell::RefCell;
     use std::collections::BTreeMap;
 
     #[derive(Clone, Debug, PartialEq, Eq)]
@@ -767,6 +850,14 @@ mod tests {
         a05_activation_error: Option<EvidenceAdmissionAuthorityError>,
         forbid_a05_activation_lookup: bool,
         expected_a05_reference_id: Option<RecordId>,
+        canonical_default: AuthoritativeCanonicalIdentity,
+        canonical_error: Option<EvidenceAdmissionAuthorityError>,
+        canonical_overrides: Vec<(
+            ExternalIdentityKind,
+            IdentityId,
+            AuthoritativeCanonicalIdentity,
+        )>,
+        canonical_queries: RefCell<Vec<(ExternalIdentityKind, IdentityId)>>,
     }
 
     impl TestAuthority {
@@ -805,6 +896,10 @@ mod tests {
                 a05_activation_error: None,
                 forbid_a05_activation_lookup: false,
                 expected_a05_reference_id: None,
+                canonical_default: AuthoritativeCanonicalIdentity::Canonical,
+                canonical_error: None,
+                canonical_overrides: vec![],
+                canonical_queries: RefCell::new(vec![]),
             }
         }
 
@@ -1031,6 +1126,31 @@ mod tests {
             }
 
             Ok(self.a05_activation)
+        }
+
+        fn canonical_external_identity(
+            &self,
+            identity_kind: ExternalIdentityKind,
+            identity_id: &IdentityId,
+            state_ref: &Self::StateRef,
+        ) -> Result<AuthoritativeCanonicalIdentity, EvidenceAdmissionAuthorityError> {
+            self.validate_state_ref(state_ref)?;
+
+            self.canonical_queries
+                .borrow_mut()
+                .push((identity_kind, *identity_id));
+
+            if let Some(error) = self.canonical_error {
+                return Err(error);
+            }
+
+            for (expected_kind, expected_id, result) in &self.canonical_overrides {
+                if *expected_kind == identity_kind && *expected_id == *identity_id {
+                    return Ok(*result);
+                }
+            }
+
+            Ok(self.canonical_default)
         }
     }
 
@@ -2614,6 +2734,298 @@ mod tests {
         assert_eq!(
             evaluate_admission(&candidate, &authority, &state),
             Ok(EvidenceAdmissionResult::Admissible)
+        );
+    }
+    fn method_identity_candidate(
+        objective: &EvidenceRecord,
+        tool_ids: Vec<IdentityId>,
+        environment_id: IdentityId,
+        seed: u8,
+    ) -> EvidenceRecord {
+        let payload = crate::MethodPayload::new(
+            objective.id(),
+            "canonical identity method".to_owned(),
+            vec![],
+            tool_ids,
+            environment_id,
+            crate::DigestAlgorithm::Sha256,
+            [seed; 32],
+            None,
+        )
+        .unwrap();
+
+        EvidenceRecord::new_method(
+            identity(seed.wrapping_add(1)),
+            objective.subject_id(),
+            identity(seed.wrapping_add(2)),
+            vec![],
+            payload,
+        )
+        .unwrap()
+    }
+
+    #[test]
+    fn noncanonical_policy_rejects_before_method_external_identity_checks() {
+        let state = TestStateRef(1);
+        let mut authority = TestAuthority::new(state.clone());
+
+        let objective = generic_record(RecordKind::Objective, 130, identity(130), vec![]);
+        authority.insert(objective.clone());
+
+        let tool_id = identity(131);
+        let environment_id = identity(132);
+        let candidate = method_identity_candidate(&objective, vec![tool_id], environment_id, 133);
+
+        authority.canonical_overrides.push((
+            ExternalIdentityKind::Policy,
+            candidate.policy_id(),
+            AuthoritativeCanonicalIdentity::NonCanonical,
+        ));
+
+        assert_eq!(
+            evaluate_admission(&candidate, &authority, &state),
+            Err(EvidenceAdmissionError::NonCanonicalExternalIdentity)
+        );
+
+        let queries = authority.canonical_queries.borrow();
+        assert_eq!(
+            queries.as_slice(),
+            &[(ExternalIdentityKind::Policy, candidate.policy_id(),)]
+        );
+    }
+
+    #[test]
+    fn unavailable_policy_canonicality_fails_closed() {
+        let state = TestStateRef(1);
+        let mut authority = TestAuthority::new(state.clone());
+
+        let candidate = generic_record(RecordKind::Objective, 134, identity(134), vec![]);
+
+        authority.canonical_error = Some(EvidenceAdmissionAuthorityError::StateUnavailable);
+
+        assert_eq!(
+            evaluate_admission(&candidate, &authority, &state),
+            Err(EvidenceAdmissionError::AuthoritativeStateUnavailable)
+        );
+
+        let queries = authority.canonical_queries.borrow();
+        assert_eq!(
+            queries.as_slice(),
+            &[(ExternalIdentityKind::Policy, candidate.policy_id(),)]
+        );
+    }
+
+    #[test]
+    fn method_external_identities_are_checked_in_declared_order() {
+        let state = TestStateRef(1);
+        let mut authority = TestAuthority::new(state.clone());
+
+        let objective = generic_record(RecordKind::Objective, 135, identity(135), vec![]);
+        authority.insert(objective.clone());
+
+        let first_tool = identity(136);
+        let second_tool = identity(137);
+        let environment_id = identity(138);
+
+        let candidate = method_identity_candidate(
+            &objective,
+            vec![first_tool, second_tool],
+            environment_id,
+            139,
+        );
+
+        assert_eq!(
+            evaluate_admission(&candidate, &authority, &state),
+            Ok(EvidenceAdmissionResult::Admissible)
+        );
+
+        let queries = authority.canonical_queries.borrow();
+        assert_eq!(
+            queries.as_slice(),
+            &[
+                (ExternalIdentityKind::Policy, candidate.policy_id(),),
+                (ExternalIdentityKind::Tool, first_tool),
+                (ExternalIdentityKind::Tool, second_tool),
+                (ExternalIdentityKind::Environment, environment_id,),
+            ]
+        );
+    }
+
+    #[test]
+    fn second_noncanonical_tool_rejects_before_environment_check() {
+        let state = TestStateRef(1);
+        let mut authority = TestAuthority::new(state.clone());
+
+        let objective = generic_record(RecordKind::Objective, 140, identity(140), vec![]);
+        authority.insert(objective.clone());
+
+        let first_tool = identity(141);
+        let second_tool = identity(142);
+        let environment_id = identity(143);
+
+        let candidate = method_identity_candidate(
+            &objective,
+            vec![first_tool, second_tool],
+            environment_id,
+            144,
+        );
+
+        authority.canonical_overrides.push((
+            ExternalIdentityKind::Tool,
+            second_tool,
+            AuthoritativeCanonicalIdentity::NonCanonical,
+        ));
+
+        assert_eq!(
+            evaluate_admission(&candidate, &authority, &state),
+            Err(EvidenceAdmissionError::NonCanonicalExternalIdentity)
+        );
+
+        let queries = authority.canonical_queries.borrow();
+        assert_eq!(
+            queries.as_slice(),
+            &[
+                (ExternalIdentityKind::Policy, candidate.policy_id(),),
+                (ExternalIdentityKind::Tool, first_tool),
+                (ExternalIdentityKind::Tool, second_tool),
+            ]
+        );
+    }
+
+    #[test]
+    fn noncanonical_method_environment_is_rejected() {
+        let state = TestStateRef(1);
+        let mut authority = TestAuthority::new(state.clone());
+
+        let objective = generic_record(RecordKind::Objective, 145, identity(145), vec![]);
+        authority.insert(objective.clone());
+
+        let tool_id = identity(146);
+        let environment_id = identity(147);
+
+        let candidate = method_identity_candidate(&objective, vec![tool_id], environment_id, 148);
+
+        authority.canonical_overrides.push((
+            ExternalIdentityKind::Environment,
+            environment_id,
+            AuthoritativeCanonicalIdentity::NonCanonical,
+        ));
+
+        assert_eq!(
+            evaluate_admission(&candidate, &authority, &state),
+            Err(EvidenceAdmissionError::NonCanonicalExternalIdentity)
+        );
+
+        let queries = authority.canonical_queries.borrow();
+        assert_eq!(
+            queries.as_slice(),
+            &[
+                (ExternalIdentityKind::Policy, candidate.policy_id(),),
+                (ExternalIdentityKind::Tool, tool_id),
+                (ExternalIdentityKind::Environment, environment_id,),
+            ]
+        );
+    }
+
+    #[test]
+    fn noncanonical_disposition_criteria_is_rejected() {
+        let state = TestStateRef(1);
+        let mut authority = TestAuthority::new(state.clone());
+
+        let decided = generic_record(RecordKind::Claim, 149, identity(149), vec![]);
+        authority.insert(decided.clone());
+
+        let policy_id = identity(150);
+        let criteria_id = identity(151);
+
+        let candidate = disposition_completeness_candidate(
+            &decided,
+            identity(152),
+            policy_id,
+            criteria_id,
+            vec![],
+            vec![],
+        );
+
+        authority.canonical_overrides.push((
+            ExternalIdentityKind::Criteria,
+            criteria_id,
+            AuthoritativeCanonicalIdentity::NonCanonical,
+        ));
+
+        assert_eq!(
+            evaluate_admission(&candidate, &authority, &state),
+            Err(EvidenceAdmissionError::NonCanonicalExternalIdentity)
+        );
+
+        let queries = authority.canonical_queries.borrow();
+        assert_eq!(
+            queries.as_slice(),
+            &[
+                (ExternalIdentityKind::Policy, policy_id),
+                (ExternalIdentityKind::Criteria, criteria_id),
+            ]
+        );
+    }
+
+    #[test]
+    fn canonical_identity_is_semantic_class_sensitive() {
+        let state = TestStateRef(1);
+        let mut authority = TestAuthority::new(state.clone());
+
+        let objective = generic_record(RecordKind::Objective, 153, identity(153), vec![]);
+        authority.insert(objective.clone());
+
+        let shared_identity = identity(154);
+
+        let candidate =
+            method_identity_candidate(&objective, vec![shared_identity], shared_identity, 155);
+
+        authority.canonical_default = AuthoritativeCanonicalIdentity::NonCanonical;
+
+        authority.canonical_overrides.push((
+            ExternalIdentityKind::Policy,
+            candidate.policy_id(),
+            AuthoritativeCanonicalIdentity::Canonical,
+        ));
+
+        authority.canonical_overrides.push((
+            ExternalIdentityKind::Environment,
+            shared_identity,
+            AuthoritativeCanonicalIdentity::Canonical,
+        ));
+
+        assert_eq!(
+            evaluate_admission(&candidate, &authority, &state),
+            Err(EvidenceAdmissionError::NonCanonicalExternalIdentity)
+        );
+
+        let queries = authority.canonical_queries.borrow();
+        assert_eq!(
+            queries.as_slice(),
+            &[
+                (ExternalIdentityKind::Policy, candidate.policy_id(),),
+                (ExternalIdentityKind::Tool, shared_identity),
+            ]
+        );
+    }
+
+    #[test]
+    fn objective_triggers_only_policy_canonicality_check() {
+        let state = TestStateRef(1);
+        let authority = TestAuthority::new(state.clone());
+
+        let candidate = generic_record(RecordKind::Objective, 156, identity(156), vec![]);
+
+        assert_eq!(
+            evaluate_admission(&candidate, &authority, &state),
+            Ok(EvidenceAdmissionResult::Admissible)
+        );
+
+        let queries = authority.canonical_queries.borrow();
+        assert_eq!(
+            queries.as_slice(),
+            &[(ExternalIdentityKind::Policy, candidate.policy_id(),)]
         );
     }
 }
