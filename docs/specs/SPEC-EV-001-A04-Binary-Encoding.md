@@ -292,42 +292,52 @@ Changing the status discriminators, field order, optional encoding, list
 semantics, or either frozen vector requires a new schema version rather than
 reinterpretation of version 1.
 
-## 14. Dispute Fixed Vector
+## 15. Disposition Fixed Vector
 
-Dispute v1 encodes fields in this order: disputed governed-record identifier,
-a big-endian `u16` count followed by at least two and at most 64 ordered unique
-position record identifiers, the canonical identity that opened the dispute,
-a one-byte dispute-status discriminator, and an optional resolution record
-identifier using the canonical `0x00` absent / `0x01` present marker.
+Disposition v1 encodes fields in this order: the governed-record identifier
+being decided, a one-byte decision discriminator, the canonical decision
+authority identity, the canonical versioned criteria or policy identity, a
+big-endian `u16` count followed by at most 64 ordered unique evidence record
+identifiers, a big-endian `u16` count followed by at most 64 ordered unique
+unresolved-dispute record identifiers, a big-endian `u32` byte length followed
+by the required UTF-8 reason text, and an optional superseded-record identifier
+using the canonical `0x00` absent / `0x01` present marker.
 
-Dispute-status discriminators are Open `0x00`, Under Review `0x01`,
-Resolved `0x02`, and Withdrawn `0x03`.
+Decision discriminators are Accept for Review `0x00`, Reject `0x01`, Defer
+`0x02`, Quarantine `0x03`, Supersede `0x04`, and Revoke `0x05`.
 
-`Resolved` requires a present, non-zero `resolution_id`. Open, Under Review,
-and Withdrawn require the resolution identifier to be absent. These are local
-structural invariants only. Whether position identifiers refer to Claims or
-Reviewer Findings, whether referenced records exist, and whether a resolution
-identifier refers to a later Disposition remain admission-policy concerns.
+Supersede and Revoke require a present, non-zero `supersedes_id`. Accept for
+Review, Reject, Defer, and Quarantine require `supersedes_id` to be absent.
+Both identifier lists preserve declared order and reject duplicate or all-zero
+record identifiers. The reason is required, non-empty UTF-8, contains no NUL
+byte, and is bounded by the A04 maximum text-field length.
 
-The minimal fixture uses a disputed-record identifier of 32 `0x01` bytes,
-two ordered position identifiers of 32 `0x02` bytes and 32 `0x03` bytes,
-an `opened_by` identity of 32 `0x04` bytes, Open status, and no resolution
-identifier:
+These are local structural invariants only. Whether referenced records exist or
+have the required kinds, whether `decision_authority_id` is independent from
+the governed subject, whether `criteria_id` resolves to valid governing
+criteria, and whether the unresolved-dispute list is complete remain
+admission-policy concerns.
 
-`010101010101010101010101010101010101010101010101010101010101010100020202020202020202020202020202020202020202020202020202020202020202030303030303030303030303030303030303030303030303030303030303030304040404040404040404040404040404040404040404040404040404040404040000`
+The minimal fixture uses a decided-record identifier of 32 `0x01` bytes,
+Accept for Review decision, a decision-authority identity of 32 `0x02` bytes,
+a criteria identity of 32 `0x03` bytes, empty evidence and unresolved-dispute
+lists, `reason="R"`, and no superseded-record identifier:
 
-The fixture is exactly 132 bytes.
+`0101010101010101010101010101010101010101010101010101010101010101000202020202020202020202020202020202020202020202020202020202020202030303030303030303030303030303030303030303030303030303030303030300000000000000015200`
 
-The typed governed Dispute record fixture in the Rust test suite has record ID:
+The fixture is exactly 107 bytes.
 
-`29cbf3618d488d0c3e0cc4f025ad76060bc928d3d786b6fad6c7051b85d9c54f`
+The typed governed Disposition record fixture in the Rust test suite has record ID:
 
-A Dispute is an epistemic challenge record only. Its presence, status,
-positions, opener identity, or resolution reference does not reverse or nullify
-a finding, admit or dispose of another record, grant or revoke capabilities,
-authorize execution, expand policy, mutate governed state, or exercise
-promotion authority.
+`f051f39bc5c3301223227f60e32e000fbec038f98452a9f4a209cb9ec1daec67`
 
-Changing the status discriminators, field order, optional encoding, list
-semantics, or either frozen vector requires a new schema version rather than
-reinterpretation of version 1.
+A Disposition records an evidence decision made by an explicitly identified
+authority under explicitly identified criteria. Its presence, decision,
+authority identity, criteria identity, evidence references, dispute references,
+reason, or supersession reference does not itself grant or revoke capabilities,
+authorize execution, promote an artifact, mutate a repository, alter policy, or
+otherwise execute the consequence represented by the decision.
+
+Changing the decision discriminators, field order, optional encoding, list
+semantics, reason encoding, supersession coherence rules, or either frozen
+vector requires a new schema version rather than reinterpretation of version 1.
