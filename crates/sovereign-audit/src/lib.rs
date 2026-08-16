@@ -9,6 +9,7 @@ use std::collections::HashSet;
 use std::fmt;
 
 mod claim;
+mod dispute;
 mod failed_attempt;
 mod method;
 mod objective;
@@ -17,6 +18,7 @@ mod source;
 mod uncertainty;
 
 pub use claim::{ClaimError, ClaimKind, ClaimPayload, Substantiation};
+pub use dispute::{DisputeError, DisputePayload, DisputeStatus};
 pub use failed_attempt::{FailedAttemptError, FailedAttemptPayload, FailureKind};
 pub use method::{MethodError, MethodPayload};
 pub use objective::{ObjectiveError, ObjectivePayload, MAX_LIST_ITEMS, MAX_TEXT_FIELD_LEN};
@@ -107,6 +109,22 @@ pub struct EvidenceRecord {
 }
 
 impl EvidenceRecord {
+    pub fn new_dispute(
+        issuer_id: IdentityId,
+        subject_id: IdentityId,
+        policy_id: IdentityId,
+        parent_ids: Vec<RecordId>,
+        payload: DisputePayload,
+    ) -> Result<Self, EvidenceError> {
+        Self::new(
+            RecordKind::Dispute,
+            issuer_id,
+            subject_id,
+            policy_id,
+            parent_ids,
+            payload.encode(),
+        )
+    }
     pub fn new_reviewer_finding(
         issuer_id: IdentityId,
         subject_id: IdentityId,
@@ -358,6 +376,15 @@ impl EvidenceRecord {
         ReviewerFindingPayload::decode(&self.payload).map_err(EvidencePayloadError::ReviewerFinding)
     }
 
+    pub fn decode_dispute_payload(&self) -> Result<DisputePayload, EvidencePayloadError> {
+        if self.kind != RecordKind::Dispute {
+            return Err(EvidencePayloadError::WrongRecordKind {
+                expected: RecordKind::Dispute,
+                actual: self.kind,
+            });
+        }
+        DisputePayload::decode(&self.payload).map_err(EvidencePayloadError::Dispute)
+    }
     pub fn encode(&self) -> Vec<u8> {
         encode_parts(
             self.kind,
@@ -479,6 +506,7 @@ pub enum EvidencePayloadError {
     Uncertainty(UncertaintyError),
     FailedAttempt(FailedAttemptError),
     ReviewerFinding(ReviewerFindingError),
+    Dispute(DisputeError),
 }
 
 impl fmt::Display for EvidencePayloadError {
@@ -498,6 +526,7 @@ impl std::error::Error for EvidencePayloadError {
             Self::Uncertainty(error) => Some(error),
             Self::FailedAttempt(error) => Some(error),
             Self::ReviewerFinding(error) => Some(error),
+            Self::Dispute(error) => Some(error),
         }
     }
 }
@@ -678,6 +707,19 @@ mod tests {
         .unwrap()
     }
 
+    fn dispute_payload() -> DisputePayload {
+        DisputePayload::new(
+            RecordId::from_bytes([9; ID_LEN]),
+            vec![
+                RecordId::from_bytes([10; ID_LEN]),
+                RecordId::from_bytes([11; ID_LEN]),
+            ],
+            identity(12),
+            DisputeStatus::UnderReview,
+            None,
+        )
+        .unwrap()
+    }
     #[test]
     fn typed_objective_record_round_trips_without_kind_confusion() {
         let payload = objective_payload();
@@ -907,6 +949,37 @@ mod tests {
         );
     }
 
+    #[test]
+    fn typed_dispute_record_round_trips_without_kind_confusion() {
+        let payload = dispute_payload();
+        let record = EvidenceRecord::new_dispute(
+            identity(1),
+            identity(2),
+            identity(3),
+            vec![RecordId::from_bytes([4; ID_LEN])],
+            payload.clone(),
+        )
+        .unwrap();
+
+        assert_eq!(record.kind(), RecordKind::Dispute);
+        assert_eq!(record.decode_dispute_payload().unwrap(), payload);
+
+        let decoded = EvidenceRecord::decode(&record.encode()).unwrap();
+        assert_eq!(decoded.decode_dispute_payload().unwrap(), payload);
+    }
+
+    #[test]
+    fn dispute_decoder_rejects_record_kind_confusion() {
+        let reviewer_finding = record(RecordKind::ReviewerFinding);
+
+        assert_eq!(
+            reviewer_finding.decode_dispute_payload().unwrap_err(),
+            EvidencePayloadError::WrongRecordKind {
+                expected: RecordKind::Dispute,
+                actual: RecordKind::ReviewerFinding,
+            }
+        );
+    }
     #[test]
     fn every_kind_round_trips_canonically() {
         for kind in [
