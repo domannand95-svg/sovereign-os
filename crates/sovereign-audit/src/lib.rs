@@ -21,9 +21,10 @@ mod uncertainty;
 
 pub use admission::{
     evaluate_admission, AuthoritativeDisputeResolution, AuthoritativeIndependence,
-    DispositionEvidenceRequirements, EvidenceAdmissionAuthority, EvidenceAdmissionAuthorityError,
-    EvidenceAdmissionError, EvidenceAdmissionResult, EvidenceAdmissionStateRef,
-    RecordKindRequirement, ReviewerIndependenceRequirement,
+    AuthoritativeRelationshipCycle, DispositionEvidenceRequirements, EvidenceAdmissionAuthority,
+    EvidenceAdmissionAuthorityError, EvidenceAdmissionError, EvidenceAdmissionResult,
+    EvidenceAdmissionStateRef, EvidenceRelationshipKind, RecordKindRequirement,
+    ReviewerIndependenceRequirement,
 };
 pub use claim::{ClaimError, ClaimKind, ClaimPayload, Substantiation};
 pub use disposition::{DispositionDecision, DispositionError, DispositionPayload};

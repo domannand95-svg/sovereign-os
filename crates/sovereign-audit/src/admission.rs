@@ -94,6 +94,26 @@ pub enum AuthoritativeDisputeResolution {
     Invalid,
 }
 
+/// Exact A04 relationship class subject to the normative cycle prohibition.
+///
+/// This is deliberately narrower than a generic graph-edge taxonomy.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum EvidenceRelationshipKind {
+    Retry,
+    Supersession,
+    Resolution,
+}
+
+/// Authoritative result for one proposed A04 relationship edge.
+///
+/// The authority determines this result from the explicitly supplied state.
+/// The evaluator does not traverse, infer, or allocate a graph representation.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum AuthoritativeRelationshipCycle {
+    Acyclic,
+    Cycle,
+}
+
 /// Storage-neutral authority boundary used by A04 cross-record admission.
 ///
 /// The first implementation increment allocates only exact governed-record
@@ -169,6 +189,21 @@ pub trait EvidenceAdmissionAuthority {
         resolution_id: &RecordId,
         state_ref: &Self::StateRef,
     ) -> Result<AuthoritativeDisputeResolution, EvidenceAdmissionAuthorityError>;
+
+    /// Resolve whether one exact proposed A04 relationship participates in a
+    /// prohibited cycle in the explicitly supplied authoritative state.
+    ///
+    /// `candidate_id` is the immutable candidate record being evaluated and
+    /// `referenced_id` is the exact relationship target carried by its payload.
+    /// Implementations must not substitute ambient/current graph state or infer
+    /// a different relationship class.
+    fn relationship_cycle(
+        &self,
+        relationship_kind: EvidenceRelationshipKind,
+        candidate_id: &RecordId,
+        referenced_id: &RecordId,
+        state_ref: &Self::StateRef,
+    ) -> Result<AuthoritativeRelationshipCycle, EvidenceAdmissionAuthorityError>;
 }
 
 /// Normative kind requirement for a typed A04 record reference.
@@ -423,6 +458,14 @@ fn evaluate_failed_attempt<A: EvidenceAdmissionAuthority>(
             &retry_of,
             RecordKindRequirement::FailedAttempt,
         )?;
+
+        ensure_acyclic_relationship(
+            authority,
+            state_ref,
+            EvidenceRelationshipKind::Retry,
+            &candidate.id(),
+            &retry_of,
+        )?;
     }
 
     Ok(())
@@ -511,6 +554,14 @@ fn evaluate_dispute<A: EvidenceAdmissionAuthority>(
                 return Err(EvidenceAdmissionError::InvalidResolvedDisputeRelationship);
             }
         }
+
+        ensure_acyclic_relationship(
+            authority,
+            state_ref,
+            EvidenceRelationshipKind::Resolution,
+            &dispute_id,
+            &resolution_id,
+        )?;
     }
 
     Ok(())
@@ -542,6 +593,14 @@ fn evaluate_disposition<A: EvidenceAdmissionAuthority>(
 
     if let Some(supersedes_id) = payload.supersedes_id() {
         resolve_exact(authority, state_ref, &supersedes_id)?;
+
+        ensure_acyclic_relationship(
+            authority,
+            state_ref,
+            EvidenceRelationshipKind::Supersession,
+            &candidate.id(),
+            &supersedes_id,
+        )?;
     }
 
     if payload.decision_authority_id() == decided.subject_id() {
@@ -581,6 +640,18 @@ fn evaluate_disposition<A: EvidenceAdmissionAuthority>(
     Ok(())
 }
 
+fn ensure_acyclic_relationship<A: EvidenceAdmissionAuthority>(
+    authority: &A,
+    state_ref: &A::StateRef,
+    relationship_kind: EvidenceRelationshipKind,
+    candidate_id: &RecordId,
+    referenced_id: &RecordId,
+) -> Result<(), EvidenceAdmissionError> {
+    match authority.relationship_cycle(relationship_kind, candidate_id, referenced_id, state_ref)? {
+        AuthoritativeRelationshipCycle::Acyclic => Ok(()),
+        AuthoritativeRelationshipCycle::Cycle => Err(EvidenceAdmissionError::RelationshipCycle),
+    }
+}
 fn resolve_required_kind<A: EvidenceAdmissionAuthority>(
     authority: &A,
     state_ref: &A::StateRef,
@@ -657,6 +728,12 @@ mod tests {
         expected_dispute_id: Option<RecordId>,
         expected_disputed_id: Option<RecordId>,
         expected_resolution_id: Option<RecordId>,
+        cycle_result: AuthoritativeRelationshipCycle,
+        cycle_error: Option<EvidenceAdmissionAuthorityError>,
+        forbid_cycle_lookup: bool,
+        expected_cycle_kind: Option<EvidenceRelationshipKind>,
+        expected_cycle_candidate_id: Option<RecordId>,
+        expected_cycle_referenced_id: Option<RecordId>,
     }
 
     impl TestAuthority {
@@ -685,6 +762,12 @@ mod tests {
                 expected_dispute_id: None,
                 expected_disputed_id: None,
                 expected_resolution_id: None,
+                cycle_result: AuthoritativeRelationshipCycle::Acyclic,
+                cycle_error: None,
+                forbid_cycle_lookup: false,
+                expected_cycle_kind: None,
+                expected_cycle_candidate_id: None,
+                expected_cycle_referenced_id: None,
             }
         }
 
@@ -843,6 +926,48 @@ mod tests {
             }
 
             Ok(self.dispute_resolution)
+        }
+
+        fn relationship_cycle(
+            &self,
+            relationship_kind: EvidenceRelationshipKind,
+            candidate_id: &RecordId,
+            referenced_id: &RecordId,
+            state_ref: &Self::StateRef,
+        ) -> Result<AuthoritativeRelationshipCycle, EvidenceAdmissionAuthorityError> {
+            self.validate_state_ref(state_ref)?;
+
+            assert!(
+                !self.forbid_cycle_lookup,
+                "relationship cycle lookup must not occur when no governed relationship is present"
+            );
+
+            if let Some(expected_kind) = self.expected_cycle_kind {
+                assert_eq!(
+                    relationship_kind, expected_kind,
+                    "cycle validation must use the exact normative relationship kind"
+                );
+            }
+
+            if let Some(expected_candidate_id) = self.expected_cycle_candidate_id {
+                assert_eq!(
+                    *candidate_id, expected_candidate_id,
+                    "cycle validation must use the exact immutable candidate ID"
+                );
+            }
+
+            if let Some(expected_referenced_id) = self.expected_cycle_referenced_id {
+                assert_eq!(
+                    *referenced_id, expected_referenced_id,
+                    "cycle validation must use the exact referenced relationship target"
+                );
+            }
+
+            if let Some(error) = self.cycle_error {
+                return Err(error);
+            }
+
+            Ok(self.cycle_result)
         }
     }
 
@@ -2021,6 +2146,297 @@ mod tests {
 
         let candidate =
             resolved_dispute_candidate(&disputed, &first_position, &second_position, &resolution);
+
+        assert_eq!(
+            evaluate_admission(&candidate, &authority, &state),
+            Ok(EvidenceAdmissionResult::Admissible)
+        );
+    }
+    #[test]
+    fn retry_relationship_cycle_is_rejected() {
+        let state = TestStateRef(1);
+        let mut authority = TestAuthority::new(state.clone());
+
+        let objective = generic_record(RecordKind::Objective, 220, identity(220), vec![]);
+        let method = generic_record(RecordKind::Method, 221, identity(221), vec![]);
+        let prior_attempt = generic_record(RecordKind::FailedAttempt, 222, identity(222), vec![]);
+
+        authority.insert(objective.clone());
+        authority.insert(method.clone());
+        authority.insert(prior_attempt.clone());
+
+        let payload = FailedAttemptPayload::new(
+            objective.id(),
+            method.id(),
+            FailureKind::MethodFailure,
+            "retry cycle".to_owned(),
+            vec![],
+            Some(prior_attempt.id()),
+        )
+        .unwrap();
+
+        let candidate = EvidenceRecord::new_failed_attempt(
+            identity(223),
+            identity(224),
+            identity(225),
+            vec![],
+            payload,
+        )
+        .unwrap();
+
+        authority.cycle_result = AuthoritativeRelationshipCycle::Cycle;
+        authority.expected_cycle_kind = Some(EvidenceRelationshipKind::Retry);
+        authority.expected_cycle_candidate_id = Some(candidate.id());
+        authority.expected_cycle_referenced_id = Some(prior_attempt.id());
+
+        assert_eq!(
+            evaluate_admission(&candidate, &authority, &state),
+            Err(EvidenceAdmissionError::RelationshipCycle)
+        );
+    }
+
+    #[test]
+    fn acyclic_retry_relationship_is_admissible() {
+        let state = TestStateRef(1);
+        let mut authority = TestAuthority::new(state.clone());
+
+        let objective = generic_record(RecordKind::Objective, 226, identity(226), vec![]);
+        let method = generic_record(RecordKind::Method, 227, identity(227), vec![]);
+        let prior_attempt = generic_record(RecordKind::FailedAttempt, 228, identity(228), vec![]);
+
+        authority.insert(objective.clone());
+        authority.insert(method.clone());
+        authority.insert(prior_attempt.clone());
+
+        let payload = FailedAttemptPayload::new(
+            objective.id(),
+            method.id(),
+            FailureKind::MethodFailure,
+            "acyclic retry".to_owned(),
+            vec![],
+            Some(prior_attempt.id()),
+        )
+        .unwrap();
+
+        let candidate = EvidenceRecord::new_failed_attempt(
+            identity(229),
+            identity(230),
+            identity(231),
+            vec![],
+            payload,
+        )
+        .unwrap();
+
+        authority.cycle_result = AuthoritativeRelationshipCycle::Acyclic;
+        authority.expected_cycle_kind = Some(EvidenceRelationshipKind::Retry);
+        authority.expected_cycle_candidate_id = Some(candidate.id());
+        authority.expected_cycle_referenced_id = Some(prior_attempt.id());
+
+        assert_eq!(
+            evaluate_admission(&candidate, &authority, &state),
+            Ok(EvidenceAdmissionResult::Admissible)
+        );
+    }
+
+    #[test]
+    fn supersession_relationship_cycle_is_rejected() {
+        let state = TestStateRef(1);
+        let mut authority = TestAuthority::new(state.clone());
+
+        let decided = generic_record(RecordKind::Claim, 232, identity(232), vec![]);
+        let superseded = generic_record(RecordKind::Disposition, 233, identity(233), vec![]);
+
+        authority.insert(decided.clone());
+        authority.insert(superseded.clone());
+
+        let payload = DispositionPayload::new(
+            decided.id(),
+            DispositionDecision::Supersede,
+            identity(234),
+            identity(235),
+            vec![],
+            vec![],
+            "supersession cycle".to_owned(),
+            Some(superseded.id()),
+        )
+        .unwrap();
+
+        let candidate = EvidenceRecord::new_disposition(
+            identity(236),
+            decided.subject_id(),
+            identity(237),
+            vec![],
+            payload,
+        )
+        .unwrap();
+
+        authority.cycle_result = AuthoritativeRelationshipCycle::Cycle;
+        authority.expected_cycle_kind = Some(EvidenceRelationshipKind::Supersession);
+        authority.expected_cycle_candidate_id = Some(candidate.id());
+        authority.expected_cycle_referenced_id = Some(superseded.id());
+
+        assert_eq!(
+            evaluate_admission(&candidate, &authority, &state),
+            Err(EvidenceAdmissionError::RelationshipCycle)
+        );
+    }
+
+    #[test]
+    fn resolution_relationship_cycle_is_rejected() {
+        let state = TestStateRef(1);
+        let mut authority = TestAuthority::new(state.clone());
+
+        let (disputed, first_position, second_position, resolution) =
+            dispute_resolution_fixture(&mut authority, 82);
+
+        let candidate =
+            resolved_dispute_candidate(&disputed, &first_position, &second_position, &resolution);
+
+        authority.dispute_resolution = AuthoritativeDisputeResolution::Valid;
+        authority.cycle_result = AuthoritativeRelationshipCycle::Cycle;
+        authority.expected_cycle_kind = Some(EvidenceRelationshipKind::Resolution);
+        authority.expected_cycle_candidate_id = Some(candidate.id());
+        authority.expected_cycle_referenced_id = Some(resolution.id());
+
+        assert_eq!(
+            evaluate_admission(&candidate, &authority, &state),
+            Err(EvidenceAdmissionError::RelationshipCycle)
+        );
+    }
+
+    #[test]
+    fn unavailable_cycle_relationship_fails_closed() {
+        let state = TestStateRef(1);
+        let mut authority = TestAuthority::new(state.clone());
+
+        let objective = generic_record(RecordKind::Objective, 238, identity(238), vec![]);
+        let method = generic_record(RecordKind::Method, 239, identity(239), vec![]);
+        let prior_attempt = generic_record(RecordKind::FailedAttempt, 240, identity(240), vec![]);
+
+        authority.insert(objective.clone());
+        authority.insert(method.clone());
+        authority.insert(prior_attempt.clone());
+
+        let payload = FailedAttemptPayload::new(
+            objective.id(),
+            method.id(),
+            FailureKind::MethodFailure,
+            "cycle authority unavailable".to_owned(),
+            vec![],
+            Some(prior_attempt.id()),
+        )
+        .unwrap();
+
+        let candidate = EvidenceRecord::new_failed_attempt(
+            identity(241),
+            identity(242),
+            identity(243),
+            vec![],
+            payload,
+        )
+        .unwrap();
+
+        authority.cycle_error =
+            Some(EvidenceAdmissionAuthorityError::RequiredRelationalInformationUnavailable);
+
+        assert_eq!(
+            evaluate_admission(&candidate, &authority, &state),
+            Err(EvidenceAdmissionError::RequiredRelationalInformationUnavailable)
+        );
+    }
+
+    #[test]
+    fn failed_attempt_without_retry_does_not_query_cycle_relationship() {
+        let state = TestStateRef(1);
+        let mut authority = TestAuthority::new(state.clone());
+        authority.forbid_cycle_lookup = true;
+
+        let objective = generic_record(RecordKind::Objective, 244, identity(244), vec![]);
+        let method = generic_record(RecordKind::Method, 245, identity(245), vec![]);
+
+        authority.insert(objective.clone());
+        authority.insert(method.clone());
+
+        let payload = FailedAttemptPayload::new(
+            objective.id(),
+            method.id(),
+            FailureKind::MethodFailure,
+            "no retry".to_owned(),
+            vec![],
+            None,
+        )
+        .unwrap();
+
+        let candidate = EvidenceRecord::new_failed_attempt(
+            identity(246),
+            identity(247),
+            identity(248),
+            vec![],
+            payload,
+        )
+        .unwrap();
+
+        assert_eq!(
+            evaluate_admission(&candidate, &authority, &state),
+            Ok(EvidenceAdmissionResult::Admissible)
+        );
+    }
+
+    #[test]
+    fn disposition_without_supersedes_does_not_query_cycle_relationship() {
+        let state = TestStateRef(1);
+        let mut authority = TestAuthority::new(state.clone());
+        authority.forbid_cycle_lookup = true;
+
+        let decided = generic_record(RecordKind::Claim, 249, identity(249), vec![]);
+        authority.insert(decided.clone());
+
+        let candidate = disposition_completeness_candidate(
+            &decided,
+            identity(250),
+            identity(251),
+            identity(252),
+            vec![],
+            vec![],
+        );
+
+        assert_eq!(
+            evaluate_admission(&candidate, &authority, &state),
+            Ok(EvidenceAdmissionResult::Admissible)
+        );
+    }
+
+    #[test]
+    fn unresolved_dispute_without_resolution_does_not_query_cycle_relationship() {
+        let state = TestStateRef(1);
+        let mut authority = TestAuthority::new(state.clone());
+        authority.forbid_cycle_lookup = true;
+
+        let disputed = generic_record(RecordKind::Objective, 90, identity(90), vec![]);
+        let first_position = generic_record(RecordKind::Claim, 91, identity(91), vec![]);
+        let second_position = generic_record(RecordKind::ReviewerFinding, 92, identity(92), vec![]);
+
+        authority.insert(disputed.clone());
+        authority.insert(first_position.clone());
+        authority.insert(second_position.clone());
+
+        let payload = DisputePayload::new(
+            disputed.id(),
+            vec![first_position.id(), second_position.id()],
+            identity(93),
+            DisputeStatus::Open,
+            None,
+        )
+        .unwrap();
+
+        let candidate = EvidenceRecord::new_dispute(
+            identity(94),
+            disputed.subject_id(),
+            identity(95),
+            vec![],
+            payload,
+        )
+        .unwrap();
 
         assert_eq!(
             evaluate_admission(&candidate, &authority, &state),
