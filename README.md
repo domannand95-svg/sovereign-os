@@ -12,6 +12,22 @@ Models may reason, propose, classify, search, and request capabilities. The surr
 
 ---
 
+## Programme Scope and Naming
+
+- **Repository / long-term programme:** `sovereign-os`
+- **Currently implemented architecture:** Sovereign Operating Layer (SOL)
+- **Future aspiration:** Sovereign Operating System, retained strictly as a
+  future architectural horizon contingent upon owning sufficient execution,
+  lifecycle, resource, isolation, recovery, and hardware-facing
+  responsibilities
+
+> The repository retains the historical `sovereign-os` name as the home of the
+> broader programme. The currently implemented system is the Sovereign
+> Operating Layer; "Sovereign Operating System" remains a possible future
+> architectural horizon, not a claim about present functionality.
+
+---
+
 ## Current Status
 
 The currently implemented authority work comprises the allocated **Capability
