@@ -9,10 +9,12 @@ use std::collections::HashSet;
 use std::fmt;
 
 mod claim;
+mod method;
 mod objective;
 mod source;
 
 pub use claim::{ClaimError, ClaimKind, ClaimPayload, Substantiation};
+pub use method::{MethodError, MethodPayload};
 pub use objective::{ObjectiveError, ObjectivePayload, MAX_LIST_ITEMS, MAX_TEXT_FIELD_LEN};
 pub use source::{DigestAlgorithm, SourceError, SourcePayload};
 
@@ -97,6 +99,23 @@ pub struct EvidenceRecord {
 }
 
 impl EvidenceRecord {
+    pub fn new_method(
+        issuer_id: IdentityId,
+        subject_id: IdentityId,
+        policy_id: IdentityId,
+        parent_ids: Vec<RecordId>,
+        payload: MethodPayload,
+    ) -> Result<Self, EvidenceError> {
+        Self::new(
+            RecordKind::Method,
+            issuer_id,
+            subject_id,
+            policy_id,
+            parent_ids,
+            payload.encode(),
+        )
+    }
+
     pub fn new_source(
         issuer_id: IdentityId,
         subject_id: IdentityId,
@@ -236,6 +255,16 @@ impl EvidenceRecord {
         SourcePayload::decode(&self.payload).map_err(EvidencePayloadError::Source)
     }
 
+    pub fn decode_method_payload(&self) -> Result<MethodPayload, EvidencePayloadError> {
+        if self.kind != RecordKind::Method {
+            return Err(EvidencePayloadError::WrongRecordKind {
+                expected: RecordKind::Method,
+                actual: self.kind,
+            });
+        }
+        MethodPayload::decode(&self.payload).map_err(EvidencePayloadError::Method)
+    }
+
     pub fn encode(&self) -> Vec<u8> {
         encode_parts(
             self.kind,
@@ -353,6 +382,7 @@ pub enum EvidencePayloadError {
     Objective(ObjectiveError),
     Claim(ClaimError),
     Source(SourceError),
+    Method(MethodError),
 }
 
 impl fmt::Display for EvidencePayloadError {
@@ -368,6 +398,7 @@ impl std::error::Error for EvidencePayloadError {
             Self::Objective(error) => Some(error),
             Self::Claim(error) => Some(error),
             Self::Source(error) => Some(error),
+            Self::Method(error) => Some(error),
         }
     }
 }
@@ -496,6 +527,20 @@ mod tests {
         .unwrap()
     }
 
+    fn method_payload() -> MethodPayload {
+        MethodPayload::new(
+            RecordId::from_bytes([9; ID_LEN]),
+            "Run the declared procedure".to_owned(),
+            vec![RecordId::from_bytes([10; ID_LEN])],
+            vec![identity(11)],
+            identity(12),
+            DigestAlgorithm::Blake3,
+            [13; ID_LEN],
+            Some(RecordId::from_bytes([14; ID_LEN])),
+        )
+        .unwrap()
+    }
+
     #[test]
     fn typed_objective_record_round_trips_without_kind_confusion() {
         let payload = objective_payload();
@@ -591,6 +636,36 @@ mod tests {
             EvidencePayloadError::WrongRecordKind {
                 expected: RecordKind::Source,
                 actual: RecordKind::Claim,
+            }
+        );
+    }
+
+    #[test]
+    fn typed_method_record_round_trips_without_kind_confusion() {
+        let payload = method_payload();
+        let record = EvidenceRecord::new_method(
+            identity(1),
+            identity(2),
+            identity(3),
+            vec![RecordId::from_bytes([4; ID_LEN])],
+            payload.clone(),
+        )
+        .unwrap();
+
+        assert_eq!(record.kind(), RecordKind::Method);
+        assert_eq!(record.decode_method_payload().unwrap(), payload);
+        let decoded = EvidenceRecord::decode(&record.encode()).unwrap();
+        assert_eq!(decoded.decode_method_payload().unwrap(), payload);
+    }
+
+    #[test]
+    fn method_decoder_rejects_record_kind_confusion() {
+        let source = record(RecordKind::Source);
+        assert_eq!(
+            source.decode_method_payload().unwrap_err(),
+            EvidencePayloadError::WrongRecordKind {
+                expected: RecordKind::Method,
+                actual: RecordKind::Source,
             }
         );
     }
