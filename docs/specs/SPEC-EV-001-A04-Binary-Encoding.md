@@ -291,3 +291,43 @@ promotion authority.
 Changing the status discriminators, field order, optional encoding, list
 semantics, or either frozen vector requires a new schema version rather than
 reinterpretation of version 1.
+
+## 14. Dispute Fixed Vector
+
+Dispute v1 encodes fields in this order: disputed governed-record identifier,
+a big-endian `u16` count followed by at least two and at most 64 ordered unique
+position record identifiers, the canonical identity that opened the dispute,
+a one-byte dispute-status discriminator, and an optional resolution record
+identifier using the canonical `0x00` absent / `0x01` present marker.
+
+Dispute-status discriminators are Open `0x00`, Under Review `0x01`,
+Resolved `0x02`, and Withdrawn `0x03`.
+
+`Resolved` requires a present, non-zero `resolution_id`. Open, Under Review,
+and Withdrawn require the resolution identifier to be absent. These are local
+structural invariants only. Whether position identifiers refer to Claims or
+Reviewer Findings, whether referenced records exist, and whether a resolution
+identifier refers to a later Disposition remain admission-policy concerns.
+
+The minimal fixture uses a disputed-record identifier of 32 `0x01` bytes,
+two ordered position identifiers of 32 `0x02` bytes and 32 `0x03` bytes,
+an `opened_by` identity of 32 `0x04` bytes, Open status, and no resolution
+identifier:
+
+`010101010101010101010101010101010101010101010101010101010101010100020202020202020202020202020202020202020202020202020202020202020202030303030303030303030303030303030303030303030303030303030303030304040404040404040404040404040404040404040404040404040404040404040000`
+
+The fixture is exactly 132 bytes.
+
+The typed governed Dispute record fixture in the Rust test suite has record ID:
+
+`29cbf3618d488d0c3e0cc4f025ad76060bc928d3d786b6fad6c7051b85d9c54f`
+
+A Dispute is an epistemic challenge record only. Its presence, status,
+positions, opener identity, or resolution reference does not reverse or nullify
+a finding, admit or dispose of another record, grant or revoke capabilities,
+authorize execution, expand policy, mutate governed state, or exercise
+promotion authority.
+
+Changing the status discriminators, field order, optional encoding, list
+semantics, or either frozen vector requires a new schema version rather than
+reinterpretation of version 1.
