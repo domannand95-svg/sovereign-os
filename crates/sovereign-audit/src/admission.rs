@@ -114,6 +114,17 @@ pub enum AuthoritativeRelationshipCycle {
     Cycle,
 }
 
+/// Authoritative activation state for one exact future A05 reference.
+///
+/// Active means the governing A05 schema or reference class for the exact
+/// supplied reference is active in the explicitly supplied authoritative state.
+/// This is admission metadata only and grants no resource-consumption,
+/// capability, execution, tool, publication, promotion, or mutation authority.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum AuthoritativeA05ReferenceActivation {
+    Active,
+    Inactive,
+}
 /// Storage-neutral authority boundary used by A04 cross-record admission.
 ///
 /// The first implementation increment allocates only exact governed-record
@@ -204,8 +215,18 @@ pub trait EvidenceAdmissionAuthority {
         referenced_id: &RecordId,
         state_ref: &Self::StateRef,
     ) -> Result<AuthoritativeRelationshipCycle, EvidenceAdmissionAuthorityError>;
-}
 
+    /// Resolve whether the governing A05 schema or reference class for one
+    /// exact future A05 reference is active in the supplied authoritative state.
+    ///
+    /// Activation must not be inferred from payload presence, record existence,
+    /// Capability V1 state, resource availability, or ambient/latest state.
+    fn a05_reference_activation(
+        &self,
+        reference_id: &RecordId,
+        state_ref: &Self::StateRef,
+    ) -> Result<AuthoritativeA05ReferenceActivation, EvidenceAdmissionAuthorityError>;
+}
 /// Normative kind requirement for a typed A04 record reference.
 ///
 /// This type represents only kind constraints explicitly frozen by
@@ -407,7 +428,15 @@ fn evaluate_method<A: EvidenceAdmissionAuthority>(
         resolve_exact(authority, state_ref, input_id)?;
     }
 
-    // budget_reference is deliberately deferred to the premature-A05 rule.
+    if let Some(budget_reference) = payload.budget_reference() {
+        match authority.a05_reference_activation(&budget_reference, state_ref)? {
+            AuthoritativeA05ReferenceActivation::Active => {}
+            AuthoritativeA05ReferenceActivation::Inactive => {
+                return Err(EvidenceAdmissionError::PrematureA05Reference);
+            }
+        }
+    }
+
     Ok(())
 }
 
@@ -734,6 +763,10 @@ mod tests {
         expected_cycle_kind: Option<EvidenceRelationshipKind>,
         expected_cycle_candidate_id: Option<RecordId>,
         expected_cycle_referenced_id: Option<RecordId>,
+        a05_activation: AuthoritativeA05ReferenceActivation,
+        a05_activation_error: Option<EvidenceAdmissionAuthorityError>,
+        forbid_a05_activation_lookup: bool,
+        expected_a05_reference_id: Option<RecordId>,
     }
 
     impl TestAuthority {
@@ -768,6 +801,10 @@ mod tests {
                 expected_cycle_kind: None,
                 expected_cycle_candidate_id: None,
                 expected_cycle_referenced_id: None,
+                a05_activation: AuthoritativeA05ReferenceActivation::Inactive,
+                a05_activation_error: None,
+                forbid_a05_activation_lookup: false,
+                expected_a05_reference_id: None,
             }
         }
 
@@ -968,6 +1005,32 @@ mod tests {
             }
 
             Ok(self.cycle_result)
+        }
+
+        fn a05_reference_activation(
+            &self,
+            reference_id: &RecordId,
+            state_ref: &Self::StateRef,
+        ) -> Result<AuthoritativeA05ReferenceActivation, EvidenceAdmissionAuthorityError> {
+            self.validate_state_ref(state_ref)?;
+
+            assert!(
+                !self.forbid_a05_activation_lookup,
+                "A05 activation lookup must not occur without a budget_reference"
+            );
+
+            if let Some(expected) = self.expected_a05_reference_id {
+                assert_eq!(
+                    *reference_id, expected,
+                    "A05 activation must use the exact Method budget_reference"
+                );
+            }
+
+            if let Some(error) = self.a05_activation_error {
+                return Err(error);
+            }
+
+            Ok(self.a05_activation)
         }
     }
 
@@ -2437,6 +2500,116 @@ mod tests {
             payload,
         )
         .unwrap();
+
+        assert_eq!(
+            evaluate_admission(&candidate, &authority, &state),
+            Ok(EvidenceAdmissionResult::Admissible)
+        );
+    }
+    fn method_a05_candidate(
+        objective: &EvidenceRecord,
+        budget_reference: Option<RecordId>,
+        seed: u8,
+    ) -> EvidenceRecord {
+        let payload = crate::MethodPayload::new(
+            objective.id(),
+            "A05 admission method".to_owned(),
+            vec![],
+            vec![],
+            identity(seed.wrapping_add(1)),
+            crate::DigestAlgorithm::Sha256,
+            [seed; 32],
+            budget_reference,
+        )
+        .unwrap();
+
+        EvidenceRecord::new_method(
+            identity(seed.wrapping_add(2)),
+            objective.subject_id(),
+            identity(seed.wrapping_add(3)),
+            vec![],
+            payload,
+        )
+        .unwrap()
+    }
+
+    #[test]
+    fn active_a05_reference_is_admissible_without_a04_record_resolution() {
+        let state = TestStateRef(1);
+        let mut authority = TestAuthority::new(state.clone());
+
+        let objective = generic_record(RecordKind::Objective, 120, identity(120), vec![]);
+        authority.insert(objective.clone());
+
+        // Deliberately absent from authority.records: an A05 reference
+        // must not silently become an A04 governed-record lookup.
+        let future_reference = RecordId::from_bytes([0xA5; 32]);
+
+        let candidate = method_a05_candidate(&objective, Some(future_reference), 121);
+
+        authority.a05_activation = AuthoritativeA05ReferenceActivation::Active;
+        authority.expected_a05_reference_id = Some(future_reference);
+
+        assert_eq!(
+            evaluate_admission(&candidate, &authority, &state),
+            Ok(EvidenceAdmissionResult::Admissible)
+        );
+    }
+
+    #[test]
+    fn inactive_a05_reference_is_rejected_as_premature() {
+        let state = TestStateRef(1);
+        let mut authority = TestAuthority::new(state.clone());
+
+        let objective = generic_record(RecordKind::Objective, 122, identity(122), vec![]);
+        authority.insert(objective.clone());
+
+        let future_reference = RecordId::from_bytes([0xA6; 32]);
+
+        let candidate = method_a05_candidate(&objective, Some(future_reference), 123);
+
+        authority.a05_activation = AuthoritativeA05ReferenceActivation::Inactive;
+        authority.expected_a05_reference_id = Some(future_reference);
+
+        assert_eq!(
+            evaluate_admission(&candidate, &authority, &state),
+            Err(EvidenceAdmissionError::PrematureA05Reference)
+        );
+    }
+
+    #[test]
+    fn unavailable_a05_activation_fails_closed() {
+        let state = TestStateRef(1);
+        let mut authority = TestAuthority::new(state.clone());
+
+        let objective = generic_record(RecordKind::Objective, 124, identity(124), vec![]);
+        authority.insert(objective.clone());
+
+        let future_reference = RecordId::from_bytes([0xA7; 32]);
+
+        let candidate = method_a05_candidate(&objective, Some(future_reference), 125);
+
+        authority.expected_a05_reference_id = Some(future_reference);
+        authority.a05_activation_error =
+            Some(EvidenceAdmissionAuthorityError::RequiredRelationalInformationUnavailable);
+
+        assert_eq!(
+            evaluate_admission(&candidate, &authority, &state),
+            Err(EvidenceAdmissionError::RequiredRelationalInformationUnavailable)
+        );
+    }
+
+    #[test]
+    fn absent_budget_reference_does_not_query_a05_activation() {
+        let state = TestStateRef(1);
+        let mut authority = TestAuthority::new(state.clone());
+
+        let objective = generic_record(RecordKind::Objective, 126, identity(126), vec![]);
+        authority.insert(objective.clone());
+
+        authority.forbid_a05_activation_lookup = true;
+
+        let candidate = method_a05_candidate(&objective, None, 127);
 
         assert_eq!(
             evaluate_admission(&candidate, &authority, &state),
