@@ -104,6 +104,18 @@ pub enum EvidenceRelationshipKind {
     Resolution,
 }
 
+/// Authoritative temporal ordering for one exact retry relationship.
+///
+/// `Earlier` means the explicitly supplied authoritative state establishes
+/// that `retry_of_id` is an earlier admitted Failed Attempt than the candidate.
+/// The evaluator does not infer ordering from identifiers, timestamps, LSNs,
+/// ambient state, or payload contents.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum AuthoritativeRetryOrdering {
+    Earlier,
+    NotEarlier,
+}
+
 /// Authoritative result for one proposed A04 relationship edge.
 ///
 /// The authority determines this result from the explicitly supplied state.
@@ -235,6 +247,18 @@ pub trait EvidenceAdmissionAuthority {
         state_ref: &Self::StateRef,
     ) -> Result<AuthoritativeDisputeResolution, EvidenceAdmissionAuthorityError>;
 
+    /// Resolve whether the exact retry target is earlier than the candidate
+    /// Failed Attempt in the explicitly supplied authoritative state.
+    ///
+    /// Ordering is a storage-neutral relational fact. Implementations must not
+    /// expose or require timestamps, sequence numbers, ledger LSNs, ambient
+    /// state, RegistryGraph traversal, Capability state, or execution authority.
+    fn retry_ordering(
+        &self,
+        candidate_id: &RecordId,
+        retry_of_id: &RecordId,
+        state_ref: &Self::StateRef,
+    ) -> Result<AuthoritativeRetryOrdering, EvidenceAdmissionAuthorityError>;
     /// Resolve whether one exact proposed A04 relationship participates in a
     /// prohibited cycle in the explicitly supplied authoritative state.
     ///
@@ -341,6 +365,7 @@ pub enum EvidenceAdmissionError {
     InvalidResolvedDisputeRelationship,
     RequiredEvidenceOmitted,
     RelationshipCycle,
+    InvalidRetryOrdering,
     PrematureA05Reference,
     NonCanonicalExternalIdentity,
     RetroactiveMutationAttempt,
@@ -596,11 +621,20 @@ fn evaluate_failed_attempt<A: EvidenceAdmissionAuthority>(
             RecordKindRequirement::FailedAttempt,
         )?;
 
+        let candidate_id = candidate.id();
+
+        match authority.retry_ordering(&candidate_id, &retry_of, state_ref)? {
+            AuthoritativeRetryOrdering::Earlier => {}
+            AuthoritativeRetryOrdering::NotEarlier => {
+                return Err(EvidenceAdmissionError::InvalidRetryOrdering);
+            }
+        }
+
         ensure_acyclic_relationship(
             authority,
             state_ref,
             EvidenceRelationshipKind::Retry,
-            &candidate.id(),
+            &candidate_id,
             &retry_of,
         )?;
     }
@@ -895,6 +929,10 @@ mod tests {
         admitted_equivalence: AdmittedRecordEquivalence,
         admitted_equivalence_error: Option<EvidenceAdmissionAuthorityError>,
         admitted_equivalence_queries: RefCell<Vec<(RecordId, Vec<u8>)>>,
+        retry_ordering: AuthoritativeRetryOrdering,
+        retry_ordering_error: Option<EvidenceAdmissionAuthorityError>,
+        retry_ordering_queries: RefCell<Vec<(RecordId, RecordId)>>,
+        cycle_queries: RefCell<Vec<(EvidenceRelationshipKind, RecordId, RecordId)>>,
     }
 
     impl TestAuthority {
@@ -940,6 +978,10 @@ mod tests {
                 admitted_equivalence: AdmittedRecordEquivalence::NotAdmitted,
                 admitted_equivalence_error: None,
                 admitted_equivalence_queries: RefCell::new(vec![]),
+                retry_ordering: AuthoritativeRetryOrdering::Earlier,
+                retry_ordering_error: None,
+                retry_ordering_queries: RefCell::new(vec![]),
+                cycle_queries: RefCell::new(vec![]),
             }
         }
 
@@ -1100,6 +1142,24 @@ mod tests {
             Ok(self.dispute_resolution)
         }
 
+        fn retry_ordering(
+            &self,
+            candidate_id: &RecordId,
+            retry_of_id: &RecordId,
+            state_ref: &Self::StateRef,
+        ) -> Result<AuthoritativeRetryOrdering, EvidenceAdmissionAuthorityError> {
+            self.validate_state_ref(state_ref)?;
+
+            self.retry_ordering_queries
+                .borrow_mut()
+                .push((*candidate_id, *retry_of_id));
+
+            if let Some(error) = self.retry_ordering_error {
+                return Err(error);
+            }
+
+            Ok(self.retry_ordering)
+        }
         fn relationship_cycle(
             &self,
             relationship_kind: EvidenceRelationshipKind,
@@ -1108,6 +1168,12 @@ mod tests {
             state_ref: &Self::StateRef,
         ) -> Result<AuthoritativeRelationshipCycle, EvidenceAdmissionAuthorityError> {
             self.validate_state_ref(state_ref)?;
+
+            self.cycle_queries.borrow_mut().push((
+                relationship_kind,
+                *candidate_id,
+                *referenced_id,
+            ));
 
             assert!(
                 !self.forbid_cycle_lookup,
@@ -3208,6 +3274,201 @@ mod tests {
         assert!(
             authority.canonical_queries.borrow().is_empty(),
             "Policy canonicality must not run after equivalence authority failure"
+        );
+    }
+    fn retry_ordering_candidate(
+        authority: &mut TestAuthority,
+        seed: u8,
+    ) -> (EvidenceRecord, EvidenceRecord) {
+        let objective = generic_record(RecordKind::Objective, seed, identity(seed), vec![]);
+
+        let method = generic_record(
+            RecordKind::Method,
+            seed.wrapping_add(1),
+            identity(seed.wrapping_add(1)),
+            vec![],
+        );
+
+        let retry_of = generic_record(
+            RecordKind::FailedAttempt,
+            seed.wrapping_add(2),
+            identity(seed.wrapping_add(2)),
+            vec![],
+        );
+
+        authority.insert(objective.clone());
+        authority.insert(method.clone());
+        authority.insert(retry_of.clone());
+
+        let payload = crate::FailedAttemptPayload::new(
+            objective.id(),
+            method.id(),
+            crate::FailureKind::Inconclusive,
+            "retry ordering".to_owned(),
+            vec![],
+            Some(retry_of.id()),
+        )
+        .unwrap();
+
+        let candidate = EvidenceRecord::new_failed_attempt(
+            identity(seed.wrapping_add(3)),
+            objective.subject_id(),
+            identity(seed.wrapping_add(4)),
+            vec![],
+            payload,
+        )
+        .unwrap();
+
+        (candidate, retry_of)
+    }
+
+    #[test]
+    fn earlier_retry_ordering_proceeds_to_cycle_validation() {
+        let state = TestStateRef(1);
+        let mut authority = TestAuthority::new(state.clone());
+
+        let (candidate, retry_of) = retry_ordering_candidate(&mut authority, 170);
+
+        authority.retry_ordering = AuthoritativeRetryOrdering::Earlier;
+
+        assert_eq!(
+            evaluate_admission(&candidate, &authority, &state),
+            Ok(EvidenceAdmissionResult::Admissible)
+        );
+
+        assert_eq!(
+            authority.retry_ordering_queries.borrow().as_slice(),
+            &[(candidate.id(), retry_of.id())]
+        );
+
+        assert_eq!(
+            authority.cycle_queries.borrow().as_slice(),
+            &[(
+                EvidenceRelationshipKind::Retry,
+                candidate.id(),
+                retry_of.id(),
+            )]
+        );
+    }
+
+    #[test]
+    fn not_earlier_retry_is_rejected_as_invalid_retry_ordering() {
+        let state = TestStateRef(1);
+        let mut authority = TestAuthority::new(state.clone());
+
+        let (candidate, retry_of) = retry_ordering_candidate(&mut authority, 175);
+
+        authority.retry_ordering = AuthoritativeRetryOrdering::NotEarlier;
+
+        assert_eq!(
+            evaluate_admission(&candidate, &authority, &state),
+            Err(EvidenceAdmissionError::InvalidRetryOrdering)
+        );
+
+        assert_eq!(
+            authority.retry_ordering_queries.borrow().as_slice(),
+            &[(candidate.id(), retry_of.id())]
+        );
+    }
+
+    #[test]
+    fn invalid_retry_ordering_precedes_cycle_lookup() {
+        let state = TestStateRef(1);
+        let mut authority = TestAuthority::new(state.clone());
+
+        let (candidate, retry_of) = retry_ordering_candidate(&mut authority, 180);
+
+        authority.retry_ordering = AuthoritativeRetryOrdering::NotEarlier;
+
+        authority.forbid_cycle_lookup = true;
+
+        assert_eq!(
+            evaluate_admission(&candidate, &authority, &state),
+            Err(EvidenceAdmissionError::InvalidRetryOrdering)
+        );
+
+        assert_eq!(
+            authority.retry_ordering_queries.borrow().as_slice(),
+            &[(candidate.id(), retry_of.id())]
+        );
+
+        assert!(
+            authority.cycle_queries.borrow().is_empty(),
+            "cycle lookup must not occur after definitive invalid retry ordering"
+        );
+    }
+
+    #[test]
+    fn unavailable_retry_ordering_fails_closed() {
+        let state = TestStateRef(1);
+        let mut authority = TestAuthority::new(state.clone());
+
+        let (candidate, retry_of) = retry_ordering_candidate(&mut authority, 185);
+
+        authority.retry_ordering_error = Some(EvidenceAdmissionAuthorityError::StateUnavailable);
+
+        assert_eq!(
+            evaluate_admission(&candidate, &authority, &state),
+            Err(EvidenceAdmissionError::AuthoritativeStateUnavailable)
+        );
+
+        assert_eq!(
+            authority.retry_ordering_queries.borrow().as_slice(),
+            &[(candidate.id(), retry_of.id())]
+        );
+
+        assert!(
+            authority.cycle_queries.borrow().is_empty(),
+            "cycle lookup must not occur when retry ordering authority is unavailable"
+        );
+    }
+
+    #[test]
+    fn absent_retry_bypasses_ordering_and_cycle_queries() {
+        let state = TestStateRef(1);
+        let mut authority = TestAuthority::new(state.clone());
+
+        let objective = generic_record(RecordKind::Objective, 190, identity(190), vec![]);
+
+        let method = generic_record(RecordKind::Method, 191, identity(191), vec![]);
+
+        authority.insert(objective.clone());
+        authority.insert(method.clone());
+
+        let payload = crate::FailedAttemptPayload::new(
+            objective.id(),
+            method.id(),
+            crate::FailureKind::Inconclusive,
+            "no retry".to_owned(),
+            vec![],
+            None,
+        )
+        .unwrap();
+
+        let candidate = EvidenceRecord::new_failed_attempt(
+            identity(192),
+            objective.subject_id(),
+            identity(193),
+            vec![],
+            payload,
+        )
+        .unwrap();
+
+        authority.forbid_cycle_lookup = true;
+
+        assert_eq!(
+            evaluate_admission(&candidate, &authority, &state),
+            Ok(EvidenceAdmissionResult::Admissible)
+        );
+
+        assert!(
+            authority.retry_ordering_queries.borrow().is_empty(),
+            "absent retry_of must not query temporal ordering"
+        );
+
+        assert!(
+            authority.cycle_queries.borrow().is_empty(),
+            "absent retry_of must not query retry cycle state"
         );
     }
 }
