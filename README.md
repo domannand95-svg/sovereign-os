@@ -14,21 +14,29 @@ Models may reason, propose, classify, search, and request capabilities. The surr
 
 ## Current Status
 
-The currently implemented authority boundary is **Capability V1 admission through Gates 1â€“6**.
+The currently implemented authority work comprises the allocated **Capability
+V1 validation contracts for Gates 1-6**.
 
-The active admission pipeline is:
+The implemented validation components are:
 
-1. **Gate 1 â€” Structural Decoding**
-2. **Gate 2 â€” Internal Coherence**
-3. **Gate 3A â€” Registry Reference Resolution**
-4. **Gate 3B â€” Authoritative Identity Resolution**
-5. **Gate 4 â€” Deterministic Temporal Validation**
-6. **Gate 5 â€” Issuer Operational Eligibility and Competency**
-7. **Gate 6 â€” Authoritative Governing-Policy Authorization**
+1. **Gate 1 - Structural Decoding**
+2. **Gate 2 - Internal Coherence**
+3. **Gate 3A - Registry Reference Resolution**
+4. **Gate 3B - Authoritative Identity Resolution**
+5. **Gate 4 - Deterministic Temporal Validation**
+6. **Gate 5 - Issuer Operational Eligibility and Competency**
+7. **Gate 6 - Authoritative Governing-Policy Authorization**
 
-This sequence forms the present deterministic Capability V1 admission boundary.
+Each gate has deterministic, fail-closed implementation and tests. The
+repository does not yet expose one production admission orchestrator that
+invokes the complete sequence end to end. Until that integration exists, these
+components must not be described as an active governed admission pipeline.
 
-The broader runtime, orchestration, policy language, multi-agent ecosystem, institutional interfaces, and distributed architecture remain under development. Completion of the current admission boundary must not be interpreted as completion of the entire Sovereign Operating Layer.
+The broader runtime, orchestration, policy language, multi-agent ecosystem,
+institutional interfaces, and distributed architecture remain under
+development. Completion of these validation contracts must not be interpreted
+as completion of an end-to-end admission path or of the entire Sovereign
+Operating Layer.
 
 ---
 
@@ -58,23 +66,26 @@ Missing, unresolved, substituted, stale, malformed, unauthorized, or context-dis
 
 ---
 
-## Capability V1 Admission
+## Capability V1 Validation Boundary
 
-Capability V1 is the currently implemented governed admission path.
+Capability V1 is the currently implemented set of governed validation
+contracts. The sections below describe their allocated order and individual
+responsibilities, not a claim that the complete sequence is already wired into
+one production admission path.
 
-### Gate 1 â€” Structural Decoding
+### Gate 1 - Structural Decoding
 
 Candidate bytes must decode according to the allocated Capability V1 schema.
 
 Malformed structure is rejected before semantic interpretation.
 
-### Gate 2 â€” Internal Coherence
+### Gate 2 - Internal Coherence
 
 Decoded fields must satisfy their allocated semantic relationships and constraints.
 
 Structurally valid but internally invalid candidates are rejected.
 
-### Gate 3A â€” Registry Reference Resolution
+### Gate 3A - Registry Reference Resolution
 
 Registry-backed references must resolve to admitted objects through the authoritative registry context.
 
@@ -82,13 +93,13 @@ Unresolved references fail closed.
 
 The governing-policy reference is deliberately reserved for Gate 6 rather than treated as an ordinary Gate 3A reference.
 
-### Gate 3B â€” Authoritative Identity Resolution
+### Gate 3B - Authoritative Identity Resolution
 
 Issuer and subject identities are resolved against an explicit authoritative identity-state reference.
 
 Ambient or implicitly current identity state is not substituted.
 
-### Gate 4 â€” Deterministic Temporal Validation
+### Gate 4 - Deterministic Temporal Validation
 
 Temporal admission uses explicit admission-context time rather than ambient wall-clock time.
 
@@ -100,13 +111,13 @@ admission_context_time < expiry
 
 Historical replay therefore evaluates against the original admission context rather than whatever time happens to be current during replay.
 
-### Gate 5 â€” Issuer Operational Eligibility and Competency
+### Gate 5 - Issuer Operational Eligibility and Competency
 
 The issuer must be operationally eligible and possess the authority required to issue Capability V1 grants.
 
 Gate 5 establishes issuer competency. It does not itself authorize the exact requested grant.
 
-### Gate 6 â€” Authoritative Governing-Policy Authorization
+### Gate 6 - Authoritative Governing-Policy Authorization
 
 Gate 6 resolves the exact `governing_policy` CAID against an explicit authoritative policy-state reference.
 
@@ -134,7 +145,8 @@ No implicit root policy, current policy, latest policy, default policy, inherite
 
 Replay is a core architectural requirement.
 
-SOL does not define replay as â€œrun the same model again and expect identical prose.â€ Probabilistic inference may remain nondeterministic.
+SOL does not define replay as "run the same model again and expect identical
+prose." Probabilistic inference may remain nondeterministic.
 
 Instead, deterministic authority requires that admission decisions be reproducible when supplied with the same:
 
@@ -275,7 +287,7 @@ The current beta exit criteria are:
 
 Completion of those criteria will establish:
 
-> **Private Beta Baseline 1 â€” Governed Capability Admission & Commissioning**
+> **Private Beta Baseline 1 - Governed Capability Admission & Commissioning**
 
 This milestone means the governed Capability V1 admission and commissioning baseline has been validated for private beta. It does not mean the wider SOL ecosystem is complete.
 
@@ -287,7 +299,8 @@ The Knowledge Infrastructure Bootstrap Kit (BKI) is being developed as a commiss
 
 Its role is to support deterministic validation, normalization, compatibility checks, quarantine, and commissioning evidence without silently acquiring authority to promote or mutate governed state.
 
-Joint BKIâ€“SOL integration and adversarial commissioning remain part of the private-beta path.
+Joint BKI-SOL integration and adversarial commissioning remain part of the
+private-beta path.
 
 ---
 
