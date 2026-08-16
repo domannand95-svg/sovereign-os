@@ -154,3 +154,31 @@ expand policy.
 
 Changing this vector requires a new schema version rather than reinterpretation
 of version 1.
+
+## 11. Uncertainty Fixed Vector
+
+Uncertainty v1 encodes fields in this order: governed record identifier being
+described, one-byte uncertainty-kind discriminator, statement text, one-byte
+bounds marker, the lower and upper canonical-decimal texts when that marker is
+`0x01`, and confidence-basis text. Marker `0x00` means both bounds are absent.
+No encoding permits only one bound to be present.
+
+Uncertainty-kind discriminators are Measurement `0x00`, Model `0x01`, Sampling
+`0x02`, Source `0x03`, Interpretation `0x04`, and Unknown `0x05`.
+
+The minimal fixture uses an `about_id` of 32 `0x01` bytes, Measurement,
+`statement="U"`, no bounds, and `confidence_basis="B"`:
+
+`0101010101010101010101010101010101010101010101010101010101010101000000000155000000000142`
+
+The typed governed Uncertainty record fixture in the Rust test suite has record
+ID:
+
+`d692732f05cf162c2984d79c30d6fef02332271024934d37f4a97be9e4542956`
+
+Bounds and confidence basis are descriptive evidence only. They do not grant
+capabilities, authorize execution, admit the record, expand policy, or dispose
+of any proposal or dispute.
+
+Changing this vector requires a new schema version rather than reinterpretation
+of version 1.

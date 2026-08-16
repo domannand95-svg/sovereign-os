@@ -12,11 +12,13 @@ mod claim;
 mod method;
 mod objective;
 mod source;
+mod uncertainty;
 
 pub use claim::{ClaimError, ClaimKind, ClaimPayload, Substantiation};
 pub use method::{MethodError, MethodPayload};
 pub use objective::{ObjectiveError, ObjectivePayload, MAX_LIST_ITEMS, MAX_TEXT_FIELD_LEN};
 pub use source::{DigestAlgorithm, SourceError, SourcePayload};
+pub use uncertainty::{UncertaintyError, UncertaintyKind, UncertaintyPayload};
 
 pub const EVIDENCE_SCHEMA_VERSION: u16 = 1;
 pub const MAX_EVIDENCE_PARENTS: usize = 64;
@@ -99,6 +101,23 @@ pub struct EvidenceRecord {
 }
 
 impl EvidenceRecord {
+    pub fn new_uncertainty(
+        issuer_id: IdentityId,
+        subject_id: IdentityId,
+        policy_id: IdentityId,
+        parent_ids: Vec<RecordId>,
+        payload: UncertaintyPayload,
+    ) -> Result<Self, EvidenceError> {
+        Self::new(
+            RecordKind::Uncertainty,
+            issuer_id,
+            subject_id,
+            policy_id,
+            parent_ids,
+            payload.encode(),
+        )
+    }
+
     pub fn new_method(
         issuer_id: IdentityId,
         subject_id: IdentityId,
@@ -265,6 +284,16 @@ impl EvidenceRecord {
         MethodPayload::decode(&self.payload).map_err(EvidencePayloadError::Method)
     }
 
+    pub fn decode_uncertainty_payload(&self) -> Result<UncertaintyPayload, EvidencePayloadError> {
+        if self.kind != RecordKind::Uncertainty {
+            return Err(EvidencePayloadError::WrongRecordKind {
+                expected: RecordKind::Uncertainty,
+                actual: self.kind,
+            });
+        }
+        UncertaintyPayload::decode(&self.payload).map_err(EvidencePayloadError::Uncertainty)
+    }
+
     pub fn encode(&self) -> Vec<u8> {
         encode_parts(
             self.kind,
@@ -383,6 +412,7 @@ pub enum EvidencePayloadError {
     Claim(ClaimError),
     Source(SourceError),
     Method(MethodError),
+    Uncertainty(UncertaintyError),
 }
 
 impl fmt::Display for EvidencePayloadError {
@@ -399,6 +429,7 @@ impl std::error::Error for EvidencePayloadError {
             Self::Claim(error) => Some(error),
             Self::Source(error) => Some(error),
             Self::Method(error) => Some(error),
+            Self::Uncertainty(error) => Some(error),
         }
     }
 }
@@ -541,6 +572,18 @@ mod tests {
         .unwrap()
     }
 
+    fn uncertainty_payload() -> UncertaintyPayload {
+        UncertaintyPayload::new(
+            RecordId::from_bytes([9; ID_LEN]),
+            UncertaintyKind::Sampling,
+            "Sampling interval".to_owned(),
+            Some("0.01".to_owned()),
+            Some("0.25".to_owned()),
+            "Declared sampling procedure".to_owned(),
+        )
+        .unwrap()
+    }
+
     #[test]
     fn typed_objective_record_round_trips_without_kind_confusion() {
         let payload = objective_payload();
@@ -666,6 +709,36 @@ mod tests {
             EvidencePayloadError::WrongRecordKind {
                 expected: RecordKind::Method,
                 actual: RecordKind::Source,
+            }
+        );
+    }
+
+    #[test]
+    fn typed_uncertainty_record_round_trips_without_kind_confusion() {
+        let payload = uncertainty_payload();
+        let record = EvidenceRecord::new_uncertainty(
+            identity(1),
+            identity(2),
+            identity(3),
+            vec![RecordId::from_bytes([4; ID_LEN])],
+            payload.clone(),
+        )
+        .unwrap();
+
+        assert_eq!(record.kind(), RecordKind::Uncertainty);
+        assert_eq!(record.decode_uncertainty_payload().unwrap(), payload);
+        let decoded = EvidenceRecord::decode(&record.encode()).unwrap();
+        assert_eq!(decoded.decode_uncertainty_payload().unwrap(), payload);
+    }
+
+    #[test]
+    fn uncertainty_decoder_rejects_record_kind_confusion() {
+        let method = record(RecordKind::Method);
+        assert_eq!(
+            method.decode_uncertainty_payload().unwrap_err(),
+            EvidencePayloadError::WrongRecordKind {
+                expected: RecordKind::Uncertainty,
+                actual: RecordKind::Method,
             }
         );
     }

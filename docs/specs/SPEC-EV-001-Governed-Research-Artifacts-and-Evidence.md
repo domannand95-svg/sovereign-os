@@ -212,6 +212,19 @@ An Uncertainty payload contains:
 Bounds must use one frozen decimal grammar. NaN, infinity, locale-specific
 formatting, and a lower bound greater than the upper bound are invalid.
 
+For schema version 1, a canonical decimal is either exactly `0`, or has an
+optional `-`, an integer component of `0` or a non-zero ASCII digit followed by
+zero or more ASCII digits, and an optional fractional component introduced by
+`.`. A present fractional component contains one or more ASCII digits and ends
+in a non-zero digit. Therefore `0.01`, `-0.01`, `1`, and `10.25` are valid;
+`+1`, `01`, `.5`, `1.`, `1.0`, `-0`, exponent notation, NaN, infinity,
+whitespace, non-ASCII digits, and locale-specific separators are invalid.
+Implementations compare canonical decimals exactly and must not convert them to
+binary floating point.
+
+The two bounds form one optional pair. Their presence does not admit evidence,
+authorize action, confer confidence, or establish a universal trust score.
+
 ## 11. Failed Attempt Record
 
 A Failed Attempt payload contains:
