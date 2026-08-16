@@ -187,7 +187,9 @@ Implemented work includes:
 - the canonical A04 governed-evidence envelope;
 - bounded Objective payload encoding;
 - bounded Claim payload encoding;
-- Source payload support;
+- bounded Source payload encoding;
+- bounded Method payload encoding;
+- bounded Uncertainty payload encoding;
 - content-addressed records;
 - deterministic encoding and decoding;
 - kind-confusion protection;
