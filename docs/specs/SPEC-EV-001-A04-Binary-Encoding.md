@@ -6,9 +6,10 @@ Status: Approved Baseline
 Owner: Repository Maintainer
 Reviewers:
   - Core Reviewers
-Last Updated: 2026-08-11
+Last Updated: 2026-08-16
 Evidence:
   - Owner approval recorded 2026-08-11
+  - Reviewer Finding v1 fixed vectors implemented 2026-08-16
 Depends On:
   - SPEC-EV-001
   - SPEC-ID-001
@@ -208,6 +209,44 @@ record ID:
 Failure kind, observed result, evidence, and retry lineage are descriptive
 evidence only. They do not admit the record, expand policy, grant capabilities,
 authorize retries, or exercise execution authority.
+
+Changing this vector requires a new schema version rather than reinterpretation
+of version 1.
+
+## 13. Reviewer Finding Fixed Vector
+
+Reviewer Finding v1 encodes fields in this order: reviewed governed-record
+identifier, reviewer canonical identity, one-byte finding-kind discriminator,
+one-byte severity discriminator, rationale text, ordered unique evidence record
+identifiers, conflict-declaration text, and a one-byte independence-result
+discriminator.
+
+Finding-kind discriminators are Support `0x00`, Contradiction `0x01`,
+Methodological Flaw `0x02`, Provenance Gap `0x03`, Security `0x04`,
+Privacy/Licensing `0x05`, and Inconclusive `0x06`.
+
+Severity discriminators are Informational `0x00`, Low `0x01`, Medium `0x02`,
+High `0x03`, and Critical `0x04`. Independence-result discriminators are
+Established `0x00`, Not Established `0x01`, Conflicted `0x02`, and Unknown
+`0x03`.
+
+The minimal fixture uses a reviewed-record identifier of 32 `0x01` bytes, a
+reviewer identity of 32 `0x02` bytes, Support, Informational,
+`rationale="R"`, no evidence identifiers, `conflict_declaration="NONE_DECLARED"`,
+and Established independence:
+
+`010101010101010101010101010101010101010101010101010101010101010102020202020202020202020202020202020202020202020202020202020202020000000000015200000000000d4e4f4e455f4445434c4152454400`
+
+The typed governed Reviewer Finding record fixture in the Rust test suite has
+record ID:
+
+`5399568236fad9e71dcc88f498e3ebdaa7a2929d1a642c1d587a2b0d0593f609`
+
+Finding kind, severity, rationale, evidence references, conflict declaration,
+and independence result are descriptive epistemic evidence only. They do not
+establish reviewer independence at admission, admit or dispose of the reviewed
+record, grant a capability, authorize execution, expand policy, or exercise
+promotion authority.
 
 Changing this vector requires a new schema version rather than reinterpretation
 of version 1.
