@@ -57,6 +57,37 @@ pub trait EvidenceAdmissionAuthority {
     ) -> Result<Option<EvidenceRecord>, EvidenceAdmissionAuthorityError>;
 }
 
+/// Normative kind requirement for a typed A04 record reference.
+///
+/// This type represents only kind constraints explicitly frozen by
+/// `SPEC-EV-001`. References described merely as governed records or evidence
+/// remain existence-only until a narrower normative kind is specified.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum RecordKindRequirement {
+    Objective,
+    Uncertainty,
+    Method,
+    FailedAttempt,
+    ClaimOrReviewerFinding,
+    Dispute,
+    Disposition,
+}
+
+impl RecordKindRequirement {
+    fn accepts(self, actual: RecordKind) -> bool {
+        match self {
+            Self::Objective => actual == RecordKind::Objective,
+            Self::Uncertainty => actual == RecordKind::Uncertainty,
+            Self::Method => actual == RecordKind::Method,
+            Self::FailedAttempt => actual == RecordKind::FailedAttempt,
+            Self::ClaimOrReviewerFinding => {
+                matches!(actual, RecordKind::Claim | RecordKind::ReviewerFinding)
+            }
+            Self::Dispute => actual == RecordKind::Dispute,
+            Self::Disposition => actual == RecordKind::Disposition,
+        }
+    }
+}
 /// Stable A04 cross-record admission failures.
 ///
 /// Several variants are frozen here before their corresponding relational rules
@@ -66,7 +97,7 @@ pub trait EvidenceAdmissionAuthority {
 pub enum EvidenceAdmissionError {
     AbsentReferencedRecord,
     WrongReferencedRecordKind {
-        expected: RecordKind,
+        required: RecordKindRequirement,
         actual: RecordKind,
     },
     ResolvedRecordMismatch {
@@ -125,18 +156,22 @@ pub enum EvidenceAdmissionResult {
 /// state reference. It has no interface through which authoritative state can
 /// be mutated.
 ///
-/// The first increment evaluates:
+/// This increment evaluates:
 ///
 /// - authoritative-state availability;
 /// - exact resolution of every envelope parent;
-/// - exact resolution of Reviewer Finding reviewed/evidence records;
-/// - self-review rejection;
-/// - exact resolution of Disposition decided/evidence/dispute/supersession
-///   references; and
+/// - exact existence of governed-record and evidence references;
+/// - the explicit record-kind relationships frozen by `SPEC-EV-001`;
+/// - self-review rejection; and
 /// - self-disposition rejection.
 ///
-/// Remaining SPEC-EV-001 Section 15 rules are implemented only in later
-/// owner-approved increments.
+/// `MethodPayload::budget_reference` is intentionally excluded here because it
+/// is governed by the separate premature-A05-reference rule. No specific kind
+/// is imposed on references whose normative text says only governed record,
+/// evidence record, source/dataset/artifact, or supersession target.
+///
+/// Remaining Section 15 rules are implemented only in later owner-approved
+/// increments.
 pub fn evaluate_admission<A: EvidenceAdmissionAuthority>(
     candidate: &EvidenceRecord,
     authority: &A,
@@ -149,16 +184,131 @@ pub fn evaluate_admission<A: EvidenceAdmissionAuthority>(
     }
 
     match candidate.kind() {
+        RecordKind::Claim => evaluate_claim(candidate, authority, state_ref)?,
+        RecordKind::Method => evaluate_method(candidate, authority, state_ref)?,
+        RecordKind::Uncertainty => evaluate_uncertainty(candidate, authority, state_ref)?,
+        RecordKind::FailedAttempt => evaluate_failed_attempt(candidate, authority, state_ref)?,
         RecordKind::ReviewerFinding => {
             evaluate_reviewer_finding(candidate, authority, state_ref)?;
         }
-        RecordKind::Disposition => {
-            evaluate_disposition(candidate, authority, state_ref)?;
-        }
-        _ => {}
+        RecordKind::Dispute => evaluate_dispute(candidate, authority, state_ref)?,
+        RecordKind::Disposition => evaluate_disposition(candidate, authority, state_ref)?,
+        RecordKind::Objective | RecordKind::Source => {}
     }
 
     Ok(EvidenceAdmissionResult::Admissible)
+}
+
+fn evaluate_claim<A: EvidenceAdmissionAuthority>(
+    candidate: &EvidenceRecord,
+    authority: &A,
+    state_ref: &A::StateRef,
+) -> Result<(), EvidenceAdmissionError> {
+    let payload = candidate
+        .decode_claim_payload()
+        .map_err(map_payload_error)?;
+
+    resolve_required_kind(
+        authority,
+        state_ref,
+        &payload.objective_id(),
+        RecordKindRequirement::Objective,
+    )?;
+
+    for evidence_id in payload.supporting_evidence_ids() {
+        resolve_exact(authority, state_ref, evidence_id)?;
+    }
+
+    for evidence_id in payload.counter_evidence_ids() {
+        resolve_exact(authority, state_ref, evidence_id)?;
+    }
+
+    for uncertainty_id in payload.uncertainty_ids() {
+        resolve_required_kind(
+            authority,
+            state_ref,
+            uncertainty_id,
+            RecordKindRequirement::Uncertainty,
+        )?;
+    }
+
+    Ok(())
+}
+
+fn evaluate_method<A: EvidenceAdmissionAuthority>(
+    candidate: &EvidenceRecord,
+    authority: &A,
+    state_ref: &A::StateRef,
+) -> Result<(), EvidenceAdmissionError> {
+    let payload = candidate
+        .decode_method_payload()
+        .map_err(map_payload_error)?;
+
+    resolve_required_kind(
+        authority,
+        state_ref,
+        &payload.objective_id(),
+        RecordKindRequirement::Objective,
+    )?;
+
+    for input_id in payload.input_ids() {
+        resolve_exact(authority, state_ref, input_id)?;
+    }
+
+    // budget_reference is deliberately deferred to the premature-A05 rule.
+    Ok(())
+}
+
+fn evaluate_uncertainty<A: EvidenceAdmissionAuthority>(
+    candidate: &EvidenceRecord,
+    authority: &A,
+    state_ref: &A::StateRef,
+) -> Result<(), EvidenceAdmissionError> {
+    let payload = candidate
+        .decode_uncertainty_payload()
+        .map_err(map_payload_error)?;
+
+    resolve_exact(authority, state_ref, &payload.about_id())?;
+    Ok(())
+}
+
+fn evaluate_failed_attempt<A: EvidenceAdmissionAuthority>(
+    candidate: &EvidenceRecord,
+    authority: &A,
+    state_ref: &A::StateRef,
+) -> Result<(), EvidenceAdmissionError> {
+    let payload = candidate
+        .decode_failed_attempt_payload()
+        .map_err(map_payload_error)?;
+
+    resolve_required_kind(
+        authority,
+        state_ref,
+        &payload.objective_id(),
+        RecordKindRequirement::Objective,
+    )?;
+
+    resolve_required_kind(
+        authority,
+        state_ref,
+        &payload.method_id(),
+        RecordKindRequirement::Method,
+    )?;
+
+    for evidence_id in payload.evidence_ids() {
+        resolve_exact(authority, state_ref, evidence_id)?;
+    }
+
+    if let Some(retry_of) = payload.retry_of() {
+        resolve_required_kind(
+            authority,
+            state_ref,
+            &retry_of,
+            RecordKindRequirement::FailedAttempt,
+        )?;
+    }
+
+    Ok(())
 }
 
 fn evaluate_reviewer_finding<A: EvidenceAdmissionAuthority>(
@@ -183,6 +333,38 @@ fn evaluate_reviewer_finding<A: EvidenceAdmissionAuthority>(
     Ok(())
 }
 
+fn evaluate_dispute<A: EvidenceAdmissionAuthority>(
+    candidate: &EvidenceRecord,
+    authority: &A,
+    state_ref: &A::StateRef,
+) -> Result<(), EvidenceAdmissionError> {
+    let payload = candidate
+        .decode_dispute_payload()
+        .map_err(map_payload_error)?;
+
+    resolve_exact(authority, state_ref, &payload.disputed_id())?;
+
+    for position_id in payload.position_ids() {
+        resolve_required_kind(
+            authority,
+            state_ref,
+            position_id,
+            RecordKindRequirement::ClaimOrReviewerFinding,
+        )?;
+    }
+
+    if let Some(resolution_id) = payload.resolution_id() {
+        resolve_required_kind(
+            authority,
+            state_ref,
+            &resolution_id,
+            RecordKindRequirement::Disposition,
+        )?;
+    }
+
+    Ok(())
+}
+
 fn evaluate_disposition<A: EvidenceAdmissionAuthority>(
     candidate: &EvidenceRecord,
     authority: &A,
@@ -199,7 +381,12 @@ fn evaluate_disposition<A: EvidenceAdmissionAuthority>(
     }
 
     for dispute_id in payload.unresolved_dispute_ids() {
-        resolve_exact(authority, state_ref, dispute_id)?;
+        resolve_required_kind(
+            authority,
+            state_ref,
+            dispute_id,
+            RecordKindRequirement::Dispute,
+        )?;
     }
 
     if let Some(supersedes_id) = payload.supersedes_id() {
@@ -211,6 +398,24 @@ fn evaluate_disposition<A: EvidenceAdmissionAuthority>(
     }
 
     Ok(())
+}
+
+fn resolve_required_kind<A: EvidenceAdmissionAuthority>(
+    authority: &A,
+    state_ref: &A::StateRef,
+    requested_id: &RecordId,
+    required: RecordKindRequirement,
+) -> Result<EvidenceRecord, EvidenceAdmissionError> {
+    let resolved = resolve_exact(authority, state_ref, requested_id)?;
+
+    if !required.accepts(resolved.kind()) {
+        return Err(EvidenceAdmissionError::WrongReferencedRecordKind {
+            required,
+            actual: resolved.kind(),
+        });
+    }
+
+    Ok(resolved)
 }
 
 fn resolve_exact<A: EvidenceAdmissionAuthority>(
@@ -231,7 +436,6 @@ fn resolve_exact<A: EvidenceAdmissionAuthority>(
 
     Ok(resolved)
 }
-
 fn map_payload_error(_: EvidencePayloadError) -> EvidenceAdmissionError {
     EvidenceAdmissionError::MalformedCandidatePayload
 }
@@ -240,8 +444,9 @@ fn map_payload_error(_: EvidencePayloadError) -> EvidenceAdmissionError {
 mod tests {
     use super::*;
     use crate::{
-        DispositionDecision, DispositionPayload, FindingKind, FindingSeverity, IndependenceResult,
-        ReviewerFindingPayload,
+        ClaimKind, ClaimPayload, DispositionDecision, DispositionPayload, DisputePayload,
+        DisputeStatus, FailedAttemptPayload, FailureKind, FindingKind, FindingSeverity,
+        IndependenceResult, ReviewerFindingPayload, Substantiation,
     };
     use sovereign_registry::{IdentityId, IdentityKind, IdentityRecord};
     use std::collections::BTreeMap;
@@ -335,7 +540,7 @@ mod tests {
         let parent = generic_record(RecordKind::Objective, 10, identity(40), vec![]);
         authority.insert(parent.clone());
 
-        let candidate = generic_record(RecordKind::Claim, 11, identity(41), vec![parent.id()]);
+        let candidate = generic_record(RecordKind::Objective, 11, identity(41), vec![parent.id()]);
 
         assert_eq!(
             evaluate_admission(&candidate, &authority, &state),
@@ -561,5 +766,277 @@ mod tests {
         assert_eq!(first, Ok(EvidenceAdmissionResult::Admissible));
         assert_eq!(first, second);
         assert_eq!(candidate.encode(), before);
+    }
+
+    #[test]
+    fn claim_objective_requires_objective_kind() {
+        let state = TestStateRef(1);
+        let mut authority = TestAuthority::new(state.clone());
+
+        let wrong_objective = generic_record(RecordKind::Source, 21, identity(101), vec![]);
+        authority.insert(wrong_objective.clone());
+
+        let payload = ClaimPayload::new(
+            wrong_objective.id(),
+            "claim".to_owned(),
+            ClaimKind::Observation,
+            Substantiation::Unsubstantiated,
+            vec![],
+            vec![],
+            vec![],
+        )
+        .unwrap();
+
+        let candidate =
+            EvidenceRecord::new_claim(identity(102), identity(103), identity(104), vec![], payload)
+                .unwrap();
+
+        assert_eq!(
+            evaluate_admission(&candidate, &authority, &state),
+            Err(EvidenceAdmissionError::WrongReferencedRecordKind {
+                required: RecordKindRequirement::Objective,
+                actual: RecordKind::Source,
+            })
+        );
+    }
+
+    #[test]
+    fn claim_uncertainty_requires_uncertainty_kind() {
+        let state = TestStateRef(1);
+        let mut authority = TestAuthority::new(state.clone());
+
+        let objective = generic_record(RecordKind::Objective, 22, identity(105), vec![]);
+        let wrong_uncertainty = generic_record(RecordKind::Method, 23, identity(106), vec![]);
+
+        authority.insert(objective.clone());
+        authority.insert(wrong_uncertainty.clone());
+
+        let payload = ClaimPayload::new(
+            objective.id(),
+            "claim".to_owned(),
+            ClaimKind::Inference,
+            Substantiation::Unsubstantiated,
+            vec![],
+            vec![],
+            vec![wrong_uncertainty.id()],
+        )
+        .unwrap();
+
+        let candidate =
+            EvidenceRecord::new_claim(identity(107), identity(108), identity(109), vec![], payload)
+                .unwrap();
+
+        assert_eq!(
+            evaluate_admission(&candidate, &authority, &state),
+            Err(EvidenceAdmissionError::WrongReferencedRecordKind {
+                required: RecordKindRequirement::Uncertainty,
+                actual: RecordKind::Method,
+            })
+        );
+    }
+
+    #[test]
+    fn failed_attempt_retry_requires_failed_attempt_kind() {
+        let state = TestStateRef(1);
+        let mut authority = TestAuthority::new(state.clone());
+
+        let objective = generic_record(RecordKind::Objective, 24, identity(110), vec![]);
+        let method = generic_record(RecordKind::Method, 25, identity(111), vec![]);
+        let wrong_retry = generic_record(RecordKind::Claim, 26, identity(112), vec![]);
+
+        authority.insert(objective.clone());
+        authority.insert(method.clone());
+        authority.insert(wrong_retry.clone());
+
+        let payload = FailedAttemptPayload::new(
+            objective.id(),
+            method.id(),
+            FailureKind::MethodFailure,
+            "failed".to_owned(),
+            vec![],
+            Some(wrong_retry.id()),
+        )
+        .unwrap();
+
+        let candidate = EvidenceRecord::new_failed_attempt(
+            identity(113),
+            identity(114),
+            identity(115),
+            vec![],
+            payload,
+        )
+        .unwrap();
+
+        assert_eq!(
+            evaluate_admission(&candidate, &authority, &state),
+            Err(EvidenceAdmissionError::WrongReferencedRecordKind {
+                required: RecordKindRequirement::FailedAttempt,
+                actual: RecordKind::Claim,
+            })
+        );
+    }
+
+    #[test]
+    fn dispute_positions_accept_claim_and_reviewer_finding() {
+        let state = TestStateRef(1);
+        let mut authority = TestAuthority::new(state.clone());
+
+        let disputed = generic_record(RecordKind::Objective, 27, identity(116), vec![]);
+        let claim_position = generic_record(RecordKind::Claim, 28, identity(117), vec![]);
+        let finding_position =
+            generic_record(RecordKind::ReviewerFinding, 29, identity(118), vec![]);
+
+        authority.insert(disputed.clone());
+        authority.insert(claim_position.clone());
+        authority.insert(finding_position.clone());
+
+        let payload = DisputePayload::new(
+            disputed.id(),
+            vec![claim_position.id(), finding_position.id()],
+            identity(119),
+            DisputeStatus::Open,
+            None,
+        )
+        .unwrap();
+
+        let candidate = EvidenceRecord::new_dispute(
+            identity(120),
+            identity(121),
+            identity(122),
+            vec![],
+            payload,
+        )
+        .unwrap();
+
+        assert_eq!(
+            evaluate_admission(&candidate, &authority, &state),
+            Ok(EvidenceAdmissionResult::Admissible)
+        );
+    }
+
+    #[test]
+    fn dispute_position_rejects_other_record_kinds() {
+        let state = TestStateRef(1);
+        let mut authority = TestAuthority::new(state.clone());
+
+        let disputed = generic_record(RecordKind::Source, 30, identity(123), vec![]);
+        let claim_position = generic_record(RecordKind::Claim, 31, identity(124), vec![]);
+        let wrong_position = generic_record(RecordKind::Objective, 32, identity(125), vec![]);
+
+        authority.insert(disputed.clone());
+        authority.insert(claim_position.clone());
+        authority.insert(wrong_position.clone());
+
+        let payload = DisputePayload::new(
+            disputed.id(),
+            vec![claim_position.id(), wrong_position.id()],
+            identity(126),
+            DisputeStatus::Open,
+            None,
+        )
+        .unwrap();
+
+        let candidate = EvidenceRecord::new_dispute(
+            identity(127),
+            identity(128),
+            identity(129),
+            vec![],
+            payload,
+        )
+        .unwrap();
+
+        assert_eq!(
+            evaluate_admission(&candidate, &authority, &state),
+            Err(EvidenceAdmissionError::WrongReferencedRecordKind {
+                required: RecordKindRequirement::ClaimOrReviewerFinding,
+                actual: RecordKind::Objective,
+            })
+        );
+    }
+
+    #[test]
+    fn resolved_dispute_resolution_requires_disposition_kind() {
+        let state = TestStateRef(1);
+        let mut authority = TestAuthority::new(state.clone());
+
+        let disputed = generic_record(RecordKind::Objective, 33, identity(130), vec![]);
+        let first_position = generic_record(RecordKind::Claim, 34, identity(131), vec![]);
+        let second_position =
+            generic_record(RecordKind::ReviewerFinding, 35, identity(132), vec![]);
+        let wrong_resolution = generic_record(RecordKind::Claim, 36, identity(133), vec![]);
+
+        authority.insert(disputed.clone());
+        authority.insert(first_position.clone());
+        authority.insert(second_position.clone());
+        authority.insert(wrong_resolution.clone());
+
+        let payload = DisputePayload::new(
+            disputed.id(),
+            vec![first_position.id(), second_position.id()],
+            identity(134),
+            DisputeStatus::Resolved,
+            Some(wrong_resolution.id()),
+        )
+        .unwrap();
+
+        let candidate = EvidenceRecord::new_dispute(
+            identity(135),
+            identity(136),
+            identity(137),
+            vec![],
+            payload,
+        )
+        .unwrap();
+
+        assert_eq!(
+            evaluate_admission(&candidate, &authority, &state),
+            Err(EvidenceAdmissionError::WrongReferencedRecordKind {
+                required: RecordKindRequirement::Disposition,
+                actual: RecordKind::Claim,
+            })
+        );
+    }
+
+    #[test]
+    fn disposition_unresolved_reference_requires_dispute_kind() {
+        let state = TestStateRef(1);
+        let mut authority = TestAuthority::new(state.clone());
+
+        let decided = generic_record(RecordKind::Claim, 37, identity(138), vec![]);
+        let wrong_dispute = generic_record(RecordKind::Claim, 38, identity(139), vec![]);
+
+        authority.insert(decided.clone());
+        authority.insert(wrong_dispute.clone());
+
+        let decision_authority = identity(140);
+
+        let payload = DispositionPayload::new(
+            decided.id(),
+            DispositionDecision::Defer,
+            decision_authority,
+            identity(141),
+            vec![],
+            vec![wrong_dispute.id()],
+            "defer".to_owned(),
+            None,
+        )
+        .unwrap();
+
+        let candidate = EvidenceRecord::new_disposition(
+            identity(142),
+            identity(143),
+            identity(144),
+            vec![],
+            payload,
+        )
+        .unwrap();
+
+        assert_eq!(
+            evaluate_admission(&candidate, &authority, &state),
+            Err(EvidenceAdmissionError::WrongReferencedRecordKind {
+                required: RecordKindRequirement::Dispute,
+                actual: RecordKind::Claim,
+            })
+        );
     }
 }
