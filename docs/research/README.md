@@ -33,6 +33,7 @@ Research documents are intentionally separated from production architecture.
 - RES-HARNESS-001 — DeepSeek Harness and Cordis Comparative Intake
 - RES-RSI-001 — Exo Recursive Self-Improvement Comparative Intake
 - RES-RLM-001 — Recursive Language Models Comparative Intake
+- RES-ONTOLOGY-001 — Ontology-Guarded Agent Systems Comparative Intake
 
 ## Promotion Criteria
 
@@ -48,4 +49,4 @@ Research may be promoted only after:
 ## Changelog
 
 - **v1.0 (2026-07-07):** Created research portfolio index.
-- **v1.1 (2026-08-16):** Added three external agent-architecture intakes.
+- **v1.1 (2026-08-16):** Added four external agent-architecture intakes.
