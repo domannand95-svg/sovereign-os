@@ -190,6 +190,8 @@ Implemented work includes:
 - bounded Source payload encoding;
 - bounded Method payload encoding;
 - bounded Uncertainty payload encoding;
+- bounded Failed Attempt payload encoding;
+- bounded Reviewer Finding payload encoding;
 - content-addressed records;
 - deterministic encoding and decoding;
 - kind-confusion protection;

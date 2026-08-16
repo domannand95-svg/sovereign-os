@@ -12,6 +12,7 @@ mod claim;
 mod failed_attempt;
 mod method;
 mod objective;
+mod reviewer_finding;
 mod source;
 mod uncertainty;
 
@@ -19,6 +20,9 @@ pub use claim::{ClaimError, ClaimKind, ClaimPayload, Substantiation};
 pub use failed_attempt::{FailedAttemptError, FailedAttemptPayload, FailureKind};
 pub use method::{MethodError, MethodPayload};
 pub use objective::{ObjectiveError, ObjectivePayload, MAX_LIST_ITEMS, MAX_TEXT_FIELD_LEN};
+pub use reviewer_finding::{
+    FindingKind, FindingSeverity, IndependenceResult, ReviewerFindingError, ReviewerFindingPayload,
+};
 pub use source::{DigestAlgorithm, SourceError, SourcePayload};
 pub use uncertainty::{UncertaintyError, UncertaintyKind, UncertaintyPayload};
 
@@ -103,6 +107,23 @@ pub struct EvidenceRecord {
 }
 
 impl EvidenceRecord {
+    pub fn new_reviewer_finding(
+        issuer_id: IdentityId,
+        subject_id: IdentityId,
+        policy_id: IdentityId,
+        parent_ids: Vec<RecordId>,
+        payload: ReviewerFindingPayload,
+    ) -> Result<Self, EvidenceError> {
+        Self::new(
+            RecordKind::ReviewerFinding,
+            issuer_id,
+            subject_id,
+            policy_id,
+            parent_ids,
+            payload.encode(),
+        )
+    }
+
     pub fn new_failed_attempt(
         issuer_id: IdentityId,
         subject_id: IdentityId,
@@ -325,6 +346,18 @@ impl EvidenceRecord {
         FailedAttemptPayload::decode(&self.payload).map_err(EvidencePayloadError::FailedAttempt)
     }
 
+    pub fn decode_reviewer_finding_payload(
+        &self,
+    ) -> Result<ReviewerFindingPayload, EvidencePayloadError> {
+        if self.kind != RecordKind::ReviewerFinding {
+            return Err(EvidencePayloadError::WrongRecordKind {
+                expected: RecordKind::ReviewerFinding,
+                actual: self.kind,
+            });
+        }
+        ReviewerFindingPayload::decode(&self.payload).map_err(EvidencePayloadError::ReviewerFinding)
+    }
+
     pub fn encode(&self) -> Vec<u8> {
         encode_parts(
             self.kind,
@@ -445,6 +478,7 @@ pub enum EvidencePayloadError {
     Method(MethodError),
     Uncertainty(UncertaintyError),
     FailedAttempt(FailedAttemptError),
+    ReviewerFinding(ReviewerFindingError),
 }
 
 impl fmt::Display for EvidencePayloadError {
@@ -463,6 +497,7 @@ impl std::error::Error for EvidencePayloadError {
             Self::Method(error) => Some(error),
             Self::Uncertainty(error) => Some(error),
             Self::FailedAttempt(error) => Some(error),
+            Self::ReviewerFinding(error) => Some(error),
         }
     }
 }
@@ -625,6 +660,20 @@ mod tests {
             "The attempt did not establish the claim".to_owned(),
             vec![RecordId::from_bytes([11; ID_LEN])],
             None,
+        )
+        .unwrap()
+    }
+
+    fn reviewer_finding_payload() -> ReviewerFindingPayload {
+        ReviewerFindingPayload::new(
+            RecordId::from_bytes([9; ID_LEN]),
+            identity(10),
+            FindingKind::ProvenanceGap,
+            FindingSeverity::High,
+            "The cited bytes are not bound to the asserted source".to_owned(),
+            vec![RecordId::from_bytes([11; ID_LEN])],
+            "NONE_DECLARED".to_owned(),
+            IndependenceResult::Established,
         )
         .unwrap()
     }
@@ -818,6 +867,42 @@ mod tests {
             EvidencePayloadError::WrongRecordKind {
                 expected: RecordKind::FailedAttempt,
                 actual: RecordKind::Uncertainty,
+            }
+        );
+    }
+
+    #[test]
+    fn typed_reviewer_finding_record_round_trips_without_kind_confusion() {
+        let payload = reviewer_finding_payload();
+        let record = EvidenceRecord::new_reviewer_finding(
+            identity(1),
+            identity(2),
+            identity(3),
+            vec![RecordId::from_bytes([4; ID_LEN])],
+            payload.clone(),
+        )
+        .unwrap();
+        assert_eq!(record.kind(), RecordKind::ReviewerFinding);
+        assert_eq!(record.decode_reviewer_finding_payload().unwrap(), payload);
+        assert_eq!(
+            EvidenceRecord::decode(&record.encode())
+                .unwrap()
+                .decode_reviewer_finding_payload()
+                .unwrap(),
+            payload
+        );
+    }
+
+    #[test]
+    fn reviewer_finding_decoder_rejects_record_kind_confusion() {
+        let failed_attempt = record(RecordKind::FailedAttempt);
+        assert_eq!(
+            failed_attempt
+                .decode_reviewer_finding_payload()
+                .unwrap_err(),
+            EvidencePayloadError::WrongRecordKind {
+                expected: RecordKind::ReviewerFinding,
+                actual: RecordKind::FailedAttempt,
             }
         );
     }
