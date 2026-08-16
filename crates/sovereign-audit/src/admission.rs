@@ -147,6 +147,18 @@ pub enum AuthoritativeCanonicalIdentity {
     Canonical,
     NonCanonical,
 }
+
+/// Authoritative equivalence of one candidate against admitted immutable
+/// A04 state at one exact StateRef.
+///
+/// This reports a storage fact only. The admission evaluator assigns the
+/// semantic meaning of retroactive mutation to AdmittedDifferent.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum AdmittedRecordEquivalence {
+    NotAdmitted,
+    AdmittedIdentical,
+    AdmittedDifferent,
+}
 /// Storage-neutral authority boundary used by A04 cross-record admission.
 ///
 /// The first implementation increment allocates only exact governed-record
@@ -261,6 +273,18 @@ pub trait EvidenceAdmissionAuthority {
         identity_id: &IdentityId,
         state_ref: &Self::StateRef,
     ) -> Result<AuthoritativeCanonicalIdentity, EvidenceAdmissionAuthorityError>;
+
+    /// Compare one exact candidate identity and its canonical EvidenceRecord
+    /// encoding against admitted immutable state at the supplied StateRef.
+    ///
+    /// This is a read-only equivalence query. It does not admit, replace,
+    /// mutate, publish, promote, append, authorize, or otherwise alter state.
+    fn admitted_record_equivalence(
+        &self,
+        candidate_id: &RecordId,
+        candidate_encoded: &[u8],
+        state_ref: &Self::StateRef,
+    ) -> Result<AdmittedRecordEquivalence, EvidenceAdmissionAuthorityError>;
 }
 /// Normative kind requirement for a typed A04 record reference.
 ///
@@ -400,6 +424,16 @@ pub fn evaluate_admission<A: EvidenceAdmissionAuthority>(
     state_ref: &A::StateRef,
 ) -> Result<EvidenceAdmissionResult, EvidenceAdmissionError> {
     authority.validate_state_ref(state_ref)?;
+
+    let candidate_id = candidate.id();
+    let candidate_encoded = candidate.encode();
+
+    match authority.admitted_record_equivalence(&candidate_id, &candidate_encoded, state_ref)? {
+        AdmittedRecordEquivalence::NotAdmitted | AdmittedRecordEquivalence::AdmittedIdentical => {}
+        AdmittedRecordEquivalence::AdmittedDifferent => {
+            return Err(EvidenceAdmissionError::RetroactiveMutationAttempt);
+        }
+    }
 
     let policy_id = candidate.policy_id();
     check_canonical_external_identity(
@@ -858,6 +892,9 @@ mod tests {
             AuthoritativeCanonicalIdentity,
         )>,
         canonical_queries: RefCell<Vec<(ExternalIdentityKind, IdentityId)>>,
+        admitted_equivalence: AdmittedRecordEquivalence,
+        admitted_equivalence_error: Option<EvidenceAdmissionAuthorityError>,
+        admitted_equivalence_queries: RefCell<Vec<(RecordId, Vec<u8>)>>,
     }
 
     impl TestAuthority {
@@ -900,6 +937,9 @@ mod tests {
                 canonical_error: None,
                 canonical_overrides: vec![],
                 canonical_queries: RefCell::new(vec![]),
+                admitted_equivalence: AdmittedRecordEquivalence::NotAdmitted,
+                admitted_equivalence_error: None,
+                admitted_equivalence_queries: RefCell::new(vec![]),
             }
         }
 
@@ -1151,6 +1191,25 @@ mod tests {
             }
 
             Ok(self.canonical_default)
+        }
+
+        fn admitted_record_equivalence(
+            &self,
+            candidate_id: &RecordId,
+            candidate_encoded: &[u8],
+            state_ref: &Self::StateRef,
+        ) -> Result<AdmittedRecordEquivalence, EvidenceAdmissionAuthorityError> {
+            self.validate_state_ref(state_ref)?;
+
+            self.admitted_equivalence_queries
+                .borrow_mut()
+                .push((*candidate_id, candidate_encoded.to_vec()));
+
+            if let Some(error) = self.admitted_equivalence_error {
+                return Err(error);
+            }
+
+            Ok(self.admitted_equivalence)
         }
     }
 
@@ -3026,6 +3085,129 @@ mod tests {
         assert_eq!(
             queries.as_slice(),
             &[(ExternalIdentityKind::Policy, candidate.policy_id(),)]
+        );
+    }
+    #[test]
+    fn not_admitted_equivalence_allows_ordinary_admission() {
+        let state = TestStateRef(1);
+        let authority = TestAuthority::new(state.clone());
+
+        let candidate = generic_record(RecordKind::Objective, 160, identity(160), vec![]);
+
+        let expected_id = candidate.id();
+        let expected_encoded = candidate.encode();
+
+        assert_eq!(
+            evaluate_admission(&candidate, &authority, &state),
+            Ok(EvidenceAdmissionResult::Admissible)
+        );
+
+        let queries = authority.admitted_equivalence_queries.borrow();
+        assert_eq!(queries.as_slice(), &[(expected_id, expected_encoded)]);
+    }
+
+    #[test]
+    fn admitted_identical_candidate_replays_deterministically() {
+        let state = TestStateRef(1);
+        let mut authority = TestAuthority::new(state.clone());
+
+        let candidate = generic_record(RecordKind::Objective, 161, identity(161), vec![]);
+
+        authority.admitted_equivalence = AdmittedRecordEquivalence::AdmittedIdentical;
+
+        let expected_id = candidate.id();
+        let before = candidate.encode();
+
+        let first = evaluate_admission(&candidate, &authority, &state);
+        let second = evaluate_admission(&candidate, &authority, &state);
+
+        assert_eq!(first, Ok(EvidenceAdmissionResult::Admissible));
+        assert_eq!(first, second);
+        assert_eq!(candidate.encode(), before);
+
+        let queries = authority.admitted_equivalence_queries.borrow();
+        assert_eq!(
+            queries.as_slice(),
+            &[(expected_id, before.clone()), (expected_id, before),]
+        );
+    }
+
+    #[test]
+    fn admitted_different_candidate_is_rejected_as_retroactive_mutation() {
+        let state = TestStateRef(1);
+        let mut authority = TestAuthority::new(state.clone());
+
+        let candidate = generic_record(RecordKind::Objective, 162, identity(162), vec![]);
+
+        authority.admitted_equivalence = AdmittedRecordEquivalence::AdmittedDifferent;
+
+        assert_eq!(
+            evaluate_admission(&candidate, &authority, &state),
+            Err(EvidenceAdmissionError::RetroactiveMutationAttempt)
+        );
+    }
+
+    #[test]
+    fn retroactive_mutation_rejection_precedes_policy_canonicality() {
+        let state = TestStateRef(1);
+        let mut authority = TestAuthority::new(state.clone());
+
+        let candidate = generic_record(RecordKind::Objective, 163, identity(163), vec![]);
+
+        authority.admitted_equivalence = AdmittedRecordEquivalence::AdmittedDifferent;
+
+        authority.canonical_overrides.push((
+            ExternalIdentityKind::Policy,
+            candidate.policy_id(),
+            AuthoritativeCanonicalIdentity::NonCanonical,
+        ));
+
+        assert_eq!(
+            evaluate_admission(&candidate, &authority, &state),
+            Err(EvidenceAdmissionError::RetroactiveMutationAttempt)
+        );
+
+        assert!(
+            authority.canonical_queries.borrow().is_empty(),
+            "Policy canonicality must not be queried after definitive retroactive mutation"
+        );
+
+        let equivalence_queries = authority.admitted_equivalence_queries.borrow();
+
+        assert_eq!(
+            equivalence_queries.as_slice(),
+            &[(candidate.id(), candidate.encode())]
+        );
+    }
+
+    #[test]
+    fn unavailable_admitted_equivalence_fails_closed_with_exact_candidate() {
+        let state = TestStateRef(1);
+        let mut authority = TestAuthority::new(state.clone());
+
+        let candidate = generic_record(RecordKind::Objective, 164, identity(164), vec![]);
+
+        let expected_id = candidate.id();
+        let expected_encoded = candidate.encode();
+
+        authority.admitted_equivalence_error =
+            Some(EvidenceAdmissionAuthorityError::StateUnavailable);
+
+        assert_eq!(
+            evaluate_admission(&candidate, &authority, &state),
+            Err(EvidenceAdmissionError::AuthoritativeStateUnavailable)
+        );
+
+        let equivalence_queries = authority.admitted_equivalence_queries.borrow();
+
+        assert_eq!(
+            equivalence_queries.as_slice(),
+            &[(expected_id, expected_encoded)]
+        );
+
+        assert!(
+            authority.canonical_queries.borrow().is_empty(),
+            "Policy canonicality must not run after equivalence authority failure"
         );
     }
 }
