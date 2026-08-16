@@ -9,12 +9,14 @@ use std::collections::HashSet;
 use std::fmt;
 
 mod claim;
+mod failed_attempt;
 mod method;
 mod objective;
 mod source;
 mod uncertainty;
 
 pub use claim::{ClaimError, ClaimKind, ClaimPayload, Substantiation};
+pub use failed_attempt::{FailedAttemptError, FailedAttemptPayload, FailureKind};
 pub use method::{MethodError, MethodPayload};
 pub use objective::{ObjectiveError, ObjectivePayload, MAX_LIST_ITEMS, MAX_TEXT_FIELD_LEN};
 pub use source::{DigestAlgorithm, SourceError, SourcePayload};
@@ -101,6 +103,23 @@ pub struct EvidenceRecord {
 }
 
 impl EvidenceRecord {
+    pub fn new_failed_attempt(
+        issuer_id: IdentityId,
+        subject_id: IdentityId,
+        policy_id: IdentityId,
+        parent_ids: Vec<RecordId>,
+        payload: FailedAttemptPayload,
+    ) -> Result<Self, EvidenceError> {
+        Self::new(
+            RecordKind::FailedAttempt,
+            issuer_id,
+            subject_id,
+            policy_id,
+            parent_ids,
+            payload.encode(),
+        )
+    }
+
     pub fn new_uncertainty(
         issuer_id: IdentityId,
         subject_id: IdentityId,
@@ -294,6 +313,18 @@ impl EvidenceRecord {
         UncertaintyPayload::decode(&self.payload).map_err(EvidencePayloadError::Uncertainty)
     }
 
+    pub fn decode_failed_attempt_payload(
+        &self,
+    ) -> Result<FailedAttemptPayload, EvidencePayloadError> {
+        if self.kind != RecordKind::FailedAttempt {
+            return Err(EvidencePayloadError::WrongRecordKind {
+                expected: RecordKind::FailedAttempt,
+                actual: self.kind,
+            });
+        }
+        FailedAttemptPayload::decode(&self.payload).map_err(EvidencePayloadError::FailedAttempt)
+    }
+
     pub fn encode(&self) -> Vec<u8> {
         encode_parts(
             self.kind,
@@ -413,6 +444,7 @@ pub enum EvidencePayloadError {
     Source(SourceError),
     Method(MethodError),
     Uncertainty(UncertaintyError),
+    FailedAttempt(FailedAttemptError),
 }
 
 impl fmt::Display for EvidencePayloadError {
@@ -430,6 +462,7 @@ impl std::error::Error for EvidencePayloadError {
             Self::Source(error) => Some(error),
             Self::Method(error) => Some(error),
             Self::Uncertainty(error) => Some(error),
+            Self::FailedAttempt(error) => Some(error),
         }
     }
 }
@@ -580,6 +613,18 @@ mod tests {
             Some("0.01".to_owned()),
             Some("0.25".to_owned()),
             "Declared sampling procedure".to_owned(),
+        )
+        .unwrap()
+    }
+
+    fn failed_attempt_payload() -> FailedAttemptPayload {
+        FailedAttemptPayload::new(
+            RecordId::from_bytes([9; ID_LEN]),
+            RecordId::from_bytes([10; ID_LEN]),
+            FailureKind::Inconclusive,
+            "The attempt did not establish the claim".to_owned(),
+            vec![RecordId::from_bytes([11; ID_LEN])],
+            None,
         )
         .unwrap()
     }
@@ -739,6 +784,40 @@ mod tests {
             EvidencePayloadError::WrongRecordKind {
                 expected: RecordKind::Uncertainty,
                 actual: RecordKind::Method,
+            }
+        );
+    }
+
+    #[test]
+    fn typed_failed_attempt_record_round_trips_without_kind_confusion() {
+        let payload = failed_attempt_payload();
+        let record = EvidenceRecord::new_failed_attempt(
+            identity(1),
+            identity(2),
+            identity(3),
+            vec![RecordId::from_bytes([4; ID_LEN])],
+            payload.clone(),
+        )
+        .unwrap();
+        assert_eq!(record.kind(), RecordKind::FailedAttempt);
+        assert_eq!(record.decode_failed_attempt_payload().unwrap(), payload);
+        assert_eq!(
+            EvidenceRecord::decode(&record.encode())
+                .unwrap()
+                .decode_failed_attempt_payload()
+                .unwrap(),
+            payload
+        );
+    }
+
+    #[test]
+    fn failed_attempt_decoder_rejects_record_kind_confusion() {
+        let uncertainty = record(RecordKind::Uncertainty);
+        assert_eq!(
+            uncertainty.decode_failed_attempt_payload().unwrap_err(),
+            EvidencePayloadError::WrongRecordKind {
+                expected: RecordKind::FailedAttempt,
+                actual: RecordKind::Uncertainty,
             }
         );
     }
