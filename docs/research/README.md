@@ -1,7 +1,7 @@
 ---
 Document: Research Portfolio Index
 ID: RES-INDEX-001
-Version: 1.1
+Version: 1.2
 Status: Research
 Owner: Repository Maintainer
 Reviewers:
@@ -34,6 +34,7 @@ Research documents are intentionally separated from production architecture.
 - RES-RSI-001 — Exo Recursive Self-Improvement Comparative Intake
 - RES-RLM-001 — Recursive Language Models Comparative Intake
 - RES-ONTOLOGY-001 — Ontology-Guarded Agent Systems Comparative Intake
+- RES-DODIIS-001 — DoDIIS 2026 AI Governance Comparative Intake
 
 ## Promotion Criteria
 
@@ -50,3 +51,4 @@ Research may be promoted only after:
 
 - **v1.0 (2026-07-07):** Created research portfolio index.
 - **v1.1 (2026-08-16):** Added four external agent-architecture intakes.
+- **v1.2 (2026-08-16):** Added the DoDIIS 2026 AI-governance intake with explicit secondary-transcript provenance.
