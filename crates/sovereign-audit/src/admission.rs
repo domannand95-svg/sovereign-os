@@ -43,6 +43,46 @@ pub enum ReviewerIndependenceRequirement {
     NotRequired,
 }
 
+/// Exact evidence that authoritative policy and criteria require a Disposition
+/// to preserve for one decided record.
+///
+/// The authority determines which records are required. The evaluator only
+/// checks whether the immutable candidate includes those exact identifiers; it
+/// does not infer negativity, minority status, failure relevance, or dispute
+/// relevance from payload contents.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct DispositionEvidenceRequirements {
+    required_failed_attempt_ids: Vec<RecordId>,
+    required_negative_finding_ids: Vec<RecordId>,
+    required_unresolved_dispute_ids: Vec<RecordId>,
+}
+
+impl DispositionEvidenceRequirements {
+    pub fn new(
+        required_failed_attempt_ids: Vec<RecordId>,
+        required_negative_finding_ids: Vec<RecordId>,
+        required_unresolved_dispute_ids: Vec<RecordId>,
+    ) -> Self {
+        Self {
+            required_failed_attempt_ids,
+            required_negative_finding_ids,
+            required_unresolved_dispute_ids,
+        }
+    }
+
+    pub fn required_failed_attempt_ids(&self) -> &[RecordId] {
+        &self.required_failed_attempt_ids
+    }
+
+    pub fn required_negative_finding_ids(&self) -> &[RecordId] {
+        &self.required_negative_finding_ids
+    }
+
+    pub fn required_unresolved_dispute_ids(&self) -> &[RecordId] {
+        &self.required_unresolved_dispute_ids
+    }
+}
+
 /// Storage-neutral authority boundary used by A04 cross-record admission.
 ///
 /// The first implementation increment allocates only exact governed-record
@@ -90,6 +130,20 @@ pub trait EvidenceAdmissionAuthority {
         reviewed_subject_id: &IdentityId,
         state_ref: &Self::StateRef,
     ) -> Result<AuthoritativeIndependence, EvidenceAdmissionAuthorityError>;
+
+    /// Resolve the complete evidence set required for one Disposition.
+    ///
+    /// Requirements are bound to the candidate's exact governing policy,
+    /// payload criteria, decided record, and explicitly supplied state.
+    /// Implementations must not substitute ambient, current, latest, inherited,
+    /// or default requirements.
+    fn disposition_evidence_requirements(
+        &self,
+        policy_id: &IdentityId,
+        criteria_id: &IdentityId,
+        decided_id: &RecordId,
+        state_ref: &Self::StateRef,
+    ) -> Result<DispositionEvidenceRequirements, EvidenceAdmissionAuthorityError>;
 }
 
 /// Normative kind requirement for a typed A04 record reference.
@@ -454,6 +508,36 @@ fn evaluate_disposition<A: EvidenceAdmissionAuthority>(
         return Err(EvidenceAdmissionError::SelfDisposition);
     }
 
+    let policy_id = candidate.policy_id();
+    let criteria_id = payload.criteria_id();
+    let decided_id = payload.decided_id();
+
+    let requirements = authority.disposition_evidence_requirements(
+        &policy_id,
+        &criteria_id,
+        &decided_id,
+        state_ref,
+    )?;
+
+    let evidence_ids = payload.evidence_ids();
+
+    if requirements
+        .required_failed_attempt_ids()
+        .iter()
+        .chain(requirements.required_negative_finding_ids().iter())
+        .any(|required_id| !evidence_ids.contains(required_id))
+    {
+        return Err(EvidenceAdmissionError::RequiredEvidenceOmitted);
+    }
+
+    if requirements
+        .required_unresolved_dispute_ids()
+        .iter()
+        .any(|required_id| !payload.unresolved_dispute_ids().contains(required_id))
+    {
+        return Err(EvidenceAdmissionError::RequiredEvidenceOmitted);
+    }
+
     Ok(())
 }
 
@@ -523,6 +607,10 @@ mod tests {
         independence_error: Option<EvidenceAdmissionAuthorityError>,
         forbid_independence_lookup: bool,
         expected_policy_id: Option<IdentityId>,
+        disposition_requirements: DispositionEvidenceRequirements,
+        disposition_requirements_error: Option<EvidenceAdmissionAuthorityError>,
+        expected_criteria_id: Option<IdentityId>,
+        expected_decided_id: Option<RecordId>,
     }
 
     impl TestAuthority {
@@ -537,6 +625,14 @@ mod tests {
                 independence_error: None,
                 forbid_independence_lookup: false,
                 expected_policy_id: None,
+                disposition_requirements: DispositionEvidenceRequirements::new(
+                    vec![],
+                    vec![],
+                    vec![],
+                ),
+                disposition_requirements_error: None,
+                expected_criteria_id: None,
+                expected_decided_id: None,
             }
         }
 
@@ -616,6 +712,43 @@ mod tests {
             }
 
             Ok(self.independence)
+        }
+
+        fn disposition_evidence_requirements(
+            &self,
+            policy_id: &IdentityId,
+            criteria_id: &IdentityId,
+            decided_id: &RecordId,
+            state_ref: &Self::StateRef,
+        ) -> Result<DispositionEvidenceRequirements, EvidenceAdmissionAuthorityError> {
+            self.validate_state_ref(state_ref)?;
+
+            if let Some(expected_policy_id) = self.expected_policy_id {
+                assert_eq!(
+                    *policy_id, expected_policy_id,
+                    "Disposition completeness must use the candidate's exact policy_id"
+                );
+            }
+
+            if let Some(expected_criteria_id) = self.expected_criteria_id {
+                assert_eq!(
+                    *criteria_id, expected_criteria_id,
+                    "Disposition completeness must use the payload's exact criteria_id"
+                );
+            }
+
+            if let Some(expected_decided_id) = self.expected_decided_id {
+                assert_eq!(
+                    *decided_id, expected_decided_id,
+                    "Disposition completeness must use the payload's exact decided_id"
+                );
+            }
+
+            if let Some(error) = self.disposition_requirements_error {
+                return Err(error);
+            }
+
+            Ok(self.disposition_requirements.clone())
         }
     }
 
@@ -1342,6 +1475,251 @@ mod tests {
         assert_eq!(
             evaluate_admission(&candidate, &authority, &state),
             Err(EvidenceAdmissionError::RequiredRelationalInformationUnavailable)
+        );
+    }
+    fn disposition_completeness_candidate(
+        decided: &EvidenceRecord,
+        decision_authority: IdentityId,
+        policy_id: IdentityId,
+        criteria_id: IdentityId,
+        evidence_ids: Vec<RecordId>,
+        unresolved_dispute_ids: Vec<RecordId>,
+    ) -> EvidenceRecord {
+        let payload = DispositionPayload::new(
+            decided.id(),
+            DispositionDecision::Defer,
+            decision_authority,
+            criteria_id,
+            evidence_ids,
+            unresolved_dispute_ids,
+            "completeness decision".to_owned(),
+            None,
+        )
+        .unwrap();
+
+        EvidenceRecord::new_disposition(
+            identity(201),
+            decided.subject_id(),
+            policy_id,
+            vec![],
+            payload,
+        )
+        .unwrap()
+    }
+
+    #[test]
+    fn disposition_all_authoritative_requirements_present_is_admissible() {
+        let state = TestStateRef(1);
+        let mut authority = TestAuthority::new(state.clone());
+
+        let decided = generic_record(RecordKind::Claim, 46, identity(171), vec![]);
+        let failed_attempt = generic_record(RecordKind::FailedAttempt, 47, identity(172), vec![]);
+        let negative_finding =
+            generic_record(RecordKind::ReviewerFinding, 48, identity(173), vec![]);
+        let unresolved_dispute = generic_record(RecordKind::Dispute, 49, identity(174), vec![]);
+
+        authority.insert(decided.clone());
+        authority.insert(failed_attempt.clone());
+        authority.insert(negative_finding.clone());
+        authority.insert(unresolved_dispute.clone());
+
+        authority.disposition_requirements = DispositionEvidenceRequirements::new(
+            vec![failed_attempt.id()],
+            vec![negative_finding.id()],
+            vec![unresolved_dispute.id()],
+        );
+
+        let candidate = disposition_completeness_candidate(
+            &decided,
+            identity(175),
+            identity(176),
+            identity(177),
+            vec![failed_attempt.id(), negative_finding.id()],
+            vec![unresolved_dispute.id()],
+        );
+
+        assert_eq!(
+            evaluate_admission(&candidate, &authority, &state),
+            Ok(EvidenceAdmissionResult::Admissible)
+        );
+    }
+
+    #[test]
+    fn disposition_omitted_required_failed_attempt_fails_closed() {
+        let state = TestStateRef(1);
+        let mut authority = TestAuthority::new(state.clone());
+
+        let decided = generic_record(RecordKind::Claim, 50, identity(178), vec![]);
+        let failed_attempt = generic_record(RecordKind::FailedAttempt, 51, identity(179), vec![]);
+
+        authority.insert(decided.clone());
+        authority.insert(failed_attempt.clone());
+
+        let policy_id = identity(180);
+        let criteria_id = identity(181);
+
+        authority.expected_policy_id = Some(policy_id);
+        authority.expected_criteria_id = Some(criteria_id);
+        authority.expected_decided_id = Some(decided.id());
+
+        authority.disposition_requirements =
+            DispositionEvidenceRequirements::new(vec![failed_attempt.id()], vec![], vec![]);
+
+        let candidate = disposition_completeness_candidate(
+            &decided,
+            identity(182),
+            policy_id,
+            criteria_id,
+            vec![],
+            vec![],
+        );
+
+        assert_eq!(
+            evaluate_admission(&candidate, &authority, &state),
+            Err(EvidenceAdmissionError::RequiredEvidenceOmitted)
+        );
+    }
+
+    #[test]
+    fn disposition_omitted_required_negative_finding_fails_closed() {
+        let state = TestStateRef(1);
+        let mut authority = TestAuthority::new(state.clone());
+
+        let decided = generic_record(RecordKind::Claim, 52, identity(183), vec![]);
+        let negative_finding =
+            generic_record(RecordKind::ReviewerFinding, 53, identity(184), vec![]);
+
+        authority.insert(decided.clone());
+        authority.insert(negative_finding.clone());
+
+        authority.disposition_requirements =
+            DispositionEvidenceRequirements::new(vec![], vec![negative_finding.id()], vec![]);
+
+        let candidate = disposition_completeness_candidate(
+            &decided,
+            identity(185),
+            identity(186),
+            identity(187),
+            vec![],
+            vec![],
+        );
+
+        assert_eq!(
+            evaluate_admission(&candidate, &authority, &state),
+            Err(EvidenceAdmissionError::RequiredEvidenceOmitted)
+        );
+    }
+
+    #[test]
+    fn disposition_omitted_required_unresolved_dispute_fails_closed() {
+        let state = TestStateRef(1);
+        let mut authority = TestAuthority::new(state.clone());
+
+        let decided = generic_record(RecordKind::Claim, 54, identity(188), vec![]);
+        let unresolved_dispute = generic_record(RecordKind::Dispute, 55, identity(189), vec![]);
+
+        authority.insert(decided.clone());
+        authority.insert(unresolved_dispute.clone());
+
+        authority.disposition_requirements =
+            DispositionEvidenceRequirements::new(vec![], vec![], vec![unresolved_dispute.id()]);
+
+        let candidate = disposition_completeness_candidate(
+            &decided,
+            identity(190),
+            identity(191),
+            identity(192),
+            vec![],
+            vec![],
+        );
+
+        assert_eq!(
+            evaluate_admission(&candidate, &authority, &state),
+            Err(EvidenceAdmissionError::RequiredEvidenceOmitted)
+        );
+    }
+
+    #[test]
+    fn disposition_extra_evidence_is_permitted() {
+        let state = TestStateRef(1);
+        let mut authority = TestAuthority::new(state.clone());
+
+        let decided = generic_record(RecordKind::Claim, 56, identity(193), vec![]);
+        let required = generic_record(RecordKind::FailedAttempt, 57, identity(194), vec![]);
+        let extra = generic_record(RecordKind::Source, 58, identity(195), vec![]);
+
+        authority.insert(decided.clone());
+        authority.insert(required.clone());
+        authority.insert(extra.clone());
+
+        authority.disposition_requirements =
+            DispositionEvidenceRequirements::new(vec![required.id()], vec![], vec![]);
+
+        let candidate = disposition_completeness_candidate(
+            &decided,
+            identity(196),
+            identity(197),
+            identity(198),
+            vec![required.id(), extra.id()],
+            vec![],
+        );
+
+        assert_eq!(
+            evaluate_admission(&candidate, &authority, &state),
+            Ok(EvidenceAdmissionResult::Admissible)
+        );
+    }
+
+    #[test]
+    fn disposition_requirement_lookup_failure_fails_closed() {
+        let state = TestStateRef(1);
+        let mut authority = TestAuthority::new(state.clone());
+
+        let decided = generic_record(RecordKind::Claim, 59, identity(199), vec![]);
+        authority.insert(decided.clone());
+
+        authority.disposition_requirements_error =
+            Some(EvidenceAdmissionAuthorityError::RequiredRelationalInformationUnavailable);
+
+        let candidate = disposition_completeness_candidate(
+            &decided,
+            identity(202),
+            identity(203),
+            identity(204),
+            vec![],
+            vec![],
+        );
+
+        assert_eq!(
+            evaluate_admission(&candidate, &authority, &state),
+            Err(EvidenceAdmissionError::RequiredRelationalInformationUnavailable)
+        );
+    }
+
+    #[test]
+    fn disposition_empty_requirements_do_not_infer_negative_evidence() {
+        let state = TestStateRef(1);
+        let mut authority = TestAuthority::new(state.clone());
+
+        let decided = generic_record(RecordKind::Claim, 60, identity(205), vec![]);
+        let unrelated_negative =
+            generic_record(RecordKind::ReviewerFinding, 61, identity(206), vec![]);
+
+        authority.insert(decided.clone());
+        authority.insert(unrelated_negative);
+
+        let candidate = disposition_completeness_candidate(
+            &decided,
+            identity(207),
+            identity(208),
+            identity(209),
+            vec![],
+            vec![],
+        );
+
+        assert_eq!(
+            evaluate_admission(&candidate, &authority, &state),
+            Ok(EvidenceAdmissionResult::Admissible)
         );
     }
 }
