@@ -1,4 +1,5 @@
 use crate::{EvidencePayloadError, EvidenceRecord, RecordId, RecordKind};
+use sovereign_registry::IdentityId;
 use std::fmt;
 
 /// Storage-neutral reference to one authoritative A04 admission state.
@@ -16,6 +17,7 @@ pub trait EvidenceAdmissionStateRef: Eq {}
 pub enum EvidenceAdmissionAuthorityError {
     StateUnavailable,
     RequiredRelationalInformationUnavailable,
+    IndependenceUnavailable,
 }
 
 /// Authoritative independence result.
@@ -29,6 +31,16 @@ pub enum AuthoritativeIndependence {
     NotEstablished,
     Conflicted,
     Unknown,
+}
+
+/// Whether the exact governing evidence policy requires reviewer independence.
+///
+/// This is authoritative admission state. It is not inferred from
+/// `ReviewerFindingPayload::independence_result`.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum ReviewerIndependenceRequirement {
+    Required,
+    NotRequired,
 }
 
 /// Storage-neutral authority boundary used by A04 cross-record admission.
@@ -55,6 +67,29 @@ pub trait EvidenceAdmissionAuthority {
         record_id: &RecordId,
         state_ref: &Self::StateRef,
     ) -> Result<Option<EvidenceRecord>, EvidenceAdmissionAuthorityError>;
+
+    /// Resolve whether the candidate's exact governing evidence policy
+    /// requires reviewer independence.
+    ///
+    /// Implementations must not substitute ambient, current, latest,
+    /// inherited, or default policy state.
+    fn reviewer_independence_requirement(
+        &self,
+        policy_id: &IdentityId,
+        state_ref: &Self::StateRef,
+    ) -> Result<ReviewerIndependenceRequirement, EvidenceAdmissionAuthorityError>;
+
+    /// Resolve authoritative reviewer-to-subject independence.
+    ///
+    /// An adapter may account for common control, model lineage, shared hidden
+    /// context or data, delegated authority, and material conflicts. This
+    /// interface deliberately does not allocate a production controller store.
+    fn reviewer_independence(
+        &self,
+        reviewer_id: &IdentityId,
+        reviewed_subject_id: &IdentityId,
+        state_ref: &Self::StateRef,
+    ) -> Result<AuthoritativeIndependence, EvidenceAdmissionAuthorityError>;
 }
 
 /// Normative kind requirement for a typed A04 record reference.
@@ -135,6 +170,9 @@ impl From<EvidenceAdmissionAuthorityError> for EvidenceAdmissionError {
             }
             EvidenceAdmissionAuthorityError::RequiredRelationalInformationUnavailable => {
                 Self::RequiredRelationalInformationUnavailable
+            }
+            EvidenceAdmissionAuthorityError::IndependenceUnavailable => {
+                Self::AuthoritativeIndependenceUnavailable
             }
         }
     }
@@ -330,7 +368,26 @@ fn evaluate_reviewer_finding<A: EvidenceAdmissionAuthority>(
         return Err(EvidenceAdmissionError::SelfReview);
     }
 
-    Ok(())
+    let policy_id = candidate.policy_id();
+    let requirement = authority.reviewer_independence_requirement(&policy_id, state_ref)?;
+
+    if requirement == ReviewerIndependenceRequirement::NotRequired {
+        return Ok(());
+    }
+
+    match authority.reviewer_independence(
+        &payload.reviewer_id(),
+        &reviewed.subject_id(),
+        state_ref,
+    )? {
+        AuthoritativeIndependence::Established => Ok(()),
+        AuthoritativeIndependence::NotEstablished | AuthoritativeIndependence::Conflicted => {
+            Err(EvidenceAdmissionError::IndependenceNotEstablished)
+        }
+        AuthoritativeIndependence::Unknown => {
+            Err(EvidenceAdmissionError::AuthoritativeIndependenceUnavailable)
+        }
+    }
 }
 
 fn evaluate_dispute<A: EvidenceAdmissionAuthority>(
@@ -448,7 +505,7 @@ mod tests {
         DisputeStatus, FailedAttemptPayload, FailureKind, FindingKind, FindingSeverity,
         IndependenceResult, ReviewerFindingPayload, Substantiation,
     };
-    use sovereign_registry::{IdentityId, IdentityKind, IdentityRecord};
+    use sovereign_registry::{IdentityKind, IdentityRecord};
     use std::collections::BTreeMap;
 
     #[derive(Clone, Debug, PartialEq, Eq)]
@@ -460,6 +517,12 @@ mod tests {
         expected_state: TestStateRef,
         records: BTreeMap<RecordId, EvidenceRecord>,
         substitute: Option<EvidenceRecord>,
+        independence_requirement: ReviewerIndependenceRequirement,
+        independence: AuthoritativeIndependence,
+        requirement_error: Option<EvidenceAdmissionAuthorityError>,
+        independence_error: Option<EvidenceAdmissionAuthorityError>,
+        forbid_independence_lookup: bool,
+        expected_policy_id: Option<IdentityId>,
     }
 
     impl TestAuthority {
@@ -468,6 +531,12 @@ mod tests {
                 expected_state,
                 records: BTreeMap::new(),
                 substitute: None,
+                independence_requirement: ReviewerIndependenceRequirement::NotRequired,
+                independence: AuthoritativeIndependence::Established,
+                requirement_error: None,
+                independence_error: None,
+                forbid_independence_lookup: false,
+                expected_policy_id: None,
             }
         }
 
@@ -506,6 +575,47 @@ mod tests {
             }
 
             Ok(self.records.get(record_id).cloned())
+        }
+
+        fn reviewer_independence_requirement(
+            &self,
+            policy_id: &IdentityId,
+            state_ref: &Self::StateRef,
+        ) -> Result<ReviewerIndependenceRequirement, EvidenceAdmissionAuthorityError> {
+            self.validate_state_ref(state_ref)?;
+
+            if let Some(expected_policy_id) = self.expected_policy_id {
+                assert_eq!(
+                    *policy_id, expected_policy_id,
+                    "admission must query the candidate's exact explicit policy_id"
+                );
+            }
+
+            if let Some(error) = self.requirement_error {
+                return Err(error);
+            }
+
+            Ok(self.independence_requirement)
+        }
+
+        fn reviewer_independence(
+            &self,
+            _reviewer_id: &IdentityId,
+            _reviewed_subject_id: &IdentityId,
+            state_ref: &Self::StateRef,
+        ) -> Result<AuthoritativeIndependence, EvidenceAdmissionAuthorityError> {
+            self.validate_state_ref(state_ref)?;
+
+            assert!(
+                !self.forbid_independence_lookup,
+                "independence lookup must not occur when policy does not require it"
+            );
+
+            if let Some(error) = self.independence_error {
+                return Err(error);
+            }
+
+            Ok(self.independence)
         }
     }
 
@@ -1037,6 +1147,201 @@ mod tests {
                 required: RecordKindRequirement::Dispute,
                 actual: RecordKind::Claim,
             })
+        );
+    }
+    fn reviewer_finding_candidate(
+        reviewed: &EvidenceRecord,
+        reviewer: IdentityId,
+        policy_id: IdentityId,
+        payload_independence: IndependenceResult,
+    ) -> EvidenceRecord {
+        let payload = ReviewerFindingPayload::new(
+            reviewed.id(),
+            reviewer,
+            FindingKind::Support,
+            FindingSeverity::Informational,
+            "review".to_owned(),
+            vec![],
+            "NONE_DECLARED".to_owned(),
+            payload_independence,
+        )
+        .unwrap();
+
+        EvidenceRecord::new_reviewer_finding(
+            identity(200),
+            reviewed.subject_id(),
+            policy_id,
+            vec![],
+            payload,
+        )
+        .unwrap()
+    }
+
+    #[test]
+    fn independence_is_not_queried_when_policy_does_not_require_it() {
+        let state = TestStateRef(1);
+        let mut authority = TestAuthority::new(state.clone());
+        authority.forbid_independence_lookup = true;
+
+        let reviewed = generic_record(RecordKind::Claim, 39, identity(150), vec![]);
+        authority.insert(reviewed.clone());
+
+        let policy_id = identity(151);
+        authority.expected_policy_id = Some(policy_id);
+
+        let candidate = reviewer_finding_candidate(
+            &reviewed,
+            identity(152),
+            policy_id,
+            IndependenceResult::Unknown,
+        );
+
+        assert_eq!(
+            evaluate_admission(&candidate, &authority, &state),
+            Ok(EvidenceAdmissionResult::Admissible)
+        );
+    }
+
+    #[test]
+    fn authoritative_established_independence_passes_when_required() {
+        let state = TestStateRef(1);
+        let mut authority = TestAuthority::new(state.clone());
+        authority.independence_requirement = ReviewerIndependenceRequirement::Required;
+        authority.independence = AuthoritativeIndependence::Established;
+
+        let reviewed = generic_record(RecordKind::Claim, 40, identity(153), vec![]);
+        authority.insert(reviewed.clone());
+
+        let policy_id = identity(154);
+        authority.expected_policy_id = Some(policy_id);
+
+        let candidate = reviewer_finding_candidate(
+            &reviewed,
+            identity(155),
+            policy_id,
+            IndependenceResult::Unknown,
+        );
+
+        assert_eq!(
+            evaluate_admission(&candidate, &authority, &state),
+            Ok(EvidenceAdmissionResult::Admissible)
+        );
+    }
+
+    #[test]
+    fn payload_established_cannot_override_authoritative_not_established() {
+        let state = TestStateRef(1);
+        let mut authority = TestAuthority::new(state.clone());
+        authority.independence_requirement = ReviewerIndependenceRequirement::Required;
+        authority.independence = AuthoritativeIndependence::NotEstablished;
+
+        let reviewed = generic_record(RecordKind::Claim, 41, identity(156), vec![]);
+        authority.insert(reviewed.clone());
+
+        let policy_id = identity(157);
+        let candidate = reviewer_finding_candidate(
+            &reviewed,
+            identity(158),
+            policy_id,
+            IndependenceResult::Established,
+        );
+
+        assert_eq!(
+            evaluate_admission(&candidate, &authority, &state),
+            Err(EvidenceAdmissionError::IndependenceNotEstablished)
+        );
+    }
+
+    #[test]
+    fn authoritative_conflict_fails_closed_when_independence_is_required() {
+        let state = TestStateRef(1);
+        let mut authority = TestAuthority::new(state.clone());
+        authority.independence_requirement = ReviewerIndependenceRequirement::Required;
+        authority.independence = AuthoritativeIndependence::Conflicted;
+
+        let reviewed = generic_record(RecordKind::Claim, 42, identity(159), vec![]);
+        authority.insert(reviewed.clone());
+
+        let candidate = reviewer_finding_candidate(
+            &reviewed,
+            identity(160),
+            identity(161),
+            IndependenceResult::Established,
+        );
+
+        assert_eq!(
+            evaluate_admission(&candidate, &authority, &state),
+            Err(EvidenceAdmissionError::IndependenceNotEstablished)
+        );
+    }
+
+    #[test]
+    fn authoritative_unknown_independence_fails_closed() {
+        let state = TestStateRef(1);
+        let mut authority = TestAuthority::new(state.clone());
+        authority.independence_requirement = ReviewerIndependenceRequirement::Required;
+        authority.independence = AuthoritativeIndependence::Unknown;
+
+        let reviewed = generic_record(RecordKind::Claim, 43, identity(162), vec![]);
+        authority.insert(reviewed.clone());
+
+        let candidate = reviewer_finding_candidate(
+            &reviewed,
+            identity(163),
+            identity(164),
+            IndependenceResult::Established,
+        );
+
+        assert_eq!(
+            evaluate_admission(&candidate, &authority, &state),
+            Err(EvidenceAdmissionError::AuthoritativeIndependenceUnavailable)
+        );
+    }
+
+    #[test]
+    fn unavailable_authoritative_independence_fails_closed() {
+        let state = TestStateRef(1);
+        let mut authority = TestAuthority::new(state.clone());
+        authority.independence_requirement = ReviewerIndependenceRequirement::Required;
+        authority.independence_error =
+            Some(EvidenceAdmissionAuthorityError::IndependenceUnavailable);
+
+        let reviewed = generic_record(RecordKind::Claim, 44, identity(165), vec![]);
+        authority.insert(reviewed.clone());
+
+        let candidate = reviewer_finding_candidate(
+            &reviewed,
+            identity(166),
+            identity(167),
+            IndependenceResult::Established,
+        );
+
+        assert_eq!(
+            evaluate_admission(&candidate, &authority, &state),
+            Err(EvidenceAdmissionError::AuthoritativeIndependenceUnavailable)
+        );
+    }
+
+    #[test]
+    fn unavailable_policy_requirement_fails_closed() {
+        let state = TestStateRef(1);
+        let mut authority = TestAuthority::new(state.clone());
+        authority.requirement_error =
+            Some(EvidenceAdmissionAuthorityError::RequiredRelationalInformationUnavailable);
+
+        let reviewed = generic_record(RecordKind::Claim, 45, identity(168), vec![]);
+        authority.insert(reviewed.clone());
+
+        let candidate = reviewer_finding_candidate(
+            &reviewed,
+            identity(169),
+            identity(170),
+            IndependenceResult::Established,
+        );
+
+        assert_eq!(
+            evaluate_admission(&candidate, &authority, &state),
+            Err(EvidenceAdmissionError::RequiredRelationalInformationUnavailable)
         );
     }
 }
