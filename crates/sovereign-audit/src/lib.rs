@@ -1,13 +1,14 @@
 //! Canonical governed-evidence records for Sovereign OS.
 //!
-//! This crate currently implements only the local, authority-free common
-//! envelope defined by `SPEC-EV-001`. Admission and capability decisions live
-//! outside this crate.
+//! This crate implements the canonical governed-evidence envelope plus the
+//! read-only cross-record admission boundary defined by `SPEC-EV-001`.
+//! Evidence admission does not grant capability or execution authority.
 
 use sovereign_registry::IdentityId;
 use std::collections::HashSet;
 use std::fmt;
 
+mod admission;
 mod claim;
 mod disposition;
 mod dispute;
@@ -18,6 +19,14 @@ mod reviewer_finding;
 mod source;
 mod uncertainty;
 
+pub use admission::{
+    evaluate_admission, AdmittedRecordEquivalence, AuthoritativeA05ReferenceActivation,
+    AuthoritativeCanonicalIdentity, AuthoritativeDisputeResolution, AuthoritativeIndependence,
+    AuthoritativeRelationshipCycle, AuthoritativeRetryOrdering, DispositionEvidenceRequirements,
+    EvidenceAdmissionAuthority, EvidenceAdmissionAuthorityError, EvidenceAdmissionError,
+    EvidenceAdmissionResult, EvidenceAdmissionStateRef, EvidenceRelationshipKind,
+    ExternalIdentityKind, RecordKindRequirement, ReviewerIndependenceRequirement,
+};
 pub use claim::{ClaimError, ClaimKind, ClaimPayload, Substantiation};
 pub use disposition::{DispositionDecision, DispositionError, DispositionPayload};
 pub use dispute::{DisputeError, DisputePayload, DisputeStatus};
