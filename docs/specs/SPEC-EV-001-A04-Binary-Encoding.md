@@ -128,3 +128,29 @@ The typed governed Source record fixture in the Rust test suite has record ID:
 
 Changing this vector requires a new schema version rather than reinterpretation
 of version 1.
+
+## 10. Method Fixed Vector
+
+Method v1 encodes fields in this order: Objective record identifier, procedure
+text, ordered unique input record identifiers, ordered unique tool identity
+identifiers, environment identity identifier, one-byte parameters-digest
+algorithm, exactly 32 parameters-digest bytes, and an optional budget record
+reference.
+
+The minimal fixture uses an Objective identifier of 32 `0x01` bytes,
+`procedure="P"`, no inputs, no tools, an environment identity of 32 `0x02`
+bytes, SHA-256, a parameters digest of 32 `0x03` bytes, and no budget
+reference:
+
+`0101010101010101010101010101010101010101010101010101010101010101000000015000000000020202020202020202020202020202020202020202020202020202020202020201030303030303030303030303030303030303030303030303030303030303030300`
+
+The typed governed Method record fixture in the Rust test suite has record ID:
+
+`8aaa8fc818dd0dbbae00b092cfe5f3707549e56ef664a163ab001b8ac68ad31e`
+
+Tool and environment identity references describe the declared method only.
+They do not grant capabilities, authorize execution, admit the record, or
+expand policy.
+
+Changing this vector requires a new schema version rather than reinterpretation
+of version 1.
