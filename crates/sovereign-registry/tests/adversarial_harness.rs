@@ -1091,3 +1091,206 @@ fn a05b_circ_008_unresolved_exact_target_is_forbidden() {
 
     assert_eq!(capability, capability_before);
 }
+
+#[derive(Debug)]
+struct StateSensitiveIdentityResolver {
+    first_state: TestIdentityStateRef,
+    first_records: Vec<IdentityRecord>,
+    second_state: TestIdentityStateRef,
+    second_records: Vec<IdentityRecord>,
+    calls: RefCell<Vec<(IdentityId, TestIdentityStateRef)>>,
+}
+
+impl StateSensitiveIdentityResolver {
+    fn new(
+        first_state: TestIdentityStateRef,
+        first_records: Vec<IdentityRecord>,
+        second_state: TestIdentityStateRef,
+        second_records: Vec<IdentityRecord>,
+    ) -> Self {
+        Self {
+            first_state,
+            first_records,
+            second_state,
+            second_records,
+            calls: RefCell::new(Vec::new()),
+        }
+    }
+
+    fn records_for_state(
+        &self,
+        state_ref: &TestIdentityStateRef,
+    ) -> Result<&[IdentityRecord], RegistryError> {
+        if state_ref == &self.first_state {
+            Ok(&self.first_records)
+        } else if state_ref == &self.second_state {
+            Ok(&self.second_records)
+        } else {
+            Err(RegistryError::IdentityStateUnavailable)
+        }
+    }
+}
+
+impl IdentityResolver for StateSensitiveIdentityResolver {
+    type StateRef = TestIdentityStateRef;
+
+    fn resolve(
+        &self,
+        identity_id: &IdentityId,
+        state_ref: &Self::StateRef,
+    ) -> Result<ResolvedIdentity, RegistryError> {
+        self.calls
+            .borrow_mut()
+            .push((*identity_id, state_ref.clone()));
+
+        let records = self.records_for_state(state_ref)?;
+
+        let record = records
+            .iter()
+            .find(|record| record.id() == *identity_id)
+            .ok_or(RegistryError::IdentityNotFound)?;
+
+        ResolvedIdentity::from_record(identity_id, record).ok_or(RegistryError::IdentityNotFound)
+    }
+}
+
+#[test]
+fn a05b_state_001_exact_state_identity_replay_is_deterministic() {
+    let issuer =
+        IdentityRecord::new(IdentityKind::Agent, b"a05b:state-001:issuer".to_vec()).unwrap();
+    let subject =
+        IdentityRecord::new(IdentityKind::Tool, b"a05b:state-001:subject".to_vec()).unwrap();
+
+    let capability = capability_payload_for_identity_test(issuer.id(), subject.id());
+    let capability_before = capability.clone();
+
+    let state_ref = TestIdentityStateRef([0xA5, 0x05, 0x00, 0x01]);
+
+    let resolver = RecordingIdentityResolver::new(vec![issuer.clone(), subject.clone()]);
+
+    let first = validate_capability_identities(&resolver, &capability, &state_ref);
+    let replay = validate_capability_identities(&resolver, &capability, &state_ref);
+
+    assert_eq!(first, Ok(()));
+    assert_eq!(replay, first);
+
+    assert_eq!(
+        resolver.calls.borrow().as_slice(),
+        &[
+            (issuer.id(), state_ref.clone()),
+            (subject.id(), state_ref.clone()),
+            (issuer.id(), state_ref.clone()),
+            (subject.id(), state_ref),
+        ]
+    );
+
+    assert_eq!(capability, capability_before);
+}
+
+#[test]
+fn a05b_state_002_identity_state_substitution_respects_explicit_reference() {
+    let issuer =
+        IdentityRecord::new(IdentityKind::Agent, b"a05b:state-002:issuer".to_vec()).unwrap();
+    let subject =
+        IdentityRecord::new(IdentityKind::Tool, b"a05b:state-002:subject".to_vec()).unwrap();
+
+    let capability = capability_payload_for_identity_test(issuer.id(), subject.id());
+    let capability_before = capability.clone();
+
+    let state_with_subject = TestIdentityStateRef([0xA5, 0x05, 0x00, 0x02]);
+    let state_without_subject = TestIdentityStateRef([0xA5, 0x05, 0x00, 0x03]);
+
+    let resolver = StateSensitiveIdentityResolver::new(
+        state_with_subject.clone(),
+        vec![issuer.clone(), subject.clone()],
+        state_without_subject.clone(),
+        vec![issuer.clone()],
+    );
+
+    let first = validate_capability_identities(&resolver, &capability, &state_with_subject);
+
+    let substituted =
+        validate_capability_identities(&resolver, &capability, &state_without_subject);
+
+    assert_eq!(first, Ok(()));
+    assert_eq!(substituted, Err(RegistryError::IdentityNotFound));
+
+    assert_eq!(map_validation_result(first), Ok(HarnessOutcome::Approved));
+
+    assert_eq!(
+        map_validation_result(substituted),
+        Ok(HarnessOutcome::Forbidden)
+    );
+
+    assert_eq!(
+        resolver.calls.borrow().as_slice(),
+        &[
+            (issuer.id(), state_with_subject.clone()),
+            (subject.id(), state_with_subject),
+            (issuer.id(), state_without_subject.clone()),
+            (subject.id(), state_without_subject),
+        ]
+    );
+
+    assert_eq!(capability, capability_before);
+}
+
+#[test]
+fn a05b_state_003_exact_state_issuer_replay_is_deterministic() {
+    let issuer =
+        IdentityRecord::new(IdentityKind::Agent, b"a05b:state-003:issuer".to_vec()).unwrap();
+    let subject =
+        IdentityRecord::new(IdentityKind::Tool, b"a05b:state-003:subject".to_vec()).unwrap();
+
+    let capability = capability_payload_for_identity_test(issuer.id(), subject.id());
+    let capability_before = capability.clone();
+
+    let state_ref = TestIssuerStateRef([0xA5, 0x05, 0x00, 0x04]);
+
+    let resolver =
+        RecordingIssuerStateResolver::resolved(IssuerOperationalEligibility::Eligible, true);
+
+    let first = validate_capability_issuer(&resolver, &capability, &state_ref);
+    let replay = validate_capability_issuer(&resolver, &capability, &state_ref);
+
+    assert_eq!(first, Ok(()));
+    assert_eq!(replay, first);
+
+    assert_eq!(
+        resolver.calls.borrow().as_slice(),
+        &[(issuer.id(), state_ref.clone()), (issuer.id(), state_ref),]
+    );
+
+    assert_eq!(capability, capability_before);
+}
+
+#[test]
+fn a05b_state_004_policy_resolution_and_evaluation_share_exact_state_ref() {
+    let policy = policy_node(0xD4);
+    let capability = capability_payload_for_policy_test(policy.caid());
+    let capability_before = capability.clone();
+
+    let state_ref = TestPolicyStateRef([0xA5, 0x05, 0x00, 0x05]);
+
+    let authority =
+        RecordingPolicyAuthority::new(policy.clone(), Ok(PolicyAuthorizationOutcome::Authorized));
+
+    let production_result =
+        validate_capability_governing_policy(&authority, &capability, &state_ref);
+
+    assert_eq!(production_result, Ok(()));
+
+    assert_eq!(
+        authority.resolution_calls.borrow().as_slice(),
+        &[(policy.caid(), state_ref.clone())]
+    );
+
+    assert_eq!(authority.evaluation_calls.borrow().len(), 1);
+
+    let evaluation_calls = authority.evaluation_calls.borrow();
+    let (_, evaluation_state_ref) = &evaluation_calls[0];
+
+    assert_eq!(evaluation_state_ref, &state_ref);
+
+    assert_eq!(capability, capability_before);
+}
