@@ -756,3 +756,338 @@ fn reference_validation_replays_without_graph_mutation() {
     assert_eq!(first, Ok(HarnessOutcome::Forbidden));
     assert_eq!(replay, first);
 }
+
+#[test]
+fn a05b_circ_003_create_exact_object_is_forbidden() {
+    let mut bytes = Vec::new();
+
+    bytes.extend_from_slice(&1_u16.to_be_bytes());
+    bytes.extend_from_slice(&[0x11; 32]);
+    bytes.extend_from_slice(&[0x22; 32]);
+
+    // OperationCodeV1::Create
+    bytes.extend_from_slice(&2_u16.to_be_bytes());
+
+    // TargetScopeV1::ExactObject
+    bytes.push(0x01);
+    bytes.extend_from_slice(&[0x44; 32]);
+
+    // No authorized executable.
+    bytes.push(0x00);
+
+    // ResourceConstraintsV1 with no granted resources.
+    bytes.push(0x01);
+    bytes.push(0x00);
+    bytes.push(0x00);
+    bytes.push(0x00);
+
+    // No execution budget.
+    bytes.push(0x00);
+
+    // No expiry.
+    bytes.push(0x00);
+
+    bytes.extend_from_slice(&[0xFE; 32]);
+
+    let capability = CapabilityPayloadV1::decode(&bytes).unwrap();
+
+    let production_result = capability.validate_internal_coherence();
+
+    assert_eq!(
+        production_result,
+        Err(RegistryError::CapabilitySemanticViolation)
+    );
+
+    assert_eq!(
+        map_validation_result(production_result),
+        Ok(HarnessOutcome::Forbidden)
+    );
+}
+
+#[test]
+fn a05b_circ_004_executable_on_non_execute_operation_is_forbidden() {
+    let mut bytes = Vec::new();
+
+    bytes.extend_from_slice(&1_u16.to_be_bytes());
+    bytes.extend_from_slice(&[0x11; 32]);
+    bytes.extend_from_slice(&[0x22; 32]);
+
+    // OperationCodeV1::Read
+    bytes.extend_from_slice(&1_u16.to_be_bytes());
+
+    // TargetScopeV1::NamedScope("x")
+    bytes.push(0x02);
+    bytes.extend_from_slice(&1_u16.to_be_bytes());
+    bytes.push(b'x');
+
+    // An authorized executable is present despite a non-Execute operation.
+    bytes.push(0x01);
+    bytes.extend_from_slice(&[0x44; 32]);
+
+    bytes.push(0x01);
+    bytes.push(0x00);
+    bytes.push(0x00);
+    bytes.push(0x00);
+
+    bytes.push(0x00);
+    bytes.push(0x00);
+
+    bytes.extend_from_slice(&[0xFE; 32]);
+
+    let capability = CapabilityPayloadV1::decode(&bytes).unwrap();
+
+    let production_result = capability.validate_internal_coherence();
+
+    assert_eq!(
+        production_result,
+        Err(RegistryError::CapabilitySemanticViolation)
+    );
+
+    assert_eq!(
+        map_validation_result(production_result),
+        Ok(HarnessOutcome::Forbidden)
+    );
+}
+
+#[test]
+fn a05b_circ_005_network_budget_without_network_scope_is_forbidden() {
+    let mut bytes = Vec::new();
+
+    bytes.extend_from_slice(&1_u16.to_be_bytes());
+    bytes.extend_from_slice(&[0x11; 32]);
+    bytes.extend_from_slice(&[0x22; 32]);
+
+    // OperationCodeV1::Read
+    bytes.extend_from_slice(&1_u16.to_be_bytes());
+
+    bytes.push(0x02);
+    bytes.extend_from_slice(&1_u16.to_be_bytes());
+    bytes.push(b'x');
+
+    bytes.push(0x00);
+
+    // No network/read/write scopes.
+    bytes.push(0x01);
+    bytes.push(0x00);
+    bytes.push(0x00);
+    bytes.push(0x00);
+
+    // Execution budget present.
+    bytes.push(0x01);
+    bytes.push(0x01);
+    bytes.extend_from_slice(&0_u64.to_be_bytes());
+    bytes.extend_from_slice(&0_u64.to_be_bytes());
+
+    // Network egress budget > 0 while network scope is absent.
+    bytes.extend_from_slice(&1_u64.to_be_bytes());
+
+    bytes.extend_from_slice(&0_u64.to_be_bytes());
+
+    bytes.push(0x00);
+
+    bytes.extend_from_slice(&[0xFE; 32]);
+
+    let capability = CapabilityPayloadV1::decode(&bytes).unwrap();
+
+    let production_result = capability.validate_internal_coherence();
+
+    assert_eq!(
+        production_result,
+        Err(RegistryError::CapabilitySemanticViolation)
+    );
+
+    assert_eq!(
+        map_validation_result(production_result),
+        Ok(HarnessOutcome::Forbidden)
+    );
+}
+
+#[test]
+fn a05b_circ_006_filesystem_write_budget_without_write_scope_is_forbidden() {
+    let mut bytes = Vec::new();
+
+    bytes.extend_from_slice(&1_u16.to_be_bytes());
+    bytes.extend_from_slice(&[0x11; 32]);
+    bytes.extend_from_slice(&[0x22; 32]);
+
+    // OperationCodeV1::Read
+    bytes.extend_from_slice(&1_u16.to_be_bytes());
+
+    bytes.push(0x02);
+    bytes.extend_from_slice(&1_u16.to_be_bytes());
+    bytes.push(b'x');
+
+    bytes.push(0x00);
+
+    // No network/read/write scopes.
+    bytes.push(0x01);
+    bytes.push(0x00);
+    bytes.push(0x00);
+    bytes.push(0x00);
+
+    // Execution budget present.
+    bytes.push(0x01);
+    bytes.push(0x01);
+    bytes.extend_from_slice(&0_u64.to_be_bytes());
+    bytes.extend_from_slice(&0_u64.to_be_bytes());
+    bytes.extend_from_slice(&0_u64.to_be_bytes());
+
+    // Filesystem-write budget > 0 while write scope is absent.
+    bytes.extend_from_slice(&1_u64.to_be_bytes());
+
+    bytes.push(0x00);
+
+    bytes.extend_from_slice(&[0xFE; 32]);
+
+    let capability = CapabilityPayloadV1::decode(&bytes).unwrap();
+
+    let production_result = capability.validate_internal_coherence();
+
+    assert_eq!(
+        production_result,
+        Err(RegistryError::CapabilitySemanticViolation)
+    );
+
+    assert_eq!(
+        map_validation_result(production_result),
+        Ok(HarnessOutcome::Forbidden)
+    );
+}
+
+#[test]
+fn a05b_circ_001_expiry_at_boundary_is_forbidden() {
+    const EXPIRY: u64 = 1_000;
+    const ADMISSION_CONTEXT_TIME: u64 = 1_000;
+
+    let capability = capability_payload_for_temporal_test(Some(EXPIRY));
+    let capability_before = capability.clone();
+
+    let production_result = validate_capability_temporal(&capability, ADMISSION_CONTEXT_TIME);
+
+    assert_eq!(
+        production_result,
+        Err(RegistryError::CapabilitySemanticViolation)
+    );
+
+    assert_eq!(
+        map_validation_result(production_result),
+        Ok(HarnessOutcome::Forbidden)
+    );
+
+    assert_eq!(capability, capability_before);
+}
+
+#[test]
+fn a05b_circ_002_expiry_after_boundary_is_forbidden() {
+    const EXPIRY: u64 = 1_000;
+    const ADMISSION_CONTEXT_TIME: u64 = 1_001;
+
+    let capability = capability_payload_for_temporal_test(Some(EXPIRY));
+    let capability_before = capability.clone();
+
+    let first = validate_capability_temporal(&capability, ADMISSION_CONTEXT_TIME);
+
+    let replay = validate_capability_temporal(&capability, ADMISSION_CONTEXT_TIME);
+
+    assert_eq!(first, Err(RegistryError::CapabilitySemanticViolation));
+
+    assert_eq!(replay, first);
+
+    assert_eq!(map_validation_result(first), Ok(HarnessOutcome::Forbidden));
+
+    assert_eq!(capability, capability_before);
+}
+
+#[test]
+fn a05b_circ_007_nonexistent_subject_identity_is_forbidden() {
+    let issuer =
+        IdentityRecord::new(IdentityKind::Agent, b"a05b:circ-007:issuer".to_vec()).unwrap();
+
+    let absent_subject =
+        IdentityRecord::new(IdentityKind::Tool, b"a05b:circ-007:absent-subject".to_vec()).unwrap();
+
+    let capability = capability_payload_for_identity_test(issuer.id(), absent_subject.id());
+
+    let capability_before = capability.clone();
+
+    // The authoritative state contains the declared issuer but not the
+    // capability's declared subject identity.
+    let resolver = RecordingIdentityResolver::new(vec![issuer.clone()]);
+    let authoritative_before = resolver.authoritative_identity_ids();
+
+    let state_ref = TestIdentityStateRef([0xA5, 0xB0, 0x04, 0x07]);
+
+    let production_result = validate_capability_identities(&resolver, &capability, &state_ref);
+
+    assert_eq!(production_result, Err(RegistryError::IdentityNotFound));
+
+    assert_eq!(
+        map_validation_result(production_result),
+        Ok(HarnessOutcome::Forbidden)
+    );
+
+    assert_eq!(capability, capability_before);
+
+    assert_eq!(resolver.authoritative_identity_ids(), authoritative_before);
+
+    assert_eq!(
+        resolver.calls.borrow().as_slice(),
+        &[
+            (issuer.id(), state_ref.clone()),
+            (absent_subject.id(), state_ref),
+        ]
+    );
+}
+
+#[test]
+fn a05b_circ_008_unresolved_exact_target_is_forbidden() {
+    let graph = RegistryGraph::default();
+    let unresolved_target = Caid([0xD8; 32]);
+
+    let mut bytes = Vec::new();
+
+    bytes.extend_from_slice(&1_u16.to_be_bytes());
+    bytes.extend_from_slice(&[0x11; 32]);
+    bytes.extend_from_slice(&[0x22; 32]);
+
+    // OperationCodeV1::Read
+    bytes.extend_from_slice(&1_u16.to_be_bytes());
+
+    // TargetScopeV1::ExactObject with an unresolved governed CAID.
+    bytes.push(0x01);
+    bytes.extend_from_slice(&unresolved_target.0);
+
+    // No authorized executable.
+    bytes.push(0x00);
+
+    // No governed resource references.
+    bytes.push(0x01);
+    bytes.push(0x00);
+    bytes.push(0x00);
+    bytes.push(0x00);
+
+    // No execution budget.
+    bytes.push(0x00);
+
+    // No expiry.
+    bytes.push(0x00);
+
+    bytes.extend_from_slice(&[0xFE; 32]);
+
+    let capability = CapabilityPayloadV1::decode(&bytes).unwrap();
+    let capability_before = capability.clone();
+
+    let production_result = validate_capability_references(&graph, &capability);
+
+    assert_eq!(
+        production_result,
+        Err(RegistryError::UnresolvedCapabilityReference)
+    );
+
+    assert_eq!(
+        map_validation_result(production_result),
+        Ok(HarnessOutcome::Forbidden)
+    );
+
+    assert_eq!(capability, capability_before);
+}
