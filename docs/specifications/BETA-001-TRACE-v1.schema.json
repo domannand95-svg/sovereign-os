@@ -1,0 +1,273 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "BETA-001-TRACE-v1",
+  "description": "Structural schema derived from the normative BETA-001-TRACE-v1 deterministic trace contract.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "run_id",
+    "task_id",
+    "events",
+    "final"
+  ],
+  "properties": {
+    "schema": {
+      "type": "string",
+      "const": "beta001.trace.v1"
+    },
+    "run_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "task_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "events": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/event"
+      }
+    },
+    "final": {
+      "$ref": "#/$defs/final_disposition"
+    }
+  },
+  "$defs": {
+    "event": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "seq",
+        "stage",
+        "event_type",
+        "input_identity",
+        "attempted_effect",
+        "result",
+        "state_delta"
+      ],
+      "properties": {
+        "seq": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "stage": {
+          "type": "string",
+          "enum": [
+            "INGEST",
+            "READ",
+            "VALIDATE",
+            "PROPOSE",
+            "EVALUATE"
+          ]
+        },
+        "event_type": {
+          "type": "string",
+          "minLength": 1
+        },
+        "input_identity": {
+          "$ref": "#/$defs/input_identity"
+        },
+        "attempted_effect": {
+          "$ref": "#/$defs/attempted_effect"
+        },
+        "result": {
+          "type": "string",
+          "enum": [
+            "APPROVED",
+            "FORBIDDEN",
+            "UNAVAILABLE",
+            "HARNESS_GAP"
+          ]
+        },
+        "state_delta": {
+          "$ref": "#/$defs/state_delta"
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time"
+        }
+      }
+    },
+    "input_identity": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "value"
+          ],
+          "properties": {
+            "kind": {
+              "const": "SHA256"
+            },
+            "value": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{64}$"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "value"
+          ],
+          "properties": {
+            "kind": {
+              "const": "STRUCTURAL_REF"
+            },
+            "value": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        }
+      ]
+    },
+    "attempted_effect": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "kind"
+          ],
+          "properties": {
+            "kind": {
+              "const": "NONE"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "action",
+            "target"
+          ],
+          "properties": {
+            "kind": {
+              "const": "REQUESTED"
+            },
+            "action": {
+              "type": "string",
+              "minLength": 1
+            },
+            "target": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        }
+      ]
+    },
+    "state_delta": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "mutated",
+            "mutation_type",
+            "target"
+          ],
+          "properties": {
+            "mutated": {
+              "const": false
+            },
+            "mutation_type": {
+              "const": "NONE"
+            },
+            "target": {
+              "type": "null"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "mutated",
+            "mutation_type",
+            "target"
+          ],
+          "properties": {
+            "mutated": {
+              "const": true
+            },
+            "mutation_type": {
+              "type": "string",
+              "enum": [
+                "FILESYSTEM",
+                "REPOSITORY",
+                "CAPABILITY",
+                "POLICY",
+                "GOVERNED_STATE"
+              ]
+            },
+            "target": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        }
+      ]
+    },
+    "final_disposition": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "unauthorized_effect_attempts",
+        "unauthorized_effects",
+        "repository_mutations",
+        "filesystem_mutations",
+        "capability_mutations",
+        "policy_mutations",
+        "governed_state_mutations",
+        "disposition"
+      ],
+      "properties": {
+        "unauthorized_effect_attempts": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "unauthorized_effects": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "repository_mutations": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "filesystem_mutations": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "capability_mutations": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "policy_mutations": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "governed_state_mutations": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "disposition": {
+          "type": "string",
+          "enum": [
+            "PASS",
+            "FAIL"
+          ]
+        }
+      }
+    }
+  }
+}
