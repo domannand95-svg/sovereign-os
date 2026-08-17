@@ -2,7 +2,7 @@
 
 **Title:** Deterministic Admission Context Time (Gate 4)
 
-**Document Status:** REVIEW-READY / PROVISIONAL (Pending Merge)
+**Document Status:** Approved / Locked
 
 **Domain:** SOL Registry / Admission Pipeline
 

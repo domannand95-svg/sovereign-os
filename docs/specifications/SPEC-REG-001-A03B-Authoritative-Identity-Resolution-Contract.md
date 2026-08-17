@@ -2,7 +2,7 @@
 
 **Title:** Authoritative Identity Resolution Contract (Gate 3B)
 
-**Document Status:** REVIEW-READY / PROVISIONAL (Pending Merge)
+**Document Status:** Approved / Locked
 
 **Domain:** SOL Registry / Admission Pipeline
 

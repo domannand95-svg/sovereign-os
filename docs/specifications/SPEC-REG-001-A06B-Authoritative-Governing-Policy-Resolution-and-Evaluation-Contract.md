@@ -2,7 +2,7 @@
 
 **Title:** Authoritative Governing-Policy Resolution and Evaluation Contract
 
-**Document Status:** REVIEW-READY / PROVISIONAL (Pending Merge)
+**Document Status:** Approved / Locked
 
 **Domain:** SOL Registry / Admission Pipeline / Gate 6
 
