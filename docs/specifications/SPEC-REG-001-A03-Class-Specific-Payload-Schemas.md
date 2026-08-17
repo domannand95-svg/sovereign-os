@@ -1,5 +1,7 @@
 # SPEC-REG-001-A03: Class-Specific Payload Schemas
 
+**Status:** Approved / Locked
+
 ## 1. Purpose and Scope
 This amendment establishes the common structural framework for class-specific Registry v2 payload schemas and normatively defines `CapabilityPayloadV1` (`A03-C01`) as the first non-Genesis class-specific payload schema. Payload schemas for Specification, Policy, Event, Dataset, Workflow, VerificationArtifact, and EvidencePackage remain unallocated within this amendment until separately specified.
 

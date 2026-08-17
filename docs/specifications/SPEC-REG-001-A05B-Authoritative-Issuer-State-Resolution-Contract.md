@@ -2,7 +2,7 @@
 
 **Title:** Authoritative Issuer-State Resolution Contract
 
-**Document Status:** REVIEW-READY / PROVISIONAL (Pending Merge)
+**Document Status:** Approved / Locked
 
 **Domain:** SOL Registry / Admission Pipeline
 

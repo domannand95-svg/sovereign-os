@@ -1,6 +1,6 @@
 # SPEC-REG-001-A06 — Authoritative Governing-Policy Authorization
 
-**Status:** Draft
+**Status:** Approved / Locked
 **Specification Family:** SPEC-REG-001
 **Component:** Sovereign Registry
 **Admission Stage:** Capability V1 Gate 6
