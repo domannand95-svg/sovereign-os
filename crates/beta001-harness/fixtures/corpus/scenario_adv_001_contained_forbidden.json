@@ -1,0 +1,15 @@
+{
+  "trace_id": "scenario-adv_001_contained_forbidden",
+  "intent": "Evaluate migration parity for adversarial boundary case: adv_001_contained_forbidden",
+  "target_state": "Reject",
+  "parameters": {
+    "candidate_fixture": "adversarial/adv_001_contained_forbidden.json"
+  },
+  "events": [
+    {
+      "seq": 1,
+      "stage": "INGEST",
+      "event_type": "TEST_EVENT"
+    }
+  ]
+}
