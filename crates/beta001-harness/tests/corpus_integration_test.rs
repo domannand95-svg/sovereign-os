@@ -312,3 +312,212 @@ fn int_002_disposition_tamper() {
     assert_eq!(report.counters.unauthorized_effect_attempts, 0);
     assert_zero_mutations(&report);
 }
+
+fn profile_for_candidate_fixture(relative: &str) -> EvaluationProfile {
+    match relative {
+        "adversarial/adv_001_contained_forbidden.json" => EvaluationProfile {
+            expectations: vec![ExpectedClassification {
+                seq: 5,
+                expected_result: ResultClassification::Forbidden,
+            }],
+        },
+        "adversarial/adv_002_tool_unavailable.json" => EvaluationProfile {
+            expectations: vec![ExpectedClassification {
+                seq: 4,
+                expected_result: ResultClassification::Unavailable,
+            }],
+        },
+        "runtime_violations/err_004_expectation_mismatch.json" => EvaluationProfile {
+            expectations: vec![ExpectedClassification {
+                seq: 5,
+                expected_result: ResultClassification::Forbidden,
+            }],
+        },
+        _ => EvaluationProfile::default(),
+    }
+}
+
+fn assert_candidate_determinism(relative: &str, profile: &EvaluationProfile, repetitions: usize) {
+    let schema_validator = validator();
+    let value = load_json(relative);
+
+    let baseline = evaluate_candidate(&schema_validator, candidate_from_fixture(&value), profile)
+        .unwrap_or_else(|error| {
+            panic!(
+                "{relative} must remain structurally valid during determinism baseline: {}",
+                error.detail
+            )
+        });
+
+    schema_validator
+        .validate_structure(&baseline.trace)
+        .unwrap_or_else(|error| {
+            panic!("{relative} synthesized baseline trace must remain canonically valid: {error}")
+        });
+
+    let baseline_bytes = serde_json::to_vec(&baseline.trace)
+        .expect("finalized baseline trace must serialize deterministically");
+
+    for iteration in 0..repetitions {
+        let actual = evaluate_candidate(&schema_validator, candidate_from_fixture(&value), profile)
+            .unwrap_or_else(|error| {
+                panic!(
+                    "{relative} determinism iteration {iteration} structurally rejected: {}",
+                    error.detail
+                )
+            });
+
+        schema_validator
+            .validate_structure(&actual.trace)
+            .unwrap_or_else(|error| {
+                panic!(
+                    "{relative} determinism iteration {iteration} emitted invalid trace: {error}"
+                )
+            });
+
+        assert_eq!(
+            &actual.trace, &baseline.trace,
+            "{relative} finalized Value changed at iteration {iteration}"
+        );
+
+        assert_eq!(
+            &actual.report, &baseline.report,
+            "{relative} EvaluationReport changed at iteration {iteration}"
+        );
+
+        let actual_bytes = serde_json::to_vec(&actual.trace)
+            .expect("repeated finalized trace must serialize deterministically");
+
+        assert_eq!(
+            actual_bytes, baseline_bytes,
+            "{relative} serialized finalized trace changed at iteration {iteration}"
+        );
+    }
+}
+
+#[test]
+fn candidate_fixture_determinism_matrix() {
+    let candidates = [
+        "golden/golden_001_minimal_pass.json",
+        "golden/golden_002_repeated_stages.json",
+        "adversarial/adv_001_contained_forbidden.json",
+        "adversarial/adv_002_tool_unavailable.json",
+        "runtime_violations/err_001_seq_gap.json",
+        "runtime_violations/err_002_stage_regression.json",
+        "runtime_violations/err_003_missing_propose.json",
+        "runtime_violations/err_004_expectation_mismatch.json",
+        "runtime_violations/err_005_harness_gap.json",
+        "runtime_violations/err_006_mutation_effect.json",
+    ];
+
+    for relative in candidates {
+        let profile = profile_for_candidate_fixture(relative);
+        assert_candidate_determinism(relative, &profile, 1);
+    }
+}
+
+#[test]
+fn golden_candidate_is_stable_across_100_evaluations() {
+    assert_candidate_determinism(
+        "golden/golden_001_minimal_pass.json",
+        &EvaluationProfile::default(),
+        100,
+    );
+}
+
+#[test]
+fn contained_adversarial_candidate_is_stable_across_100_evaluations() {
+    let profile = EvaluationProfile {
+        expectations: vec![ExpectedClassification {
+            seq: 5,
+            expected_result: ResultClassification::Forbidden,
+        }],
+    };
+
+    assert_candidate_determinism(
+        "adversarial/adv_001_contained_forbidden.json",
+        &profile,
+        100,
+    );
+}
+
+#[test]
+fn multi_finding_precedence_is_stable_across_100_evaluations() {
+    let schema_validator = validator();
+    let value = load_json("runtime_violations/err_006_mutation_effect.json");
+
+    let mut candidate = candidate_from_fixture(&value);
+
+    candidate.events[2]["seq"] = Value::from(4_u64);
+    candidate.events[3]["seq"] = Value::from(5_u64);
+    candidate.events[4]["seq"] = Value::from(6_u64);
+
+    let profile = EvaluationProfile::default();
+
+    let baseline = evaluate_candidate(&schema_validator, candidate.clone(), &profile)
+        .expect("combined sequence-gap + mutation candidate must remain structurally valid");
+
+    assert_eq!(
+        finding_kinds(&baseline.report.findings),
+        vec![
+            FindingKind::Sequence,
+            FindingKind::Sequence,
+            FindingKind::Sequence,
+            FindingKind::Mutation,
+        ]
+    );
+
+    assert_eq!(baseline.report.disposition, EvaluatedDisposition::Fail);
+
+    schema_validator
+        .validate_structure(&baseline.trace)
+        .expect("combined multi-finding finalized trace must remain canonically valid");
+
+    let baseline_bytes = serde_json::to_vec(&baseline.trace)
+        .expect("combined multi-finding baseline must serialize");
+
+    for iteration in 0..100 {
+        let actual = evaluate_candidate(&schema_validator, candidate.clone(), &profile)
+            .unwrap_or_else(|error| {
+                panic!(
+                    "combined multi-finding iteration {iteration} structurally rejected: {}",
+                    error.detail
+                )
+            });
+
+        assert_eq!(
+            finding_kinds(&actual.report.findings),
+            vec![
+                FindingKind::Sequence,
+                FindingKind::Sequence,
+                FindingKind::Sequence,
+                FindingKind::Mutation,
+            ],
+            "finding precedence changed at iteration {iteration}"
+        );
+
+        assert_eq!(
+            &actual.trace, &baseline.trace,
+            "multi-finding finalized Value changed at iteration {iteration}"
+        );
+
+        assert_eq!(
+            &actual.report, &baseline.report,
+            "multi-finding EvaluationReport changed at iteration {iteration}"
+        );
+
+        schema_validator
+            .validate_structure(&actual.trace)
+            .unwrap_or_else(|error| {
+                panic!("multi-finding iteration {iteration} emitted invalid trace: {error}")
+            });
+
+        let actual_bytes =
+            serde_json::to_vec(&actual.trace).expect("multi-finding trace must serialize");
+
+        assert_eq!(
+            actual_bytes, baseline_bytes,
+            "multi-finding serialized trace changed at iteration {iteration}"
+        );
+    }
+}
