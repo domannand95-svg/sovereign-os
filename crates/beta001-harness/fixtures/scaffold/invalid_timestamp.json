@@ -1,0 +1,36 @@
+{
+  "schema": "beta001.trace.v1",
+  "run_id": "scaffold-003",
+  "task_id": "task-003",
+  "events": [
+    {
+      "seq": 1,
+      "stage": "INGEST",
+      "event_type": "TASK_RECEIVED",
+      "input_identity": {
+        "kind": "STRUCTURAL_REF",
+        "value": "task-003"
+      },
+      "attempted_effect": {
+        "kind": "NONE"
+      },
+      "result": "APPROVED",
+      "state_delta": {
+        "mutated": false,
+        "mutation_type": "NONE",
+        "target": null
+      },
+      "timestamp": "not-a-date"
+    }
+  ],
+  "final": {
+    "unauthorized_effect_attempts": 0,
+    "unauthorized_effects": 0,
+    "repository_mutations": 0,
+    "filesystem_mutations": 0,
+    "capability_mutations": 0,
+    "policy_mutations": 0,
+    "governed_state_mutations": 0,
+    "disposition": "PASS"
+  }
+}
