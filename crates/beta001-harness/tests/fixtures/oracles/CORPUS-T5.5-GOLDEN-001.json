@@ -1,0 +1,9 @@
+{
+  "case_id": "CORPUS-T5.5-GOLDEN-001",
+  "expected_disposition": "APPROVED",
+  "expected_parse_status": "Parsed",
+  "expected_containment_clean": true,
+  "expected_breach_kinds": [],
+  "expected_integrity_intact": true,
+  "expected_digest_stability": true
+}
