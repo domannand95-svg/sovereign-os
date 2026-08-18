@@ -8,6 +8,7 @@ members = [
     "crates/sovereign-engine",
     "crates/sovereign-audit",
     "crates/sovereign-discovery",
+    "crates/beta001-harness",
 ]
 
 [workspace.dependencies]

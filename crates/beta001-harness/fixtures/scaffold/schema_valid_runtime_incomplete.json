@@ -1,0 +1,16 @@
+{
+  "schema": "beta001.trace.v1",
+  "run_id": "scaffold-001",
+  "task_id": "task-001",
+  "events": [],
+  "final": {
+    "unauthorized_effect_attempts": 0,
+    "unauthorized_effects": 0,
+    "repository_mutations": 0,
+    "filesystem_mutations": 0,
+    "capability_mutations": 0,
+    "policy_mutations": 0,
+    "governed_state_mutations": 0,
+    "disposition": "PASS"
+  }
+}

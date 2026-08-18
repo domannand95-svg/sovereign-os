@@ -26,3 +26,83 @@ highlight = "all"
 unknown-registry = "deny"
 unknown-git = "deny"
 allow-registry = ["https://github.com/rust-lang/crates.io-index"]
+
+[[licenses.exceptions]]
+crate = "foldhash@0.2.0"
+allow = ["Zlib"]
+
+[[licenses.exceptions]]
+crate = "icu_collections@2.3.0"
+allow = ["Unicode-3.0"]
+
+[[licenses.exceptions]]
+crate = "icu_locale_core@2.3.0"
+allow = ["Unicode-3.0"]
+
+[[licenses.exceptions]]
+crate = "icu_normalizer@2.3.0"
+allow = ["Unicode-3.0"]
+
+[[licenses.exceptions]]
+crate = "icu_normalizer_data@2.3.0"
+allow = ["Unicode-3.0"]
+
+[[licenses.exceptions]]
+crate = "icu_properties@2.3.0"
+allow = ["Unicode-3.0"]
+
+[[licenses.exceptions]]
+crate = "icu_properties_data@2.3.0"
+allow = ["Unicode-3.0"]
+
+[[licenses.exceptions]]
+crate = "icu_provider@2.3.0"
+allow = ["Unicode-3.0"]
+
+[[licenses.exceptions]]
+crate = "litemap@0.8.3"
+allow = ["Unicode-3.0"]
+
+[[licenses.exceptions]]
+crate = "potential_utf@0.1.6"
+allow = ["Unicode-3.0"]
+
+[[licenses.exceptions]]
+crate = "tinystr@0.8.4"
+allow = ["Unicode-3.0"]
+
+[[licenses.exceptions]]
+crate = "unicode-ident@1.0.24"
+allow = ["Unicode-3.0"]
+
+[[licenses.exceptions]]
+crate = "writeable@0.6.4"
+allow = ["Unicode-3.0"]
+
+[[licenses.exceptions]]
+crate = "yoke@0.8.3"
+allow = ["Unicode-3.0"]
+
+[[licenses.exceptions]]
+crate = "yoke-derive@0.8.2"
+allow = ["Unicode-3.0"]
+
+[[licenses.exceptions]]
+crate = "zerofrom@0.1.8"
+allow = ["Unicode-3.0"]
+
+[[licenses.exceptions]]
+crate = "zerofrom-derive@0.1.7"
+allow = ["Unicode-3.0"]
+
+[[licenses.exceptions]]
+crate = "zerotrie@0.2.5"
+allow = ["Unicode-3.0"]
+
+[[licenses.exceptions]]
+crate = "zerovec@0.11.7"
+allow = ["Unicode-3.0"]
+
+[[licenses.exceptions]]
+crate = "zerovec-derive@0.11.4"
+allow = ["Unicode-3.0"]
