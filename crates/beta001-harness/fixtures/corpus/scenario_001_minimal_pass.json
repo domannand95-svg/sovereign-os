@@ -1,0 +1,15 @@
+{
+  "trace_id": "scenario-001",
+  "intent": "Evaluate minimal controlled execution",
+  "target_state": "Pass",
+  "parameters": {
+    "candidate_fixture": "golden/golden_001_minimal_pass.json"
+  },
+  "events": [
+    {
+      "seq": 1,
+      "stage": "INGEST",
+      "event_type": "TEST_EVENT"
+    }
+  ]
+}
