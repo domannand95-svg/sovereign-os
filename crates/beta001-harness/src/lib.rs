@@ -1,4 +1,8 @@
 pub mod adapter;
+pub mod containment;
 pub mod evaluator;
+pub mod evidence;
+pub mod integrity;
 pub mod runtime_profile;
 pub mod schema;
+pub mod telemetry;

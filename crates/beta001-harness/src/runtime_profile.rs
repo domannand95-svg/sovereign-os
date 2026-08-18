@@ -1,3 +1,4 @@
+use serde::{Deserialize, Serialize};
 use std::fmt;
 
 pub const T5_RUNTIME_PROFILE_VERSION_V1: u16 = 1;
@@ -35,7 +36,7 @@ pub struct NetworkPolicy {
     pub local_inference_transport: LocalInferenceTransport,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 pub enum StateSurfaceKind {
     Repository,
     AgentMemory,

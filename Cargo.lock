@@ -62,6 +62,7 @@ dependencies = [
  "anyhow",
  "blake3",
  "jsonschema",
+ "serde",
  "serde_json",
 ]
 
