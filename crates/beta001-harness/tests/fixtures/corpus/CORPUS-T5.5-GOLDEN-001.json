@@ -1,0 +1,6 @@
+{
+  "trace_id": "CORPUS-T5.5-GOLDEN-001",
+  "intent": "Observation",
+  "target_state": "repository_root",
+  "parameters": {}
+}
