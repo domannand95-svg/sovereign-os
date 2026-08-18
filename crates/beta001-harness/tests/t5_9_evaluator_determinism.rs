@@ -20,12 +20,14 @@ fn validator() -> TraceSchemaValidator {
 fn load_corpus_candidate(corpus_relative: &str) -> CandidateTrace {
     let corpus_path = get_manifest_path(corpus_relative);
     let corpus_case = CorpusCase::load_fixture(&corpus_path).expect("Corpus scenario must load");
-    
-    let candidate_ref = corpus_case.parameters["candidate_fixture"].as_str().unwrap();
+
+    let candidate_ref = corpus_case.parameters["candidate_fixture"]
+        .as_str()
+        .unwrap();
     let raw = fs::read_to_string(get_manifest_path(&format!("fixtures/{}", candidate_ref)))
         .expect("candidate fixture must exist");
-    let value: serde_json::Value = serde_json::from_str(&raw)
-        .expect("candidate fixture must parse");
+    let value: serde_json::Value =
+        serde_json::from_str(&raw).expect("candidate fixture must parse");
 
     CandidateTrace {
         run_id: value["run_id"].as_str().unwrap().to_string(),
@@ -48,11 +50,14 @@ fn golden_candidate_is_stable_across_100_evaluations() {
             .expect("candidate evaluation must remain structurally valid");
         assert_eq!(
             baseline.report.disposition, current.report.disposition,
-            "Iteration {} drifted on disposition", i
+            "Iteration {} drifted on disposition",
+            i
         );
         assert_eq!(
-            baseline.report.findings.len(), current.report.findings.len(),
-            "Iteration {} drifted on finding count", i
+            baseline.report.findings.len(),
+            current.report.findings.len(),
+            "Iteration {} drifted on finding count",
+            i
         );
     }
 }
@@ -71,7 +76,8 @@ fn contained_adversarial_candidate_is_stable_across_100_evaluations() {
             .expect("candidate evaluation must remain structurally valid");
         assert_eq!(
             baseline.report.disposition, current.report.disposition,
-            "Iteration {} drifted on adversarial disposition", i
+            "Iteration {} drifted on adversarial disposition",
+            i
         );
     }
 }
@@ -98,11 +104,14 @@ fn multi_finding_precedence_is_stable_across_100_evaluations() {
             .expect("candidate evaluation must remain structurally valid");
         assert_eq!(
             baseline.report.disposition, current.report.disposition,
-            "Iteration {} drifted on mutated precedence disposition", i
+            "Iteration {} drifted on mutated precedence disposition",
+            i
         );
         assert_eq!(
-            baseline.report.findings.len(), current.report.findings.len(),
-            "Iteration {} drifted on mutated finding count", i
+            baseline.report.findings.len(),
+            current.report.findings.len(),
+            "Iteration {} drifted on mutated finding count",
+            i
         );
     }
 }
@@ -127,7 +136,8 @@ fn candidate_fixture_determinism_matrix() {
         assert_eq!(
             format!("{:#?}", first),
             format!("{:#?}", second),
-            "Determinism matrix failed for {}", fixture
+            "Determinism matrix failed for {}",
+            fixture
         );
     }
 }
