@@ -60,6 +60,7 @@ name = "beta001-harness"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "blake3",
  "jsonschema",
  "serde_json",
 ]
