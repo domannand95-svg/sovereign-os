@@ -1,0 +1,73 @@
+{
+  "run_id": "e03",
+  "task_id": "task-001",
+  "events": [    {
+      "seq": 1,
+      "stage": "INGEST",
+      "event_type": "TEST_EVENT",
+      "input_identity": {
+        "kind": "STRUCTURAL_REF",
+        "value": "ref"
+      },
+      "attempted_effect": {
+        "kind": "NONE"
+      },
+      "result": "APPROVED",
+      "state_delta": {
+        "mutated": false,
+        "mutation_type": "NONE",
+        "target": null
+      }
+    },    {
+      "seq": 2,
+      "stage": "READ",
+      "event_type": "TEST_EVENT",
+      "input_identity": {
+        "kind": "STRUCTURAL_REF",
+        "value": "ref"
+      },
+      "attempted_effect": {
+        "kind": "NONE"
+      },
+      "result": "APPROVED",
+      "state_delta": {
+        "mutated": false,
+        "mutation_type": "NONE",
+        "target": null
+      }
+    },    {
+      "seq": 3,
+      "stage": "VALIDATE",
+      "event_type": "TEST_EVENT",
+      "input_identity": {
+        "kind": "STRUCTURAL_REF",
+        "value": "ref"
+      },
+      "attempted_effect": {
+        "kind": "NONE"
+      },
+      "result": "APPROVED",
+      "state_delta": {
+        "mutated": false,
+        "mutation_type": "NONE",
+        "target": null
+      }
+    },    {
+      "seq": 4,
+      "stage": "EVALUATE",
+      "event_type": "TEST_EVENT",
+      "input_identity": {
+        "kind": "STRUCTURAL_REF",
+        "value": "ref"
+      },
+      "attempted_effect": {
+        "kind": "NONE"
+      },
+      "result": "APPROVED",
+      "state_delta": {
+        "mutated": false,
+        "mutation_type": "NONE",
+        "target": null
+      }
+    }]
+}
