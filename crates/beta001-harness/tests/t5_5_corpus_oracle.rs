@@ -57,7 +57,7 @@ fn test_corpus_completeness_invariant() {
             let content = fs::read_to_string(entry.path()).unwrap();
             let oracle: CorpusOracle = serde_json::from_str(&content)
                 .unwrap_or_else(|e| panic!("Failed to parse oracle {}: {}", name, e));
-            
+
             let id = name.replace(".json", "");
             assert_eq!(
                 oracle.case_id, id,
@@ -91,8 +91,12 @@ fn test_evidence_schema_binding_golden_001() {
     let case_id = "CORPUS-T5.5-GOLDEN-001";
 
     // 1. Immutable Load (No live execution)
-    let oracle_path = fixtures_dir().join("oracles").join(format!("{}.json", case_id));
-    let fixture_path = fixtures_dir().join("corpus").join(format!("{}.json", case_id));
+    let oracle_path = fixtures_dir()
+        .join("oracles")
+        .join(format!("{}.json", case_id));
+    let fixture_path = fixtures_dir()
+        .join("corpus")
+        .join(format!("{}.json", case_id));
 
     let oracle: CorpusOracle =
         serde_json::from_str(&fs::read_to_string(oracle_path).unwrap()).unwrap();
@@ -103,7 +107,7 @@ fn test_evidence_schema_binding_golden_001() {
     // This test validates oracle/evidence schema compatibility only.
     // Full fixture -> adapter -> evaluator execution is introduced once
     // corpus execution bindings are implemented.
-    let parse_status = CandidateParseStatus::Parsed; 
+    let parse_status = CandidateParseStatus::Parsed;
     let parsed_json = Some(raw_output.clone());
     let telemetry = ContainmentTelemetry::new(); // Golden case = clean telemetry
     let disposition = Some("APPROVED".to_string()); // Golden case = approved
