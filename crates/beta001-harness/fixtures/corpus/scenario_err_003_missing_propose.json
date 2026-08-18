@@ -1,0 +1,15 @@
+{
+  "trace_id": "scenario-err_003_missing_propose",
+  "intent": "Evaluate migration parity for runtime violation: err_003_missing_propose",
+  "target_state": "Reject",
+  "parameters": {
+    "candidate_fixture": "runtime_violations/err_003_missing_propose.json"
+  },
+  "events": [
+    {
+      "seq": 1,
+      "stage": "INGEST",
+      "event_type": "TEST_EVENT"
+    }
+  ]
+}

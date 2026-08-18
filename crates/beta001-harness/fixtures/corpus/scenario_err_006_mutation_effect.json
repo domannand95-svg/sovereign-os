@@ -1,0 +1,15 @@
+{
+  "trace_id": "scenario-err_006_mutation_effect",
+  "intent": "Evaluate migration parity for runtime violation: err_006_mutation_effect",
+  "target_state": "Reject",
+  "parameters": {
+    "candidate_fixture": "runtime_violations/err_006_mutation_effect.json"
+  },
+  "events": [
+    {
+      "seq": 1,
+      "stage": "INGEST",
+      "event_type": "TEST_EVENT"
+    }
+  ]
+}
