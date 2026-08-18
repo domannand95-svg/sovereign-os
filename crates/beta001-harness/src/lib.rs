@@ -1,5 +1,6 @@
 pub mod adapter;
 pub mod containment;
+pub mod corpus;
 pub mod evaluator;
 pub mod evidence;
 pub mod integrity;

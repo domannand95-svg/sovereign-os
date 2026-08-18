@@ -1,0 +1,94 @@
+{
+    "inventory":  [
+                      {
+                          "target_state":  "Pass",
+                          "retirement_eligibility":  "ELIGIBLE",
+                          "corpus_envelope":  "scenario_001_minimal_pass.json",
+                          "trace_id":  "scenario-001",
+                          "resolves_to":  "golden/golden_001_minimal_pass.json"
+                      },
+                      {
+                          "target_state":  "Pass",
+                          "retirement_eligibility":  "ELIGIBLE",
+                          "corpus_envelope":  "scenario_002_repeated_stages.json",
+                          "trace_id":  "scenario-002",
+                          "resolves_to":  "golden/golden_002_repeated_stages.json"
+                      },
+                      {
+                          "target_state":  "Reject",
+                          "retirement_eligibility":  "ELIGIBLE",
+                          "corpus_envelope":  "scenario_adv_001_contained_forbidden.json",
+                          "trace_id":  "scenario-adv_001_contained_forbidden",
+                          "resolves_to":  "adversarial/adv_001_contained_forbidden.json"
+                      },
+                      {
+                          "target_state":  "Reject",
+                          "retirement_eligibility":  "ELIGIBLE",
+                          "corpus_envelope":  "scenario_adv_002_tool_unavailable.json",
+                          "trace_id":  "scenario-adv_002_tool_unavailable",
+                          "resolves_to":  "adversarial/adv_002_tool_unavailable.json"
+                      },
+                      {
+                          "target_state":  "Reject",
+                          "retirement_eligibility":  "ELIGIBLE",
+                          "corpus_envelope":  "scenario_err_001_seq_gap.json",
+                          "trace_id":  "scenario-err_001_seq_gap",
+                          "resolves_to":  "runtime_violations/err_001_seq_gap.json"
+                      },
+                      {
+                          "target_state":  "Reject",
+                          "retirement_eligibility":  "ELIGIBLE",
+                          "corpus_envelope":  "scenario_err_002_stage_regression.json",
+                          "trace_id":  "scenario-err_002_stage_regression",
+                          "resolves_to":  "runtime_violations/err_002_stage_regression.json"
+                      },
+                      {
+                          "target_state":  "Reject",
+                          "retirement_eligibility":  "ELIGIBLE",
+                          "corpus_envelope":  "scenario_err_003_missing_propose.json",
+                          "trace_id":  "scenario-err_003_missing_propose",
+                          "resolves_to":  "runtime_violations/err_003_missing_propose.json"
+                      },
+                      {
+                          "target_state":  "Reject",
+                          "retirement_eligibility":  "ELIGIBLE",
+                          "corpus_envelope":  "scenario_err_004_expectation_mismatch.json",
+                          "trace_id":  "scenario-err_004_expectation_mismatch",
+                          "resolves_to":  "runtime_violations/err_004_expectation_mismatch.json"
+                      },
+                      {
+                          "target_state":  "Reject",
+                          "retirement_eligibility":  "ELIGIBLE",
+                          "corpus_envelope":  "scenario_err_005_harness_gap.json",
+                          "trace_id":  "scenario-err_005_harness_gap",
+                          "resolves_to":  "runtime_violations/err_005_harness_gap.json"
+                      },
+                      {
+                          "target_state":  "Reject",
+                          "retirement_eligibility":  "ELIGIBLE",
+                          "corpus_envelope":  "scenario_err_006_mutation_effect.json",
+                          "trace_id":  "scenario-err_006_mutation_effect",
+                          "resolves_to":  "runtime_violations/err_006_mutation_effect.json"
+                      },
+                      {
+                          "target_state":  "Reject",
+                          "retirement_eligibility":  "ELIGIBLE",
+                          "corpus_envelope":  "scenario_int_001_counter_tamper.json",
+                          "trace_id":  "scenario-int_001_counter_tamper",
+                          "resolves_to":  "integrity_violations/int_001_counter_tamper.json"
+                      },
+                      {
+                          "target_state":  "Reject",
+                          "retirement_eligibility":  "ELIGIBLE",
+                          "corpus_envelope":  "scenario_int_002_disposition_tamper.json",
+                          "trace_id":  "scenario-int_002_disposition_tamper",
+                          "resolves_to":  "integrity_violations/int_002_disposition_tamper.json"
+                      }
+                  ],
+    "orphans":  [
+
+                ],
+    "baseline_commit":  "b335298",
+    "validation_status":  "PARITY_PROVEN",
+    "timestamp":  "2026-08-18T22:03:02.4635182+10:00"
+}

@@ -1,0 +1,15 @@
+{
+  "trace_id": "scenario-adv_002_tool_unavailable",
+  "intent": "Evaluate migration parity for adversarial boundary case: adv_002_tool_unavailable",
+  "target_state": "Reject",
+  "parameters": {
+    "candidate_fixture": "adversarial/adv_002_tool_unavailable.json"
+  },
+  "events": [
+    {
+      "seq": 1,
+      "stage": "INGEST",
+      "event_type": "TEST_EVENT"
+    }
+  ]
+}

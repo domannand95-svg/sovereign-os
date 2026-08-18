@@ -1,0 +1,15 @@
+{
+  "trace_id": "scenario-002",
+  "intent": "Evaluate migration parity for repeated stage execution fixture",
+  "target_state": "Pass",
+  "parameters": {
+    "candidate_fixture": "golden/golden_002_repeated_stages.json"
+  },
+  "events": [
+    {
+      "seq": 1,
+      "stage": "INGEST",
+      "event_type": "TEST_EVENT"
+    }
+  ]
+}

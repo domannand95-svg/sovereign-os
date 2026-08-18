@@ -1,0 +1,15 @@
+{
+  "trace_id": "scenario-err_002_stage_regression",
+  "intent": "Evaluate migration parity for runtime violation: err_002_stage_regression",
+  "target_state": "Reject",
+  "parameters": {
+    "candidate_fixture": "runtime_violations/err_002_stage_regression.json"
+  },
+  "events": [
+    {
+      "seq": 1,
+      "stage": "INGEST",
+      "event_type": "TEST_EVENT"
+    }
+  ]
+}

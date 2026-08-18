@@ -1,0 +1,15 @@
+{
+  "trace_id": "scenario-err_001_seq_gap",
+  "intent": "Evaluate migration parity for runtime violation: err_001_seq_gap",
+  "target_state": "Reject",
+  "parameters": {
+    "candidate_fixture": "runtime_violations/err_001_seq_gap.json"
+  },
+  "events": [
+    {
+      "seq": 1,
+      "stage": "INGEST",
+      "event_type": "TEST_EVENT"
+    }
+  ]
+}
