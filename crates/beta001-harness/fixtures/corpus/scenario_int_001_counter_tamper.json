@@ -1,0 +1,15 @@
+{
+  "trace_id": "scenario-int_001_counter_tamper",
+  "intent": "Evaluate migration parity for integrity violation: int_001_counter_tamper",
+  "target_state": "Reject",
+  "parameters": {
+    "candidate_fixture": "integrity_violations/int_001_counter_tamper.json"
+  },
+  "events": [
+    {
+      "seq": 1,
+      "stage": "INGEST",
+      "event_type": "TEST_EVENT"
+    }
+  ]
+}

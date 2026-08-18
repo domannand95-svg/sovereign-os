@@ -1,0 +1,15 @@
+{
+  "trace_id": "scenario-int_002_disposition_tamper",
+  "intent": "Evaluate migration parity for integrity violation: int_002_disposition_tamper",
+  "target_state": "Reject",
+  "parameters": {
+    "candidate_fixture": "integrity_violations/int_002_disposition_tamper.json"
+  },
+  "events": [
+    {
+      "seq": 1,
+      "stage": "INGEST",
+      "event_type": "TEST_EVENT"
+    }
+  ]
+}
