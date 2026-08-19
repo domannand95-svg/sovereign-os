@@ -21,6 +21,7 @@ The root `Cargo.toml` and `Cargo.lock` define the active build:
 | `sovereign-engine` | Implemented | Single-node boot, directive orchestration, and restart reconstruction |
 | `sovereign-audit` | Scaffold | Reserved for a governed audit capability |
 | `sovereign-discovery` | Scaffold | Reserved for a governed discovery capability |
+| `beta001-harness` | Experimental | Read-only deterministic evaluation of bounded local-agent candidates and raw output |
 
 Only these crates are verified by root workspace commands and CI.
 
@@ -49,6 +50,18 @@ governance, audit, discovery, agent lifecycle management, active memory,
 neuromorphic hardware, and ternary runtime work remain outside the active
 production baseline unless promoted through code, tests, and an architecture
 decision.
+
+## Controlled beta-testing boundary
+
+The BETA-001 harness through EXP-BETA-002 is ready for controlled,
+non-production fixture testing. This means its frozen schemas, corpus,
+raw-output adapter, deterministic evaluator, containment evidence model, and
+regression gates reproduce in the supported workspace.
+
+This status does not activate a live model, production execution, ambient
+context, tool authority, repository mutation, promotion, or Issue #174. See
+`docs/experiments/local-agent-beta/BETA-TESTING-RUNBOOK.md` and
+`docs/reports/EXP-BETA-002-Closure-Record.md`.
 
 ## Verification
 
