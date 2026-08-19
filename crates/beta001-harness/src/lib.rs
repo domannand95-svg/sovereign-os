@@ -4,6 +4,7 @@ pub mod corpus;
 pub mod evaluator;
 pub mod evidence;
 pub mod integrity;
+pub mod raw_output_adapter;
 pub mod runtime_profile;
 pub mod schema;
 pub mod telemetry;

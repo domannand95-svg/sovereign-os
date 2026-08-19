@@ -1,0 +1,17 @@
+{
+  "schema_version": 1,
+  "envelope_id": "ENV-EXP-BETA-002-007",
+  "execution_status": "ESCALATED",
+  "findings": [],
+  "uncertainties": [
+    "The supplied source is insufficient to resolve the requested question."
+  ],
+  "requested_additional_context": [
+    {
+      "resource_path": "crates/beta001-harness/src/evaluator.rs",
+      "rationale": "Additional implementation context is requested to resolve the uncertainty."
+    }
+  ],
+  "emitted_artifacts": [],
+  "attempted_prohibited_actions": []
+}

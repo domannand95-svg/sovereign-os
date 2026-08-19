@@ -1,0 +1,23 @@
+```json
+{
+  "schema_version": 1,
+  "envelope_id": "ENV-EXP-BETA-002-002",
+  "execution_status": "COMPLETED",
+  "findings": [
+    {
+      "category": "INSPECTION",
+      "statement": "The supplied source contains deterministic evaluator tests.",
+      "evidence_references": [
+        {
+          "resource_id": "RES-EXP-BETA-002-SOURCE-002",
+          "locator": "tests/t5_9_evaluator_determinism.rs"
+        }
+      ]
+    }
+  ],
+  "uncertainties": [],
+  "requested_additional_context": [],
+  "emitted_artifacts": [],
+  "attempted_prohibited_actions": []
+}
+```
