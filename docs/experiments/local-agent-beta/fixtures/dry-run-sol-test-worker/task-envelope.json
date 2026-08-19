@@ -1,0 +1,22 @@
+{
+    "schema_version":  1,
+    "envelope_id":  "ENV-EXP-BETA-001-DRYRUN-001",
+    "grant_id":  "CG-EXP-BETA-001-DRYRUN-001",
+    "assigned_role":  "SOL_TEST_WORKER",
+    "objective":  "Inspect the single authorized T5.9 evaluator determinism test file and report the determinism checks present without modifying repository state.",
+    "instructions":  [
+                         "Read only the resource explicitly authorized by the bound ContextGrant.",
+                         "Identify the determinism checks expressed by the test file.",
+                         "Support each substantive finding with an evidence reference using the authorized resource_id and a source locator.",
+                         "Do not execute tests, shell commands, Git commands, network requests, or filesystem writes.",
+                         "Do not inspect files that are not explicitly authorized by the bound ContextGrant.",
+                         "Return only an AGENT_OUTPUT-v1 object."
+                     ],
+    "escalation_conditions":  [
+                                  "The authorized resource cannot be read within the granted byte ceiling.",
+                                  "The task requires evidence from a resource not present in the current ContextGrant.",
+                                  "The source is insufficient to support a requested substantive conclusion.",
+                                  "Any requested action would require a capability explicitly denied by the ContextGrant."
+                              ],
+    "output_schema_version":  "AGENT_OUTPUT-v1"
+}

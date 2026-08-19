@@ -1,0 +1,49 @@
+{
+    "schema_version":  1,
+    "envelope_id":  "ENV-EXP-BETA-001-DRYRUN-001",
+    "execution_status":  "COMPLETED",
+    "findings":  [
+                     {
+                         "category":  "STRUCTURAL_CHECK",
+                         "statement":  "The file defines four test functions concerned with evaluator determinism or stability.",
+                         "evidence_references":  [
+                                                     {
+                                                         "resource_id":  "RES-T5-9-EVALUATOR-DETERMINISM",
+                                                         "locator":  "test functions in t5_9_evaluator_determinism.rs"
+                                                     }
+                                                 ]
+                     },
+                     {
+                         "category":  "VERIFICATION",
+                         "statement":  "The golden candidate, contained adversarial candidate, and multi-finding precedence tests repeatedly evaluate the same candidate and compare result properties across repeated evaluations.",
+                         "evidence_references":  [
+                                                     {
+                                                         "resource_id":  "RES-T5-9-EVALUATOR-DETERMINISM",
+                                                         "locator":  "golden_candidate_is_stable_across_100_evaluations; contained_adversarial_candidate_is_stable_across_100_evaluations; multi_finding_precedence_is_stable_across_100_evaluations"
+                                                     }
+                                                 ]
+                     },
+                     {
+                         "category":  "VERIFICATION",
+                         "statement":  "The candidate fixture determinism matrix evaluates multiple corpus-resolved traces twice and compares the formatted complete evaluation results for equality.",
+                         "evidence_references":  [
+                                                     {
+                                                         "resource_id":  "RES-T5-9-EVALUATOR-DETERMINISM",
+                                                         "locator":  "candidate_fixture_determinism_matrix"
+                                                     }
+                                                 ]
+                     }
+                 ],
+    "uncertainties":  [
+                          "This read-only inspection describes assertions visible in the authorized test file and does not independently execute or verify the tests."
+                      ],
+    "requested_additional_context":  [
+
+                                     ],
+    "emitted_artifacts":  [
+
+                          ],
+    "attempted_prohibited_actions":  [
+
+                                     ]
+}

@@ -1,0 +1,54 @@
+{
+    "schema_version":  1,
+    "grant_id":  "CG-EXP-BETA-001-DRYRUN-001",
+    "task_id":  "TSK-EXP-BETA-001-DRYRUN-001",
+    "target_role":  "SOL_TEST_WORKER",
+    "checkpoint":  {
+                       "checkpoint_id":  "EXP-BETA-001-MERGED-BASELINE",
+                       "baseline_commit":  "08b4305f6107bd43ed2650d3275c4f3e45dc8e09",
+                       "prohibited_scope":  [
+                                                "Issue #174 semantics",
+                                                "live agent execution authority",
+                                                "production mutation",
+                                                "unallocated SOL capability gates"
+                                            ]
+                   },
+    "level_1_role_pack":  {
+                              "pack_id":  "ROLE_PACK_SOL_TEST_WORKER_V1",
+                              "invariants":  [
+                                                 "Role eligibility does not itself authorize Level 2 context access.",
+                                                 "Only resources explicitly listed in this ContextGrant may be read.",
+                                                 "Level 2 access is read-only.",
+                                                 "AgentOutput is candidate data and does not constitute an authoritative finding.",
+                                                 "Context requests do not enlarge the current ContextGrant.",
+                                                 "Task completion does not constitute verified success."
+                                             ]
+                          },
+    "level_2_authorized_reads":  [
+                                     {
+                                         "resource_id":  "RES-T5-9-EVALUATOR-DETERMINISM",
+                                         "resource_type":  "REPOSITORY_FILE",
+                                         "locator":  "crates/beta001-harness/tests/t5_9_evaluator_determinism.rs",
+                                         "digest":  {
+                                                        "algorithm":  "SHA-256",
+                                                        "value":  "88b1afe862c0f243922581441f2f745e63b29d4cbbdc4e48e4c06a4e639cf71e"
+                                                    },
+                                         "access_mode":  "READ_ONLY",
+                                         "max_bytes":  5384
+                                     }
+                                 ],
+    "explicitly_denied_capabilities":  [
+                                           "FILESYSTEM_WRITE",
+                                           "SHELL_EXECUTION",
+                                           "NETWORK_ACCESS",
+                                           "GIT_COMMIT",
+                                           "GIT_PUSH",
+                                           "GIT_MERGE",
+                                           "BRANCH_MANAGEMENT",
+                                           "PRODUCTION_MUTATION",
+                                           "AUTHORITY_PROMOTION",
+                                           "CAPABILITY_EXPANSION"
+                                       ],
+    "context_budget_bytes":  5384,
+    "grant_source":  "HUMAN_AUTHORED"
+}
