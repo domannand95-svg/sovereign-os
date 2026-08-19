@@ -1,130 +1,132 @@
 # Sovereign Operating Layer (SOL)
 
-**Probabilistic intelligence; deterministic authority.**
+> **Probabilistic intelligence; deterministic authority.**
 
-Sovereign Operating Layer (SOL) is an experimental Rust control plane for governed agentic systems, reproducible evidence, bounded authority, deterministic admission, and progressively earned trust.
+Sovereign OS is a deterministic governance and state substrate for admitting directives, reconstructing authoritative state, and recording governed transitions. Probabilistic systems may propose candidates and epistemic systems may evaluate evidence; neither acquires authority from quality, confidence, identity, validation success, or availability.
 
-SOL does not attempt to make probabilistic models deterministic. Instead, it places deterministic, auditable, fail-closed authority around probabilistic components.
+## Governing Principle
 
-Models may reason, propose, classify, search, and request capabilities. The surrounding control plane determines what authority exists, which state is authoritative, what may be admitted, what may cause external effects, and what must be retained for audit and replay.
+Intelligence may propose. Epistemics may evaluate. Only an explicit, inspectable authority boundary may permit an external consequence.
 
-> **Intelligence may explore beyond the boundary. Effects may not.**
+The project preserves these distinctions:
 
----
+- proposal is not authorization;
+- validation is not promotion;
+- capability evaluation is not capability exercise;
+- context or tool availability is not permission;
+- registry identity or presence is not operational authority;
+- deterministic replay proves what occurred under recorded inputs, not that an effect was authorized; and
+- experimental `APPROVED` classifications are not production execution permission.
+
+Missing, ambiguous, stale, unresolved, or unverifiable authority inputs fail closed.
 
 ## Programme Scope and Naming
 
-- **Repository / long-term programme:** `sovereign-os`
-- **Currently implemented architecture:** Sovereign Operating Layer (SOL)
-- **Future aspiration:** Sovereign Operating System, retained strictly as a future architectural horizon contingent upon owning sufficient execution, lifecycle, resource, isolation, recovery, and hardware-facing responsibilities.
+`sovereign-os` is the repository and long-term programme. The currently implemented architecture is the Sovereign Operating Layer (SOL): a governed control and state layer, not a general-purpose operating system.
 
-The repository retains the historical `sovereign-os` name as the home of the broader programme.
+“Sovereign Operating System” remains a future architectural horizon contingent on the programme owning sufficient execution, lifecycle, resource, isolation, recovery, and hardware-facing responsibilities. The repository name does not claim those capabilities exist today.
 
-The currently implemented system is the Sovereign Operating Layer; "Sovereign Operating System" remains a possible future architectural horizon, not a claim about present functionality.
+## Current Authoritative Baseline
 
----
+The root Cargo workspace is the authoritative build boundary. The deterministic v0.1 engine acceptance boundary is implemented and remains a closure candidate, not a packaged beta or production release.
 
-## Current Status
+| Crate | Status | Responsibility |
+| --- | --- | --- |
+| `sovereign-core-asm` | Implemented | Deterministic state vectors, transitions, receipts, and snapshots |
+| `sovereign-ledger` | Implemented | Append, replay, recovery, crash-atomic snapshots, checksums, and state roots |
+| `sovereign-registry` | Implemented | Content-addressed registry graph, admission validation, and ledger projection |
+| `sovereign-policy` | Implemented | Deterministic directive admission |
+| `sovereign-engine` | Implemented | Single-node boot, directive orchestration, durable append, and restart reconstruction |
+| `sovereign-audit` | Scaffold | Reserved governed audit capability |
+| `sovereign-discovery` | Scaffold | Reserved governed discovery capability |
+| `beta001-harness` | Experimental | Read-only deterministic evaluation of bounded local-agent candidates and raw output |
 
-The currently implemented authority work comprises the allocated **Capability V1 validation contracts across the Gate 1–6 validation sequence**.
+Only root workspace members are verified by the authoritative Cargo commands and CI. Earlier service-layer prototypes retained under `crates/` are design references, not active production capabilities.
 
-The implemented validation components are:
+## Deterministic Authority Path
 
-1. Gate 1 - Structural Decoding
-2. Gate 2 - Internal Coherence
-3. Gate 3A - Registry Reference Resolution
-4. Gate 3B - Authoritative Identity Resolution
-5. Gate 4 - Deterministic Temporal Validation
-6. Gate 5 - Issuer Operational Eligibility and Competency
-7. Gate 6 - Authoritative Governing-Policy Authorization
+```text
+candidate directive or record
+             |
+             v
+ schema, identity, lineage, and context checks
+             |
+             v
+ authoritative issuer and policy resolution
+             |
+             v
+ deterministic admission / preflight decision
+             |
+             v
+ durable append -> projection -> replayable state
+```
 
-Each gate has deterministic, fail-closed implementation and tests.
+The implemented registry and engine paths enforce parts of the authority boundary through explicit admission context, governing-policy evaluation, durable ledger append, replay, restoration, and projection-tail checks. They do not imply a complete general-purpose grant, delegation, revocation, tool-execution, promotion, or institutional-authority lifecycle.
 
-The validation suite includes deterministic evaluator checks and adversarial boundary coverage.
+## BETA-001 and Experimental Agent Evaluation
 
-The repository does not yet expose one production admission orchestrator that invokes the complete sequence end-to-end.
+The `beta001-harness` and `docs/experiments/local-agent-beta/` artifacts evaluate bounded probabilistic-agent behavior without granting production authority.
 
-Until that integration exists, these components must not be described as an active governed admission pipeline.
+The experimental path separates:
 
----
+1. frozen task and runtime inputs;
+2. captured raw model output;
+3. deterministic raw-output adaptation into a candidate;
+4. candidate evaluation against frozen schemas and oracles;
+5. independent containment and integrity evidence; and
+6. governed evidence persistence outside the agent effect surface.
 
-## Core Architectural Principle
+The current raw-output admission boundary deterministically preserves original bytes, permits only contracted representation handling, rejects malformed or semantically inadmissible output, and prevents the model from constructing authoritative terminal results. This is experimental candidate admission only.
 
-SOL separates intelligence from authority.
+It does not grant live-agent production authority, ambient filesystem or network access, automatic repository mutation, capability expansion, execution permission, promotion authority, or production orchestration. Issue #174 remains parked pending separately authorized semantics for requester binding, delegation, state freshness and revocation, runtime capability exercise, and composite orchestration.
 
-External or local models may remain probabilistic, adaptive, and provider-neutral.
+## Knowledge Infrastructure Bootstrap Kit
 
-Authority is constrained through deterministic infrastructure:
+BKI is a separate deterministic knowledge-validation system. It may produce validation and provenance evidence for Sovereign review, but it is not a Sovereign policy engine or authority source.
 
-- explicit schemas;
-- canonical encoding;
-- content-addressed objects;
-- authoritative state references;
-- fail-closed validation;
-- bounded capabilities;
-- deterministic replay;
-- recorded provenance; and
-- independently reviewable policy decisions.
+The proposed `bki.sovereign.profile.v1` contract aligns selected metadata while preserving the boundary:
 
-The governing rule:
+- BKI validation does not admit a record;
+- BKI quarantine does not itself create a Sovereign disposition;
+- schema or profile compatibility does not activate integration; and
+- BKI success cannot authorize registry mutation, promotion, capability creation, or effect execution.
 
-> **Proposal is not authorization. Capability is not permission. Intelligence is not authority.**
+Any BKI integration requires pinned artifacts, matching schema identities, cross-platform negative and positive tests, fail-closed behavior, and explicit owner approval.
 
-Ambient authority is not inferred.
+## Repository Map
 
-Missing, unresolved, substituted, stale, malformed, unauthorized, or context-disconnected inputs fail closed.
+| Path | Responsibility |
+| --- | --- |
+| `crates/` | Authoritative workspace crates, experimental harness, and preserved prototypes |
+| `src/` and `tests/` | Legacy/root implementation surfaces retained in the repository |
+| `docs/specifications/` | Governed component, registry, and beta contracts |
+| `docs/architecture/` | Authority boundaries and system architecture |
+| `docs/experiments/local-agent-beta/` | Non-production local-agent contracts, schemas, fixtures, and evidence design |
+| `docs/reports/` | Acceptance and conformance records |
+| `docs/integration/` | BKI compatibility profile and schema |
+| `docs/roadmap/` | Delivery status, readiness, and remaining gates |
+| `fuzz/` | Fuzz targets outside the default workspace gate |
 
----
-
-## Workspace
-
-The authoritative root Cargo workspace contains seven core crates:
-
-~~~~text
-crates/
-|-- sovereign-core-asm/   deterministic state and snapshot representation
-|-- sovereign-ledger/     append, replay, restore, integrity, and snapshots
-|-- sovereign-registry/   registry graph, governed references, identity, and Capability V1 validation
-|-- sovereign-policy/     deterministic directive-admission primitives
-|-- sovereign-engine/     single-node boot and command orchestration
-|-- sovereign-audit/      governed research and evidence records
-`-- sovereign-discovery/  scaffold; not yet implemented
-~~~~
-
----
-
-## Knowledge Infrastructure Bootstrap Kit (BKI)
-
-The Knowledge Infrastructure Bootstrap Kit is developed as a commissioning and validation boundary around the repository and its governed knowledge artifacts.
-
-Its role is to support:
-
-- deterministic validation;
-- normalization;
-- compatibility checks;
-- quarantine; and
-- commissioning evidence.
-
-**BKI does not automatically promote knowledge into authoritative state.**
-
-Promotion requires explicit governance decisions and validation boundaries.
-
----
+Start with [`PROJECT_STATUS.md`](PROJECT_STATUS.md) for the authoritative build boundary, [`GOVERNANCE.md`](GOVERNANCE.md) for repository governance, and [`docs/START_HERE.md`](docs/START_HERE.md) for the documentation map.
 
 ## Verification
 
-The repository pins its Rust toolchain.
+The active workspace uses the Rust toolchain pinned in `rust-toolchain.toml`. From the repository root:
 
-Run:
-
-~~~~bash
+```text
 cargo fmt --all -- --check
 cargo clippy --workspace --all-targets --locked -- -D warnings
 cargo test --workspace --all-targets --locked
-~~~~
+```
 
----
+GitHub Actions runs the authoritative checks on Linux and Windows. Experimental contracts may define additional targeted regression gates; passing them verifies only their stated boundary.
+
+## Promotion and Change Governance
+
+A capability may be described as implemented only when it belongs to the authoritative workspace, compiles under the pinned toolchain, has tests for observable behavior, matches its governing architecture, and passes CI.
+
+Research and experimental artifacts remain non-authoritative until separately reviewed, implemented, tested, and approved. Changes enter `main` through bounded feature branches, pull requests, verification, and review.
 
 ## License
 
-Licensed under the Apache License 2.0.
+See [`LICENSE`](LICENSE).
