@@ -1,0 +1,188 @@
+{
+    "$schema":  "https://json-schema.org/draft/2020-12/schema",
+    "$id":  "urn:sovereign-os:local-agent-beta:agent-output:v1",
+    "title":  "AgentOutput v1",
+    "description":  "Non-authoritative structured candidate output emitted by an untrusted worker. Structural validity does not establish truth, task success, evidence authorization, artifact admission, capability authority, or containment telemetry.",
+    "type":  "object",
+    "additionalProperties":  false,
+    "required":  [
+                     "schema_version",
+                     "envelope_id",
+                     "execution_status",
+                     "findings",
+                     "uncertainties",
+                     "requested_additional_context",
+                     "emitted_artifacts",
+                     "attempted_prohibited_actions"
+                 ],
+    "properties":  {
+                       "schema_version":  {
+                                              "const":  1
+                                          },
+                       "envelope_id":  {
+                                           "type":  "string",
+                                           "pattern":  "^ENV-[A-Z0-9][A-Z0-9._-]*$",
+                                           "minLength":  5,
+                                           "maxLength":  128
+                                       },
+                       "execution_status":  {
+                                                "type":  "string",
+                                                "enum":  [
+                                                             "COMPLETED",
+                                                             "BLOCKED",
+                                                             "ESCALATED",
+                                                             "FAILED"
+                                                         ],
+                                                "description":  "Worker-reported task termination state. COMPLETED is a candidate assertion of completion and does not constitute verified success."
+                                            },
+                       "findings":  {
+                                        "type":  "array",
+                                        "maxItems":  256,
+                                        "items":  {
+                                                      "type":  "object",
+                                                      "additionalProperties":  false,
+                                                      "required":  [
+                                                                       "category",
+                                                                       "statement",
+                                                                       "evidence_references"
+                                                                   ],
+                                                      "properties":  {
+                                                                         "category":  {
+                                                                                          "type":  "string",
+                                                                                          "enum":  [
+                                                                                                       "INSPECTION",
+                                                                                                       "VERIFICATION",
+                                                                                                       "ANOMALY",
+                                                                                                       "STRUCTURAL_CHECK"
+                                                                                                   ]
+                                                                                      },
+                                                                         "statement":  {
+                                                                                           "type":  "string",
+                                                                                           "minLength":  1,
+                                                                                           "maxLength":  4096
+                                                                                       },
+                                                                         "evidence_references":  {
+                                                                                                     "type":  "array",
+                                                                                                     "minItems":  1,
+                                                                                                     "maxItems":  128,
+                                                                                                     "items":  {
+                                                                                                                   "type":  "object",
+                                                                                                                   "additionalProperties":  false,
+                                                                                                                   "required":  [
+                                                                                                                                    "resource_id",
+                                                                                                                                    "locator"
+                                                                                                                                ],
+                                                                                                                   "properties":  {
+                                                                                                                                      "resource_id":  {
+                                                                                                                                                          "type":  "string",
+                                                                                                                                                          "minLength":  1,
+                                                                                                                                                          "maxLength":  128
+                                                                                                                                                      },
+                                                                                                                                      "locator":  {
+                                                                                                                                                      "type":  "string",
+                                                                                                                                                      "minLength":  1,
+                                                                                                                                                      "maxLength":  2048
+                                                                                                                                                  }
+                                                                                                                                  }
+                                                                                                               }
+                                                                                                 }
+                                                                     }
+                                                  }
+                                    },
+                       "uncertainties":  {
+                                             "type":  "array",
+                                             "maxItems":  256,
+                                             "items":  {
+                                                           "type":  "string",
+                                                           "minLength":  1,
+                                                           "maxLength":  4096
+                                                       }
+                                         },
+                       "requested_additional_context":  {
+                                                            "type":  "array",
+                                                            "maxItems":  128,
+                                                            "description":  "Non-authoritative requests only. Presence of a request does not modify or enlarge the current ContextGrant.",
+                                                            "items":  {
+                                                                          "type":  "object",
+                                                                          "additionalProperties":  false,
+                                                                          "required":  [
+                                                                                           "resource_path",
+                                                                                           "rationale"
+                                                                                       ],
+                                                                          "properties":  {
+                                                                                             "resource_path":  {
+                                                                                                                   "type":  "string",
+                                                                                                                   "minLength":  1,
+                                                                                                                   "maxLength":  2048
+                                                                                                               },
+                                                                                             "rationale":  {
+                                                                                                               "type":  "string",
+                                                                                                               "minLength":  1,
+                                                                                                               "maxLength":  4096
+                                                                                                           }
+                                                                                         }
+                                                                      }
+                                                        },
+                       "emitted_artifacts":  {
+                                                 "type":  "array",
+                                                 "maxItems":  128,
+                                                 "description":  "Candidate artifact declarations only. Content identity does not establish admission, authority, provenance validity, or promotion.",
+                                                 "items":  {
+                                                               "type":  "object",
+                                                               "additionalProperties":  false,
+                                                               "required":  [
+                                                                                "artifact_type",
+                                                                                "identifier",
+                                                                                "content_hash"
+                                                                            ],
+                                                               "properties":  {
+                                                                                  "artifact_type":  {
+                                                                                                        "type":  "string",
+                                                                                                        "minLength":  1,
+                                                                                                        "maxLength":  128
+                                                                                                    },
+                                                                                  "identifier":  {
+                                                                                                     "type":  "string",
+                                                                                                     "minLength":  1,
+                                                                                                     "maxLength":  256
+                                                                                                 },
+                                                                                  "content_hash":  {
+                                                                                                       "type":  "string",
+                                                                                                       "pattern":  "^[0-9a-f]{64}$"
+                                                                                                   }
+                                                                              }
+                                                           }
+                                             },
+                       "attempted_prohibited_actions":  {
+                                                            "type":  "array",
+                                                            "maxItems":  128,
+                                                            "description":  "Worker-self-reported candidate observations only. These records are not independent host-side containment telemetry.",
+                                                            "items":  {
+                                                                          "type":  "object",
+                                                                          "additionalProperties":  false,
+                                                                          "required":  [
+                                                                                           "action",
+                                                                                           "target",
+                                                                                           "observation"
+                                                                                       ],
+                                                                          "properties":  {
+                                                                                             "action":  {
+                                                                                                            "type":  "string",
+                                                                                                            "minLength":  1,
+                                                                                                            "maxLength":  128
+                                                                                                        },
+                                                                                             "target":  {
+                                                                                                            "type":  "string",
+                                                                                                            "minLength":  1,
+                                                                                                            "maxLength":  2048
+                                                                                                        },
+                                                                                             "observation":  {
+                                                                                                                 "type":  "string",
+                                                                                                                 "minLength":  1,
+                                                                                                                 "maxLength":  4096
+                                                                                                             }
+                                                                                         }
+                                                                      }
+                                                        }
+                   }
+}

@@ -1,0 +1,243 @@
+{
+    "$schema":  "https://json-schema.org/draft/2020-12/schema",
+    "$id":  "urn:sovereign-os:local-agent-beta:context-telemetry:v1",
+    "title":  "ContextTelemetry v1",
+    "description":  "Host-observed non-authoritative experimental telemetry for bounded local-agent tasks. Telemetry records observations and resource accounting; it does not itself grant authority, validate findings, admit artifacts, or promote state.",
+    "type":  "object",
+    "additionalProperties":  false,
+    "required":  [
+                     "schema_version",
+                     "telemetry_id",
+                     "task_id",
+                     "grant_id",
+                     "envelope_id",
+                     "role",
+                     "observation_source",
+                     "tokenizer_id",
+                     "context",
+                     "output",
+                     "policy",
+                     "execution"
+                 ],
+    "properties":  {
+                       "schema_version":  {
+                                              "const":  1
+                                          },
+                       "telemetry_id":  {
+                                            "type":  "string",
+                                            "pattern":  "^TEL-[A-Z0-9][A-Z0-9._-]*$",
+                                            "minLength":  5,
+                                            "maxLength":  128
+                                        },
+                       "task_id":  {
+                                       "type":  "string",
+                                       "pattern":  "^TSK-[A-Z0-9][A-Z0-9._-]*$",
+                                       "minLength":  5,
+                                       "maxLength":  128
+                                   },
+                       "grant_id":  {
+                                        "type":  "string",
+                                        "pattern":  "^CG-[A-Z0-9][A-Z0-9._-]*$",
+                                        "minLength":  4,
+                                        "maxLength":  128
+                                    },
+                       "envelope_id":  {
+                                           "type":  "string",
+                                           "pattern":  "^ENV-[A-Z0-9][A-Z0-9._-]*$",
+                                           "minLength":  5,
+                                           "maxLength":  128
+                                       },
+                       "role":  {
+                                    "type":  "string",
+                                    "enum":  [
+                                                 "SESSION_GOVERNOR",
+                                                 "SOL_ARCHITECT",
+                                                 "SOL_TEST_WORKER",
+                                                 "BKI_CLASSIFIER",
+                                                 "BKI_NORMALIZER",
+                                                 "ARCHIVE_ROUTER",
+                                                 "RESEARCH_GAP_ANALYST"
+                                             ]
+                                },
+                       "observation_source":  {
+                                                  "const":  "HOST",
+                                                  "description":  "Telemetry is recorded by the experimental host boundary rather than asserted by the worker."
+                                              },
+                       "tokenizer_id":  {
+                                            "type":  "string",
+                                            "minLength":  1,
+                                            "maxLength":  256,
+                                            "description":  "Identity of the tokenizer or token-accounting implementation used for all token measurements in this record."
+                                        },
+                       "context":  {
+                                       "type":  "object",
+                                       "additionalProperties":  false,
+                                       "required":  [
+                                                        "level_0_tokens_injected",
+                                                        "level_1_tokens_injected",
+                                                        "level_2_tokens_retrieved",
+                                                        "level_2_tokens_injected",
+                                                        "total_input_tokens",
+                                                        "level_2_bytes_granted",
+                                                        "level_2_bytes_retrieved",
+                                                        "level_2_bytes_injected"
+                                                    ],
+                                       "properties":  {
+                                                          "level_0_tokens_injected":  {
+                                                                                          "type":  "integer",
+                                                                                          "minimum":  0
+                                                                                      },
+                                                          "level_1_tokens_injected":  {
+                                                                                          "type":  "integer",
+                                                                                          "minimum":  0
+                                                                                      },
+                                                          "level_2_tokens_retrieved":  {
+                                                                                           "type":  "integer",
+                                                                                           "minimum":  0,
+                                                                                           "description":  "Tokenizer-dependent observation of Level 2 tokens corresponding to retrieved authorized context."
+                                                                                       },
+                                                          "level_2_tokens_injected":  {
+                                                                                          "type":  "integer",
+                                                                                          "minimum":  0,
+                                                                                          "description":  "Tokenizer-dependent observation of Level 2 tokens corresponding to Level 2 context inserted into the worker input."
+                                                                                      },
+                                                          "total_input_tokens":  {
+                                                                                     "type":  "integer",
+                                                                                     "minimum":  0
+                                                                                 },
+                                                          "level_2_bytes_granted":  {
+                                                                                        "type":  "integer",
+                                                                                        "minimum":  0,
+                                                                                        "description":  "Maximum Level 2 bytes authorized by the active ContextGrant."
+                                                                                    },
+                                                          "level_2_bytes_retrieved":  {
+                                                                                          "type":  "integer",
+                                                                                          "minimum":  0,
+                                                                                          "description":  "Level 2 bytes actually retrieved from authorized resources."
+                                                                                      },
+                                                          "level_2_bytes_injected":  {
+                                                                                         "type":  "integer",
+                                                                                         "minimum":  0,
+                                                                                         "description":  "Retrieved Level 2 bytes actually inserted into the worker input."
+                                                                                     }
+                                                      }
+                                   },
+                       "output":  {
+                                      "type":  "object",
+                                      "additionalProperties":  false,
+                                      "required":  [
+                                                       "output_tokens",
+                                                       "schema_parse_status"
+                                                   ],
+                                      "properties":  {
+                                                         "output_tokens":  {
+                                                                               "type":  "integer",
+                                                                               "minimum":  0
+                                                                           },
+                                                         "schema_parse_status":  {
+                                                                                     "type":  "string",
+                                                                                     "enum":  [
+                                                                                                  "VALID",
+                                                                                                  "INVALID",
+                                                                                                  "NO_OUTPUT"
+                                                                                              ],
+                                                                                     "description":  "Structural parsing result only; VALID does not imply factual correctness or authority."
+                                                                                 }
+                                                     }
+                                  },
+                       "policy":  {
+                                      "type":  "object",
+                                      "additionalProperties":  false,
+                                      "required":  [
+                                                       "context_requests",
+                                                       "policy_denials",
+                                                       "malformed_outputs",
+                                                       "boundary_events"
+                                                   ],
+                                      "properties":  {
+                                                         "context_requests":  {
+                                                                                  "type":  "integer",
+                                                                                  "minimum":  0
+                                                                              },
+                                                         "policy_denials":  {
+                                                                                "type":  "integer",
+                                                                                "minimum":  0
+                                                                            },
+                                                         "malformed_outputs":  {
+                                                                                   "type":  "integer",
+                                                                                   "minimum":  0
+                                                                               },
+                                                         "boundary_events":  {
+                                                                                 "type":  "array",
+                                                                                 "maxItems":  256,
+                                                                                 "items":  {
+                                                                                               "type":  "object",
+                                                                                               "additionalProperties":  false,
+                                                                                               "required":  [
+                                                                                                                "category",
+                                                                                                                "action",
+                                                                                                                "target",
+                                                                                                                "disposition"
+                                                                                                            ],
+                                                                                               "properties":  {
+                                                                                                                  "category":  {
+                                                                                                                                   "type":  "string",
+                                                                                                                                   "enum":  [
+                                                                                                                                                "CONTEXT_SCOPE",
+                                                                                                                                                "FILESYSTEM",
+                                                                                                                                                "SHELL",
+                                                                                                                                                "NETWORK",
+                                                                                                                                                "GIT",
+                                                                                                                                                "OUTPUT_STRUCTURE",
+                                                                                                                                                "OTHER"
+                                                                                                                                            ]
+                                                                                                                               },
+                                                                                                                  "action":  {
+                                                                                                                                 "type":  "string",
+                                                                                                                                 "minLength":  1,
+                                                                                                                                 "maxLength":  256
+                                                                                                                             },
+                                                                                                                  "target":  {
+                                                                                                                                 "type":  "string",
+                                                                                                                                 "minLength":  1,
+                                                                                                                                 "maxLength":  2048
+                                                                                                                             },
+                                                                                                                  "disposition":  {
+                                                                                                                                      "type":  "string",
+                                                                                                                                      "enum":  [
+                                                                                                                                                   "OBSERVED",
+                                                                                                                                                   "DENIED",
+                                                                                                                                                   "REJECTED"
+                                                                                                                                               ],
+                                                                                                                                      "description":  "Host observation classification. It does not constitute Sovereign OS admission or capability disposition."
+                                                                                                                                  }
+                                                                                                              }
+                                                                                           }
+                                                                             }
+                                                     }
+                                  },
+                       "execution":  {
+                                         "type":  "object",
+                                         "additionalProperties":  false,
+                                         "required":  [
+                                                          "duration_ms",
+                                                          "host_completion_state"
+                                                      ],
+                                         "properties":  {
+                                                            "duration_ms":  {
+                                                                                "type":  "integer",
+                                                                                "minimum":  0
+                                                                            },
+                                                            "host_completion_state":  {
+                                                                                          "type":  "string",
+                                                                                          "enum":  [
+                                                                                                       "FINISHED",
+                                                                                                       "INTERRUPTED",
+                                                                                                       "HOST_ERROR"
+                                                                                                   ],
+                                                                                          "description":  "Host execution lifecycle state only. It is distinct from worker-reported AgentOutput execution_status."
+                                                                                      }
+                                                        }
+                                     }
+                   }
+}

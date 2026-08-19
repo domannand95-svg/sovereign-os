@@ -1,0 +1,75 @@
+{
+    "$schema":  "https://json-schema.org/draft/2020-12/schema",
+    "$id":  "urn:sovereign-os:local-agent-beta:task-envelope:v1",
+    "title":  "TaskEnvelope v1",
+    "description":  "Non-production experimental schema for one bounded unit of work assigned under an existing ContextGrant.",
+    "type":  "object",
+    "additionalProperties":  false,
+    "required":  [
+                     "schema_version",
+                     "envelope_id",
+                     "grant_id",
+                     "assigned_role",
+                     "objective",
+                     "instructions",
+                     "escalation_conditions",
+                     "output_schema_version"
+                 ],
+    "properties":  {
+                       "schema_version":  {
+                                              "const":  1
+                                          },
+                       "envelope_id":  {
+                                           "type":  "string",
+                                           "pattern":  "^ENV-[A-Z0-9][A-Z0-9._-]*$",
+                                           "minLength":  5,
+                                           "maxLength":  128
+                                       },
+                       "grant_id":  {
+                                        "type":  "string",
+                                        "pattern":  "^CG-[A-Z0-9][A-Z0-9._-]*$",
+                                        "minLength":  4,
+                                        "maxLength":  128
+                                    },
+                       "assigned_role":  {
+                                             "type":  "string",
+                                             "enum":  [
+                                                          "SESSION_GOVERNOR",
+                                                          "SOL_ARCHITECT",
+                                                          "SOL_TEST_WORKER",
+                                                          "BKI_CLASSIFIER",
+                                                          "BKI_NORMALIZER",
+                                                          "ARCHIVE_ROUTER",
+                                                          "RESEARCH_GAP_ANALYST"
+                                                      ]
+                                         },
+                       "objective":  {
+                                         "type":  "string",
+                                         "minLength":  1,
+                                         "maxLength":  2048
+                                     },
+                       "instructions":  {
+                                            "type":  "array",
+                                            "minItems":  1,
+                                            "maxItems":  128,
+                                            "items":  {
+                                                          "type":  "string",
+                                                          "minLength":  1,
+                                                          "maxLength":  2048
+                                                      }
+                                        },
+                       "escalation_conditions":  {
+                                                     "type":  "array",
+                                                     "minItems":  1,
+                                                     "maxItems":  128,
+                                                     "items":  {
+                                                                   "type":  "string",
+                                                                   "minLength":  1,
+                                                                   "maxLength":  2048
+                                                               }
+                                                 },
+                       "output_schema_version":  {
+                                                     "const":  "AGENT_OUTPUT-v1"
+                                                 }
+                   }
+}

@@ -1,0 +1,199 @@
+{
+    "$schema":  "https://json-schema.org/draft/2020-12/schema",
+    "$id":  "urn:sovereign-os:local-agent-beta:context-grant:v1",
+    "title":  "ContextGrant v1",
+    "description":  "Non-production experimental schema for bounded, explicit local-agent context authorization.",
+    "type":  "object",
+    "additionalProperties":  false,
+    "required":  [
+                     "schema_version",
+                     "grant_id",
+                     "task_id",
+                     "target_role",
+                     "checkpoint",
+                     "level_1_role_pack",
+                     "level_2_authorized_reads",
+                     "explicitly_denied_capabilities",
+                     "context_budget_bytes",
+                     "grant_source"
+                 ],
+    "properties":  {
+                       "schema_version":  {
+                                              "const":  1
+                                          },
+                       "grant_id":  {
+                                        "type":  "string",
+                                        "pattern":  "^CG-[A-Z0-9][A-Z0-9._-]*$",
+                                        "minLength":  4,
+                                        "maxLength":  128
+                                    },
+                       "task_id":  {
+                                       "type":  "string",
+                                       "pattern":  "^TSK-[A-Z0-9][A-Z0-9._-]*$",
+                                       "minLength":  5,
+                                       "maxLength":  128
+                                   },
+                       "target_role":  {
+                                           "type":  "string",
+                                           "enum":  [
+                                                        "SESSION_GOVERNOR",
+                                                        "SOL_ARCHITECT",
+                                                        "SOL_TEST_WORKER",
+                                                        "BKI_CLASSIFIER",
+                                                        "BKI_NORMALIZER",
+                                                        "ARCHIVE_ROUTER",
+                                                        "RESEARCH_GAP_ANALYST"
+                                                    ]
+                                       },
+                       "checkpoint":  {
+                                          "type":  "object",
+                                          "additionalProperties":  false,
+                                          "required":  [
+                                                           "checkpoint_id",
+                                                           "baseline_commit"
+                                                       ],
+                                          "properties":  {
+                                                             "checkpoint_id":  {
+                                                                                   "type":  "string",
+                                                                                   "minLength":  1,
+                                                                                   "maxLength":  128
+                                                                               },
+                                                             "baseline_commit":  {
+                                                                                     "type":  "string",
+                                                                                     "pattern":  "^[0-9a-f]{40}$"
+                                                                                 },
+                                                             "prohibited_scope":  {
+                                                                                      "type":  "array",
+                                                                                      "uniqueItems":  true,
+                                                                                      "items":  {
+                                                                                                    "type":  "string",
+                                                                                                    "minLength":  1,
+                                                                                                    "maxLength":  256
+                                                                                                }
+                                                                                  }
+                                                         }
+                                      },
+                       "level_1_role_pack":  {
+                                                 "type":  "object",
+                                                 "additionalProperties":  false,
+                                                 "required":  [
+                                                                  "pack_id",
+                                                                  "invariants"
+                                                              ],
+                                                 "properties":  {
+                                                                    "pack_id":  {
+                                                                                    "type":  "string",
+                                                                                    "minLength":  1,
+                                                                                    "maxLength":  128
+                                                                                },
+                                                                    "invariants":  {
+                                                                                       "type":  "array",
+                                                                                       "minItems":  1,
+                                                                                       "uniqueItems":  true,
+                                                                                       "items":  {
+                                                                                                     "type":  "string",
+                                                                                                     "minLength":  1,
+                                                                                                     "maxLength":  512
+                                                                                                 }
+                                                                                   }
+                                                                }
+                                             },
+                       "level_2_authorized_reads":  {
+                                                        "type":  "array",
+                                                        "items":  {
+                                                                      "type":  "object",
+                                                                      "additionalProperties":  false,
+                                                                      "required":  [
+                                                                                       "resource_id",
+                                                                                       "resource_type",
+                                                                                       "locator",
+                                                                                       "digest",
+                                                                                       "access_mode",
+                                                                                       "max_bytes"
+                                                                                   ],
+                                                                      "properties":  {
+                                                                                         "resource_id":  {
+                                                                                                             "type":  "string",
+                                                                                                             "minLength":  1,
+                                                                                                             "maxLength":  128
+                                                                                                         },
+                                                                                         "resource_type":  {
+                                                                                                               "type":  "string",
+                                                                                                               "enum":  [
+                                                                                                                            "REPOSITORY_FILE",
+                                                                                                                            "ARCHIVE_FILE",
+                                                                                                                            "METADATA_RECORD",
+                                                                                                                            "SUMMARY_RECORD",
+                                                                                                                            "FIXTURE"
+                                                                                                                        ]
+                                                                                                           },
+                                                                                         "locator":  {
+                                                                                                         "type":  "string",
+                                                                                                         "minLength":  1,
+                                                                                                         "maxLength":  2048
+                                                                                                     },
+                                                                                         "digest":  {
+                                                                                                        "type":  "object",
+                                                                                                        "additionalProperties":  false,
+                                                                                                        "required":  [
+                                                                                                                         "algorithm",
+                                                                                                                         "value"
+                                                                                                                     ],
+                                                                                                        "properties":  {
+                                                                                                                           "algorithm":  {
+                                                                                                                                             "const":  "SHA-256"
+                                                                                                                                         },
+                                                                                                                           "value":  {
+                                                                                                                                         "type":  "string",
+                                                                                                                                         "pattern":  "^[0-9a-f]{64}$"
+                                                                                                                                     }
+                                                                                                                       }
+                                                                                                    },
+                                                                                         "access_mode":  {
+                                                                                                             "const":  "READ_ONLY"
+                                                                                                         },
+                                                                                         "max_bytes":  {
+                                                                                                           "type":  "integer",
+                                                                                                           "minimum":  1,
+                                                                                                           "maximum":  1073741824,
+                                                                                                           "description":  "Maximum bytes authorized from this specific resource."
+                                                                                                       }
+                                                                                     }
+                                                                  }
+                                                    },
+                       "explicitly_denied_capabilities":  {
+                                                              "type":  "array",
+                                                              "minItems":  1,
+                                                              "uniqueItems":  true,
+                                                              "items":  {
+                                                                            "type":  "string",
+                                                                            "enum":  [
+                                                                                         "FILESYSTEM_WRITE",
+                                                                                         "SHELL_EXECUTION",
+                                                                                         "NETWORK_ACCESS",
+                                                                                         "GIT_COMMIT",
+                                                                                         "GIT_PUSH",
+                                                                                         "GIT_MERGE",
+                                                                                         "BRANCH_MANAGEMENT",
+                                                                                         "PRODUCTION_MUTATION",
+                                                                                         "AUTHORITY_PROMOTION",
+                                                                                         "CAPABILITY_EXPANSION"
+                                                                                     ]
+                                                                        }
+                                                          },
+                       "context_budget_bytes":  {
+                                                    "type":  "integer",
+                                                    "minimum":  1,
+                                                    "maximum":  1073741824,
+                                                    "description":  "Maximum aggregate Level 2 context bytes authorized by this grant. Byte accounting is tokenizer-independent and does not imply model execution authority."
+                                                },
+                       "grant_source":  {
+                                            "type":  "string",
+                                            "enum":  [
+                                                         "HUMAN_AUTHORED",
+                                                         "DETERMINISTIC_POLICY"
+                                                     ],
+                                            "description":  "Records how this experimental grant was materialized. This field records provenance only and does not create delegation, revocation, freshness, or capability-expansion semantics."
+                                        }
+                   }
+}

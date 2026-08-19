@@ -1,0 +1,182 @@
+{
+    "registry_id":  "ROLE_REGISTRY_LOCAL_AGENT_BETA_V1",
+    "version":  1,
+    "status":  "NON_PRODUCTION_EXPERIMENTAL",
+    "checkpoint_id":  "SOL-BETA-CHECKPOINT-POST-PR203",
+    "baseline_commit":  "930d3b907cc1fabfc9c620cdeb330b1591672bba",
+    "governing_invariants":  [
+                                 "Context access is an admitted capability, not ambient memory.",
+                                 "Context grants do not imply execution authority.",
+                                 "Role assignment does not imply promotion or admission.",
+                                 "Capability expansion by inference is forbidden.",
+                                 "Ambiguous scope fails closed.",
+                                 "Role registry Level 2 read categories describe eligibility only; actual context authorization requires a bound ContextGrant.",
+                                 "Probabilistic roles may request context but may not issue, enlarge, or delegate authority.",
+                                 "This registry is specification data and does not itself enforce authority."
+                             ],
+    "roles":  [
+                  {
+                      "role_id":  "SESSION_GOVERNOR",
+                      "level_1_role_pack":  [
+                                                "checkpoint identity",
+                                                "workstream boundaries",
+                                                "task state",
+                                                "specialist output summaries"
+                                            ],
+                      "emitted_artifacts":  [
+                                                "TaskEnvelopeRequest",
+                                                "ContextGrantRequest"
+                                            ],
+                      "explicit_negative_boundaries":  [
+                                                           "raw source code access",
+                                                           "raw archive document access",
+                                                           "file mutation",
+                                                           "shell execution",
+                                                           "git mutation",
+                                                           "network authority"
+                                                       ],
+                      "eligible_level_2_read_classes":  [
+                                                            "task-state records",
+                                                            "specialist output summaries"
+                                                        ]
+                  },
+                  {
+                      "role_id":  "SOL_ARCHITECT",
+                      "level_1_role_pack":  [
+                                                "SOL invariants",
+                                                "allocated interface specifications",
+                                                "authorized ticket scope"
+                                            ],
+                      "emitted_artifacts":  [
+                                                "ArchitecturalReview",
+                                                "IssueSpecification"
+                                            ],
+                      "explicit_negative_boundaries":  [
+                                                           "commits",
+                                                           "pushes",
+                                                           "merges",
+                                                           "unallocated scope",
+                                                           "Issue #174 semantics"
+                                                       ],
+                      "eligible_level_2_read_classes":  [
+                                                            "explicitly granted SOL specifications",
+                                                            "explicitly granted target crate files"
+                                                        ]
+                  },
+                  {
+                      "role_id":  "SOL_TEST_WORKER",
+                      "level_1_role_pack":  [
+                                                "crate test manifests",
+                                                "allocated gate contracts",
+                                                "evaluation invariants"
+                                            ],
+                      "emitted_artifacts":  [
+                                                "TestRunSummary",
+                                                "FailureAnalysis",
+                                                "ContextRequest"
+                                            ],
+                      "explicit_negative_boundaries":  [
+                                                           "production implementation mutation",
+                                                           "commit authority",
+                                                           "push authority",
+                                                           "merge authority",
+                                                           "ambient filesystem traversal"
+                                                       ],
+                      "eligible_level_2_read_classes":  [
+                                                            "explicitly granted test files",
+                                                            "explicitly granted harness fixtures"
+                                                        ]
+                  },
+                  {
+                      "role_id":  "BKI_CLASSIFIER",
+                      "level_1_role_pack":  [
+                                                "BKI taxonomy",
+                                                "MD-001",
+                                                "VAL-001",
+                                                "classification rules"
+                                            ],
+                      "emitted_artifacts":  [
+                                                "ClassificationRecord",
+                                                "ContextRequest"
+                                            ],
+                      "explicit_negative_boundaries":  [
+                                                           "source content mutation",
+                                                           "claim rewriting",
+                                                           "evidence promotion",
+                                                           "synthetic claim insertion"
+                                                       ],
+                      "eligible_level_2_read_classes":  [
+                                                            "one explicitly granted source document",
+                                                            "associated metadata"
+                                                        ]
+                  },
+                  {
+                      "role_id":  "BKI_NORMALIZER",
+                      "level_1_role_pack":  [
+                                                "normalization invariants",
+                                                "MD-001",
+                                                "VAL-001"
+                                            ],
+                      "emitted_artifacts":  [
+                                                "NormalizedCandidate",
+                                                "ValidationObservation"
+                                            ],
+                      "explicit_negative_boundaries":  [
+                                                           "semantic meaning mutation",
+                                                           "claim invention",
+                                                           "authority assertion",
+                                                           "automatic promotion"
+                                                       ],
+                      "eligible_level_2_read_classes":  [
+                                                            "one explicitly granted raw document"
+                                                        ]
+                  },
+                  {
+                      "role_id":  "ARCHIVE_ROUTER",
+                      "level_1_role_pack":  [
+                                                "domain taxonomy",
+                                                "directory map",
+                                                "triage rules"
+                                            ],
+                      "emitted_artifacts":  [
+                                                "RoutingDecision",
+                                                "TriageRecord",
+                                                "ContextRequest"
+                                            ],
+                      "explicit_negative_boundaries":  [
+                                                           "deep claim analysis",
+                                                           "claim verification",
+                                                           "source rewriting",
+                                                           "evidence promotion"
+                                                       ],
+                      "eligible_level_2_read_classes":  [
+                                                            "filenames",
+                                                            "frontmatter",
+                                                            "heading trees",
+                                                            "explicitly granted metadata snippets"
+                                                        ]
+                  },
+                  {
+                      "role_id":  "RESEARCH_GAP_ANALYST",
+                      "level_1_role_pack":  [
+                                                "evidence criteria",
+                                                "domain definitions",
+                                                "promotion thresholds"
+                                            ],
+                      "emitted_artifacts":  [
+                                                "ResearchGapRecord",
+                                                "ContextRequest"
+                                            ],
+                      "explicit_negative_boundaries":  [
+                                                           "claim validation without source support",
+                                                           "institutional outreach",
+                                                           "automatic promotion",
+                                                           "ambient archive traversal"
+                                                       ],
+                      "eligible_level_2_read_classes":  [
+                                                            "explicitly granted promoted summaries",
+                                                            "explicitly granted source snippets"
+                                                        ]
+                  }
+              ]
+}
