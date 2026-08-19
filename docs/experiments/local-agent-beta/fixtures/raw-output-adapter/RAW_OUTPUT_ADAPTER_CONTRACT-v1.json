@@ -1,0 +1,183 @@
+{
+    "schema_version":  1,
+    "experiment":  "EXP-BETA-002",
+    "title":  "Deterministic Raw-Output Admission Adapter",
+    "contract_kind":  "RUST_API_AND_REJECTION_TAXONOMY",
+    "status":  "FROZEN",
+    "constraint_level":  "NON_PRODUCTION_EXPERIMENTAL",
+    "implementation_location":  "crates/beta001-harness/src/raw_output_adapter.rs",
+    "canonical_output_schema":  "docs/experiments/local-agent-beta/AGENT_OUTPUT-v1.schema.json",
+    "input_contract":  {
+                           "rust_type":  "\u0026[u8]",
+                           "semantics":  "Exact untrusted raw model-output bytes.",
+                           "preservation":  "Original input bytes must remain available unchanged in every result class."
+                       },
+    "public_entry_point":  {
+                               "conceptual_name":  "RawOutputAdapter::admit",
+                               "input":  "\u0026[u8]",
+                               "output":  "RawOutputAdmissionResult",
+                               "deterministic_requirement":  "Identical input bytes and identical frozen schema must yield the same result class and candidate value."
+                           },
+    "result_wrapper":  {
+                           "name":  "RawOutputAdmissionResult",
+                           "fields":  [
+                                          {
+                                              "name":  "raw_output",
+                                              "rust_type":  "Vec\u003cu8\u003e",
+                                              "purpose":  "Byte-for-byte preservation of the original untrusted input."
+                                          },
+                                          {
+                                              "name":  "admission",
+                                              "rust_type":  "RawOutputAdmission",
+                                              "purpose":  "Mechanical raw-output admission result only."
+                                          }
+                                      ]
+                       },
+    "admission_enum":  {
+                           "name":  "RawOutputAdmission",
+                           "variants":  [
+                                            {
+                                                "name":  "Admit",
+                                                "fields":  [
+                                                               {
+                                                                   "name":  "candidate",
+                                                                   "rust_type":  "serde_json::Value"
+                                                               }
+                                                           ]
+                                            },
+                                            {
+                                                "name":  "AdmitNormalized",
+                                                "fields":  [
+                                                               {
+                                                                   "name":  "candidate",
+                                                                   "rust_type":  "serde_json::Value"
+                                                               },
+                                                               {
+                                                                   "name":  "normalization",
+                                                                   "rust_type":  "NormalizationKind"
+                                                               }
+                                                           ]
+                                            },
+                                            {
+                                                "name":  "Reject",
+                                                "fields":  [
+                                                               {
+                                                                   "name":  "reason",
+                                                                   "rust_type":  "RawOutputRejection"
+                                                               }
+                                                           ]
+                                            }
+                                        ]
+                       },
+    "normalization_enum":  {
+                               "name":  "NormalizationKind",
+                               "variants":  [
+                                                "ExactOuterJsonMarkdownFenceRemoval"
+                                            ]
+                           },
+    "rejection_enum":  {
+                           "name":  "RawOutputRejection",
+                           "variants":  [
+                                            "InvalidUtf8",
+                                            "InvalidJson",
+                                            "SchemaViolation",
+                                            "DisallowedWrapper",
+                                            "TrailingContent"
+                                        ]
+                       },
+    "rejection_semantics":  [
+                                {
+                                    "variant":  "InvalidUtf8",
+                                    "meaning":  "Input bytes are not valid strict UTF-8."
+                                },
+                                {
+                                    "variant":  "InvalidJson",
+                                    "meaning":  "The candidate payload cannot be parsed as one complete JSON value after any explicitly permitted normalization."
+                                },
+                                {
+                                    "variant":  "SchemaViolation",
+                                    "meaning":  "Parsed JSON violates AGENT_OUTPUT-v1, including missing required properties, invalid values, or unknown properties."
+                                },
+                                {
+                                    "variant":  "DisallowedWrapper",
+                                    "meaning":  "Input uses a wrapper or transformation not explicitly permitted by the frozen normalization contract."
+                                },
+                                {
+                                    "variant":  "TrailingContent",
+                                    "meaning":  "Otherwise parseable JSON is followed by non-permitted trailing content."
+                                }
+                            ],
+    "permitted_normalizations":  [
+                                     {
+                                         "enum_variant":  "ExactOuterJsonMarkdownFenceRemoval",
+                                         "source_contract_id":  "EXACT_OUTER_JSON_MARKDOWN_FENCE_REMOVAL",
+                                         "semantics":  "Remove exactly one leading JSON markdown fence and exactly one matching trailing markdown fence while preserving the enclosed JSON body unchanged."
+                                     }
+                                 ],
+    "processing_order":  [
+                             "Preserve original raw bytes.",
+                             "Validate strict UTF-8.",
+                             "Determine whether the exact permitted markdown-fence normalization applies.",
+                             "Apply no transformation other than the exact permitted normalization.",
+                             "Parse exactly one complete JSON value.",
+                             "Validate parsed JSON against canonical AGENT_OUTPUT-v1.",
+                             "Return Admit, AdmitNormalized, or Reject."
+                         ],
+    "forbidden_adapter_behaviors":  [
+                                        "JSON substring searching",
+                                        "first-object extraction",
+                                        "last-object extraction",
+                                        "arbitrary prose stripping",
+                                        "arbitrary whitespace repair",
+                                        "field renaming",
+                                        "missing-field synthesis",
+                                        "unknown-property deletion",
+                                        "enum coercion",
+                                        "comma repair",
+                                        "semantic rewriting",
+                                        "candidate summarization",
+                                        "model retry",
+                                        "model invocation",
+                                        "filesystem authorization",
+                                        "network authorization",
+                                        "tool authorization",
+                                        "context authorization",
+                                        "cross-artifact authority validation",
+                                        "authority promotion"
+                                    ],
+    "authority_boundaries":  [
+                                 "Adapter admission does not imply authority approval.",
+                                 "AGENT_OUTPUT-v1 structural validity does not imply ContextGrant compatibility.",
+                                 "A requested additional context path remains an unprivileged candidate request.",
+                                 "The adapter must not classify context requests as authorized or unauthorized.",
+                                 "The adapter must not evaluate TaskEnvelope or ContextGrant coherence.",
+                                 "The adapter must not emit APPROVED, FORBIDDEN, UNAVAILABLE, or other authority-layer dispositions.",
+                                 "Issue #174 semantics remain outside EXP-BETA-002."
+                             ],
+    "forensic_invariants":  [
+                                "Rejected raw bytes remain available byte-for-byte.",
+                                "Normalized admissions retain the original pre-normalization raw bytes.",
+                                "Normalization must be explicitly represented in the result.",
+                                "Parser failure must not destroy or overwrite original evidence."
+                            ],
+    "frozen_result_classes":  [
+                                  "ADMIT",
+                                  "ADMIT_NORMALIZED",
+                                  "REJECT"
+                              ],
+    "non_goals":  [
+                      "Production runtime binding",
+                      "Live model execution",
+                      "ContextGrant authorization",
+                      "TaskEnvelope authorization",
+                      "Role authorization",
+                      "Delegation",
+                      "Revocation",
+                      "Dynamic freshness",
+                      "Composite authority",
+                      "Filesystem containment",
+                      "Network containment",
+                      "Host telemetry",
+                      "Production capability expansion"
+                  ]
+}

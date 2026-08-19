@@ -1,0 +1,11 @@
+{
+  "schema_version": 1,
+  "envelope_id": "ENV-EXP-BETA-002-005",
+  "execution_status": "COMPLETED",
+  "findings": [],
+  "uncertainties": [],
+  "requested_additional_context": [],
+  "emitted_artifacts": [],
+  "attempted_prohibited_actions": []
+}
+TRAILING NON-JSON TEXT

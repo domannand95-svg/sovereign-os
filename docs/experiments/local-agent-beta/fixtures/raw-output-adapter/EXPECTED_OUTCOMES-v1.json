@@ -1,0 +1,89 @@
+{
+    "schema_version":  1,
+    "experiment":  "EXP-BETA-002",
+    "title":  "Deterministic Raw-Output Admission Adapter",
+    "status":  "EXPECTED_OUTCOMES_FROZEN",
+    "constraint_level":  "NON_PRODUCTION_EXPERIMENTAL",
+    "adapter_result_classes":  [
+                                   "ADMIT",
+                                   "ADMIT_NORMALIZED",
+                                   "REJECT"
+                               ],
+    "invariants":  [
+                       "Adapter admission does not imply authority approval.",
+                       "Identical raw bytes must produce the same adapter result.",
+                       "The adapter must not invent substantive content.",
+                       "Missing required fields must not be synthesized.",
+                       "Unknown properties must not be silently dropped.",
+                       "Trailing non-JSON prose must not be heuristically discarded.",
+                       "Context requests remain non-authoritative candidate requests.",
+                       "Structural validation is distinct from cross-artifact authority validation."
+                   ],
+    "permitted_normalizations":  [
+                                     {
+                                         "id":  "EXACT_OUTER_JSON_MARKDOWN_FENCE_REMOVAL",
+                                         "description":  "Remove exactly one leading JSON markdown fence and one matching trailing markdown fence around an otherwise unchanged JSON body.",
+                                         "forbidden_extensions":  [
+                                                                      "arbitrary whitespace repair",
+                                                                      "JSON object searching",
+                                                                      "field renaming",
+                                                                      "missing-field synthesis",
+                                                                      "unknown-field deletion",
+                                                                      "enum coercion",
+                                                                      "comma repair",
+                                                                      "model retry",
+                                                                      "semantic rewriting"
+                                                                  ]
+                                     }
+                                 ],
+    "fixtures":  [
+                     {
+                         "file":  "001_clean_exact_match.txt",
+                         "bytes":  549,
+                         "sha256":  "b07b9b0b7679571b5b5dcda52e28ecd768b622d92ccf8e821fbe0a8976a26462",
+                         "expected_outcome":  "ADMIT",
+                         "normalization":  "NONE",
+                         "rationale":  "Exact JSON candidate. Structural acceptance depends only on AGENT_OUTPUT-v1 validation."
+                     },
+                     {
+                         "file":  "002_markdown_fenced_json.txt",
+                         "bytes":  561,
+                         "sha256":  "bbdc8f42362cc1c9ba9d2ea1e1857660cc074a59fd0b48affb5e85d437ed529c",
+                         "expected_outcome":  "ADMIT_NORMALIZED",
+                         "normalization":  "EXACT_OUTER_JSON_MARKDOWN_FENCE_REMOVAL",
+                         "rationale":  "Only the exact outer JSON markdown wrapper may be removed. The enclosed JSON body must otherwise remain unchanged."
+                     },
+                     {
+                         "file":  "003_missing_required_fields.txt",
+                         "bytes":  223,
+                         "sha256":  "4e14ec2b94e8a0e5a20363f04a49c06d2af407d1268dd4d7a55a2eb37dc236bf",
+                         "expected_outcome":  "REJECT",
+                         "normalization":  "NONE",
+                         "rationale":  "Required AGENT_OUTPUT-v1 content is absent and must not be invented."
+                     },
+                     {
+                         "file":  "004_hallucinated_schema_properties.txt",
+                         "bytes":  268,
+                         "sha256":  "8b398a1f4e32b0988b79232b2d4ff016f35c78865d06b650d68250d425a1e2e4",
+                         "expected_outcome":  "REJECT",
+                         "normalization":  "NONE",
+                         "rationale":  "Unknown schema property must not be silently discarded to force admission."
+                     },
+                     {
+                         "file":  "005_trailing_garbage_text.txt",
+                         "bytes":  269,
+                         "sha256":  "443327d355481704af1a894dc10b675d12f969c9f2421d13ccee269d6fbb550c",
+                         "expected_outcome":  "REJECT",
+                         "normalization":  "NONE",
+                         "rationale":  "The adapter must not heuristically select a JSON prefix and discard arbitrary trailing text."
+                     },
+                     {
+                         "file":  "006_adversarial_context_request.txt",
+                         "bytes":  494,
+                         "sha256":  "191949bac745ee9a49b37b49019e3510530a19cd0de5c6b87bd31066580ea47e",
+                         "expected_outcome":  "ADMIT",
+                         "normalization":  "NONE",
+                         "rationale":  "A structurally valid additional-context request remains candidate data only. Admission does not authorize the requested resource."
+                     }
+                 ]
+}
