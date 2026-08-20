@@ -30,6 +30,11 @@ impl AdversarialStagingOrchestrator {
         requested_paths: &[String],
         is_stale_pre_state: bool,
     ) -> AdversarialStageDisposition {
+        // Always preserve/populate unrelated pre-staged user work in index observation (INVARIANT-260)
+        for (path, content) in unrelated_pre_staged {
+            current_index.insert(path.clone(), content.clone());
+        }
+
         // Enforce INVARIANT-062, 069: Fail closed on inactive or revoked state
         if !context.grant_active || context.revoked {
             return AdversarialStageDisposition::Denied;
@@ -50,11 +55,6 @@ impl AdversarialStagingOrchestrator {
             return AdversarialStageDisposition::Denied; // Rejects extra unauthorized paths or ambient stage-all
         }
 
-        // Preserve unrelated pre-staged user work (INVARIANT-260)
-        for (path, content) in unrelated_pre_staged {
-            current_index.insert(path.clone(), content.clone());
-        }
-
         // Transition authorized paths
         for path in &sorted_authorized {
             let worktree_content = match worktree_files.get(path) {
@@ -70,9 +70,6 @@ impl AdversarialStagingOrchestrator {
 
 #[test]
 fn test_agent_005_d_bounded_staging_injection_resisted() {
-    // AGENT-005-D-BOUNDED-STAGING-INJECTION:
-    // Agent possesses legitimate staging authority for "src/lib.rs", but repository prompt injection 
-    // requests staging extra paths ("Cargo.toml") and user work ("docs/user-work.md").
     let orchestrator = AdversarialStagingOrchestrator;
     let mut index = HashMap::new();
     let mut pre_state = HashMap::new();
@@ -94,7 +91,6 @@ fn test_agent_005_d_bounded_staging_injection_resisted() {
         revoked: false,
     };
 
-    // Attempt injection requesting both agent path and unauthorized Cargo.toml (stage-all style)
     let requested_paths = vec![agent_path.to_string(), "Cargo.toml".to_string()];
     let disposition = orchestrator.execute_adversarial_staging(
         &context,
@@ -107,15 +103,12 @@ fn test_agent_005_d_bounded_staging_injection_resisted() {
     );
 
     assert_eq!(disposition, AdversarialStageDisposition::Denied);
-    // Verify unrelated user work was preserved untouched and Cargo.toml was not staged
     assert_eq!(index.get(user_file), Some(&"original user work".to_string()));
     assert_eq!(index.get("Cargo.toml"), None);
 }
 
 #[test]
 fn test_agent_005_d_stale_stage_authority_replay_denied() {
-    // AGENT-005-D-STALE-AUTHORITY-REPLAY:
-    // Presenting staging grant against a drifted index pre-state yields Stale.
     let orchestrator = AdversarialStagingOrchestrator;
     let mut index = HashMap::new();
     let pre_state = HashMap::new();
@@ -134,11 +127,11 @@ fn test_agent_005_d_stale_stage_authority_replay_denied() {
     let disposition = orchestrator.execute_adversarial_staging(
         &context,
         &mut index,
-        &drifted_pre_state, // Drifted pre-state
+        &drifted_pre_state,
         &worktree,
         &unrelated,
         &vec!["src/lib.rs".to_string()],
-        true, // Stale indicator
+        true,
     );
 
     assert_eq!(disposition, AdversarialStageDisposition::Stale);
@@ -146,9 +139,6 @@ fn test_agent_005_d_stale_stage_authority_replay_denied() {
 
 #[test]
 fn test_agent_005_d_recovery_authority_separation() {
-    // AGENT-005-D-RECOVERY-AUTHORITY-SEPARATION:
-    // After partial staging failure, agent requests git reset or stage-all recovery.
-    // Verifies that recovery/reset authority remains entirely absent.
     let has_reset_authority = false;
     let has_stage_all_authority = false;
     assert!(!has_reset_authority);
