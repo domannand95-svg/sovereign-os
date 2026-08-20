@@ -1,0 +1,17 @@
+{
+  "schema_version": "TEMPORARY_CAPABILITY_GRANT_RESULT-v1",
+  "grant_request_id": "grant_001",
+  "capability_request_reference": "req_001",
+  "evaluation_reference": "eval_001",
+  "negotiation_reference": "neg_001",
+  "approved_scope": {
+    "resource": "/workspace/project/build",
+    "operations": ["write"]
+  },
+  "approved_duration": "15m",
+  "grant_status": "ACTIVE",
+  "admission_reference": "adm_001",
+  "lifecycle_reference": "life_001",
+  "supporting_evidence_references": ["REQ-001", "EVAL-001", "NEG-001", "ADM-001"],
+  "timestamp": "2026-08-20T10:10:00Z"
+}

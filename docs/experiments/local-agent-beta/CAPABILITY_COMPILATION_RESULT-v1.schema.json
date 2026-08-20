@@ -1,0 +1,91 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "CAPABILITY_COMPILATION_RESULT-v1",
+  "title": "Capability Compilation Result v1",
+  "description": "Host-controlled compilation evidence recording the translation of approved evaluation results into CapabilityPayloadV1 candidates. Confers zero execution permission or direct authority.",
+  "type": "object",
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "CAPABILITY_COMPILATION_RESULT-v1",
+      "description": "Semantic type identity. Distinct from evaluation, proposal, and capability schemas."
+    },
+    "evaluation_reference": {
+      "type": "string",
+      "minLength": 8,
+      "maxLength": 128,
+      "description": "Cryptographic reference binding this compilation evidence to the specific EFFECT_EVALUATION_RESULT-v1 instance."
+    },
+    "proposal_reference": {
+      "type": "string",
+      "minLength": 8,
+      "maxLength": 128,
+      "description": "Cryptographic reference binding this compilation evidence to the exact source EFFECT_PROPOSAL-v1 instance."
+    },
+    "compilation_status": {
+      "type": "string",
+      "enum": [
+        "COMPILED",
+        "FAILED"
+      ],
+      "description": "Terminal status of the host-controlled compilation attempt."
+    },
+    "compilation_timestamp": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Deterministic ISO-8601 timestamp representing when compilation occurred."
+    },
+    "candidate_payload_reference": {
+      "type": ["string", "null"],
+      "maxLength": 128,
+      "description": "Optional reference to the generated CapabilityPayloadV1 candidate. Enforced via conditional branching."
+    },
+    "failure_reason_class": {
+      "type": ["string", "null"],
+      "enum": [
+        null,
+        "MISSING_PROPOSAL",
+        "EVALUATION_NOT_ACCEPTED",
+        "REFERENCE_MISMATCH",
+        "MISSING_HOST_CONTEXT",
+        "INVALID_PARAMETER_MAPPING",
+        "CANDIDATE_CONSTRUCTION_FAILURE",
+        "SCOPE_EXPANSION_DETECTED"
+      ],
+      "description": "Categorized classification of compilation failure. Enforced via conditional branching."
+    },
+    "compiler_identity": {
+      "type": "string",
+      "minLength": 3,
+      "maxLength": 64,
+      "description": "Identifier of the host compilation routine or subsystem responsible for translation."
+    }
+  },
+  "required": [
+    "schema_version",
+    "evaluation_reference",
+    "proposal_reference",
+    "compilation_status",
+    "compilation_timestamp",
+    "candidate_payload_reference",
+    "failure_reason_class",
+    "compiler_identity"
+  ],
+  "oneOf": [
+    {
+      "properties": {
+        "compilation_status": { "const": "COMPILED" },
+        "candidate_payload_reference": { "type": "string" },
+        "failure_reason_class": { "type": "null" }
+      }
+    },
+    {
+      "properties": {
+        "compilation_status": { "const": "FAILED" },
+        "candidate_payload_reference": { "type": "null" },
+        "failure_reason_class": { "type": "string" }
+      }
+    }
+  ],
+  "additionalProperties": false
+}

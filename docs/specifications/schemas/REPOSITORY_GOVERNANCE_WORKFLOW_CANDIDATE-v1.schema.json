@@ -1,0 +1,82 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "RepositoryGovernanceWorkflowCandidateV1",
+  "description": "Defines inert governance workflow intent and coordination structure. Grants ZERO execution authority or operational capability.",
+  "type": "object",
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "REPOSITORY_GOVERNANCE_WORKFLOW_CANDIDATE-v1"
+    },
+    "workflow_candidate_id": {
+      "type": "string",
+      "pattern": "^wf_cand_[a-zA-Z0-9_-]+$"
+    },
+    "participating_domains": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": [
+          "PUBLICATION",
+          "PULL_REQUEST",
+          "REVIEW",
+          "MERGE",
+          "DEPLOYMENT",
+          "RUNTIME",
+          "POLICY_EVALUATION"
+        ]
+      },
+      "minItems": 1
+    },
+    "policy_references": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "policy_id": { "type": "string", "minLength": 1 },
+          "policy_version": {
+            "type": "string",
+            "pattern": "^v[0-9]+\\.[0-9]+\\.[0-9]+$"
+          },
+          "policy_digest": {
+            "type": "string",
+            "pattern": "^sha256:[0-9a-f]{64}$"
+          }
+        },
+        "required": ["policy_id", "policy_version", "policy_digest"],
+        "additionalProperties": false
+      },
+      "minItems": 1
+    },
+    "required_human_checkpoints": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "coordination_intent": {
+      "type": "string",
+      "enum": [
+        "SYNTHESIZE_EVIDENCE_GRAPH",
+        "SCHEDULE_POLICY_EVALUATION",
+        "TRACK_LIFECYCLE_STATE",
+        "COMPUTE_PIPELINE_POSTURE"
+      ]
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "required": [
+    "schema_version",
+    "workflow_candidate_id",
+    "participating_domains",
+    "policy_references",
+    "required_human_checkpoints",
+    "coordination_intent",
+    "created_at"
+  ],
+  "additionalProperties": false
+}

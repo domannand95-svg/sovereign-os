@@ -1,0 +1,70 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "RepositoryGovernanceEvidenceGraphV1",
+  "description": "Defines an immutable, read-only evidence relationship graph for governance orchestration. Grants ZERO operational control or authority.",
+  "type": "object",
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "REPOSITORY_GOVERNANCE_EVIDENCE_GRAPH-v1"
+    },
+    "evidence_graph_id": {
+      "type": "string",
+      "pattern": "^graph_[a-zA-Z0-9_-]+$"
+    },
+    "nodes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "evidence_id": { "type": "string", "minLength": 1 },
+          "domain": {
+            "type": "string",
+            "enum": ["PUBLICATION", "PULL_REQUEST", "REVIEW", "MERGE", "DEPLOYMENT", "RUNTIME", "POLICY_EVALUATION"]
+          },
+          "content_digest": {
+            "type": "string",
+            "pattern": "^sha256:[0-9a-f]{64}$"
+          },
+          "schema_version": { "type": "string", "minLength": 1 }
+        },
+        "required": ["evidence_id", "domain", "content_digest", "schema_version"],
+        "additionalProperties": false
+      },
+      "minItems": 1
+    },
+    "edges": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "source": { "type": "string", "minLength": 1 },
+          "target": { "type": "string", "minLength": 1 },
+          "relationship_type": {
+            "type": "string",
+            "enum": ["DERIVED_FROM", "SUPPORTS", "VERIFIES", "ASSOCIATED_WITH", "REQUIRES"]
+          }
+        },
+        "required": ["source", "target", "relationship_type"],
+        "additionalProperties": false
+      }
+    },
+    "graph_digest": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "required": [
+    "schema_version",
+    "evidence_graph_id",
+    "nodes",
+    "edges",
+    "graph_digest",
+    "created_at"
+  ],
+  "additionalProperties": false
+}

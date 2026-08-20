@@ -1,0 +1,51 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "CapabilityStateQueryV1",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "query_id",
+    "grant_reference",
+    "evaluation_timestamp",
+    "supported_evidence_lineage",
+    "timestamp"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "CAPABILITY_STATE_QUERY-v1"
+    },
+    "query_id": {
+      "type": "string",
+      "pattern": "^csq_[a-zA-Z0-9_-]+$"
+    },
+    "grant_reference": {
+      "type": "string",
+      "pattern": "^grant_[a-zA-Z0-9_-]+$"
+    },
+    "evaluation_timestamp": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "supported_evidence_lineage": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^(REQ|EVAL|NEG|ADM|LIFE)-[0-9]+$"
+      },
+      "minItems": 1
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "not": {
+    "anyOf": [
+      { "required": ["renewal_request"] },
+      { "required": ["lease_extension"] },
+      { "required": ["runtime_credential"] }
+    ]
+  },
+  "additionalProperties": false
+}

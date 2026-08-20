@@ -1,0 +1,100 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "RepositoryReviewAuthorizationV1",
+  "description": "Defines bounded permission to interact with review-domain operations without granting approval or merge authority.",
+  "type": "object",
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "REPOSITORY_REVIEW_AUTHORIZATION-v1"
+    },
+    "authorization_id": {
+      "type": "string",
+      "pattern": "^review_auth_[a-zA-Z0-9_-]+$"
+    },
+    "candidate_binding": {
+      "type": "object",
+      "properties": {
+        "review_candidate_id": {
+          "type": "string",
+          "pattern": "^review_cand_[a-zA-Z0-9_-]+$"
+        },
+        "pull_request_id": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "review_candidate_id",
+        "pull_request_id"
+      ],
+      "additionalProperties": false
+    },
+    "authorized_scope": {
+      "type": "object",
+      "properties": {
+        "operation": {
+          "type": "string",
+          "enum": [
+            "repository.remote.review.observe",
+            "repository.remote.review.submit_comment"
+          ]
+        },
+        "approval_permitted": {
+          "type": "boolean",
+          "const": false
+        },
+        "merge_permitted": {
+          "type": "boolean",
+          "const": false
+        }
+      },
+      "required": [
+        "operation",
+        "approval_permitted",
+        "merge_permitted"
+      ],
+      "additionalProperties": false
+    },
+    "temporal_bounds": {
+      "type": "object",
+      "properties": {
+        "issued_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "expires_at": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "issued_at",
+        "expires_at"
+      ],
+      "additionalProperties": false
+    },
+    "consumption_policy": {
+      "type": "object",
+      "properties": {
+        "single_use_only": {
+          "type": "boolean",
+          "const": true
+        }
+      },
+      "required": [
+        "single_use_only"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "schema_version",
+    "authorization_id",
+    "candidate_binding",
+    "authorized_scope",
+    "temporal_bounds",
+    "consumption_policy"
+  ],
+  "additionalProperties": false
+}

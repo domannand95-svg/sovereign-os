@@ -1,0 +1,67 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "RepositoryExternalEvidenceV1",
+  "description": "Defines imported external evidence. Grants ZERO internal authority, execution rights, or trust inheritance.",
+  "type": "object",
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "REPOSITORY_EXTERNAL_EVIDENCE-v1"
+    },
+    "external_evidence_id": {
+      "type": "string",
+      "pattern": "^ext_evid_[a-zA-Z0-9_-]+$"
+    },
+    "source_identity": {
+      "type": "object",
+      "properties": {
+        "provider_id": { "type": "string", "minLength": 1 },
+        "origin_domain": { "type": "string", "minLength": 1 },
+        "public_key_fingerprint": {
+          "type": "string",
+          "pattern": "^sha256:[0-9a-f]{64}$"
+        }
+      },
+      "required": ["provider_id", "origin_domain", "public_key_fingerprint"],
+      "additionalProperties": false
+    },
+    "attestation_content": {
+      "type": "object",
+      "properties": {
+        "content_digest": {
+          "type": "string",
+          "pattern": "^sha256:[0-9a-f]{64}$"
+        },
+        "artifact_type": {
+          "type": "string",
+          "enum": ["BUILD_ATTESTATION", "VULNERABILITY_SCAN", "FEDERATED_METRIC", "COMPLIANCE_CLAIM"]
+        },
+        "raw_claim_summary": { "type": "string", "minLength": 1 }
+      },
+      "required": ["content_digest", "artifact_type", "raw_claim_summary"],
+      "additionalProperties": false
+    },
+    "epistemic_status": {
+      "type": "string",
+      "enum": ["UNVERIFIED", "PENDING_VERIFICATION", "LOCALLY_VERIFIED", "VERIFICATION_FAILED"]
+    },
+    "temporal_bounds": {
+      "type": "object",
+      "properties": {
+        "issued_at": { "type": "string", "format": "date-time" },
+        "ingested_at": { "type": "string", "format": "date-time" }
+      },
+      "required": ["issued_at", "ingested_at"],
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "schema_version",
+    "external_evidence_id",
+    "source_identity",
+    "attestation_content",
+    "epistemic_status",
+    "temporal_bounds"
+  ],
+  "additionalProperties": false
+}

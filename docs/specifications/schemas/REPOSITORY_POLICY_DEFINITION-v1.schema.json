@@ -1,0 +1,81 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "RepositoryPolicyDefinitionV1",
+  "description": "Defines static, version-bound declarative policy rules. Grants ZERO authority or execution capability.",
+  "type": "object",
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "REPOSITORY_POLICY_DEFINITION-v1"
+    },
+    "policy_id": {
+      "type": "string",
+      "pattern": "^pol_[a-zA-Z0-9_-]+$"
+    },
+    "policy_version": {
+      "type": "string",
+      "pattern": "^v[0-9]+\\.[0-9]+\\.[0-9]+$"
+    },
+    "policy_digest": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "effective_from": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "applicable_evidence_types": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": [
+          "PUBLICATION_OBSERVATION",
+          "PULL_REQUEST_OBSERVATION",
+          "REVIEW_OBSERVATION",
+          "MERGE_OBSERVATION",
+          "DEPLOYMENT_OBSERVATION",
+          "RUNTIME_OBSERVATION"
+        ]
+      },
+      "minItems": 1
+    },
+    "conflict_strategy": {
+      "type": "string",
+      "enum": ["STRICT_DENY_ON_CONFLICT", "FAIL_CLOSED"]
+    },
+    "rules": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "rule_id": { "type": "string", "minLength": 1 },
+          "condition_type": {
+            "type": "string",
+            "enum": ["EQUALITY_ASSERTION", "RANGE_BOUND", "EXistence_CHECK"]
+          },
+          "subject": { "type": "string", "minLength": 1 },
+          "comparison": { "type": "string", "minLength": 1 }
+        },
+        "required": ["rule_id", "condition_type", "subject", "comparison"],
+        "additionalProperties": false
+      },
+      "minItems": 1
+    }
+  },
+  "required": [
+    "schema_version",
+    "policy_id",
+    "policy_version",
+    "policy_digest",
+    "created_at",
+    "effective_from",
+    "applicable_evidence_types",
+    "conflict_strategy",
+    "rules"
+  ],
+  "additionalProperties": false
+}

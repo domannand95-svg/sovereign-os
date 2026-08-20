@@ -1,0 +1,58 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "RepositoryExternalIdentityAssertionV1",
+  "description": "Defines external identity and federation claims. Grants ZERO internal authority, namespace privileges, or trust inheritance.",
+  "type": "object",
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "REPOSITORY_EXTERNAL_IDENTITY_ASSERTION-v1"
+    },
+    "assertion_id": {
+      "type": "string",
+      "pattern": "^ext_id_[a-zA-Z0-9_-]+$"
+    },
+    "identity_subject": {
+      "type": "object",
+      "properties": {
+        "external_principal": { "type": "string", "minLength": 1 },
+        "issuer_domain": { "type": "string", "minLength": 1 },
+        "namespace": {
+          "type": "string",
+          "enum": ["EXTERNAL_FEDERATED", "THIRD_PARTY_AGENT", "EXTERNAL_MODEL_PROVIDER"]
+        }
+      },
+      "required": ["external_principal", "issuer_domain", "namespace"],
+      "additionalProperties": false
+    },
+    "cryptographic_provenance": {
+      "type": "object",
+      "properties": {
+        "public_key_fingerprint": {
+          "type": "string",
+          "pattern": "^sha256:[0-9a-f]{64}$"
+        },
+        "assertion_digest": {
+          "type": "string",
+          "pattern": "^sha256:[0-9a-f]{64}$"
+        },
+        "issued_at": { "type": "string", "format": "date-time" },
+        "expires_at": { "type": "string", "format": "date-time" }
+      },
+      "required": ["public_key_fingerprint", "assertion_digest", "issued_at", "expires_at"],
+      "additionalProperties": false
+    },
+    "verification_state": {
+      "type": "string",
+      "enum": ["ASSERTED_EXTERNAL_IDENTITY", "VERIFIED_EXTERNAL_IDENTITY", "INTERACTION_DENIED"]
+    }
+  },
+  "required": [
+    "schema_version",
+    "assertion_id",
+    "identity_subject",
+    "cryptographic_provenance",
+    "verification_state"
+  ],
+  "additionalProperties": false
+}

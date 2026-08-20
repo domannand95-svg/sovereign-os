@@ -1,0 +1,16 @@
+{
+  "schema_version": "CAPABILITY_REQUEST-v1",
+  "request_id": "req_001",
+  "requester_identity": "agent-instance-001",
+  "requested_capability": {
+    "capability": "filesystem.write"
+  },
+  "declared_purpose": "Write build output into workspace",
+  "required_scope": {
+    "resource": "/workspace/project",
+    "operations": ["write"]
+  },
+  "duration_requirement": "10m",
+  "risk_classification": "LOW",
+  "supporting_evidence_references": ["EVID-001"]
+}

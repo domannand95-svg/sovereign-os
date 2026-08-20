@@ -9,7 +9,9 @@ confidence-threshold = 0.8
 allow = [
     "Apache-2.0",
     "BSD-2-Clause",
+    "BSD-3-Clause",
     "CC0-1.0",
+    "ISC",
     "MIT",
     "MIT-0",
 ]
@@ -80,6 +82,10 @@ crate = "writeable@0.6.4"
 allow = ["Unicode-3.0"]
 
 [[licenses.exceptions]]
+crate = "webpki-root-certs@1.0.9"
+allow = ["CDLA-Permissive-2.0"]
+
+[[licenses.exceptions]]
 crate = "yoke@0.8.3"
 allow = ["Unicode-3.0"]
 
@@ -100,9 +106,9 @@ crate = "zerotrie@0.2.5"
 allow = ["Unicode-3.0"]
 
 [[licenses.exceptions]]
-crate = "zerovec@0.11.7"
+crate = "zerovec@0.11.8"
 allow = ["Unicode-3.0"]
 
 [[licenses.exceptions]]
-crate = "zerovec-derive@0.11.4"
+crate = "zerovec-derive@0.11.5"
 allow = ["Unicode-3.0"]

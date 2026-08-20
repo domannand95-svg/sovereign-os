@@ -1,0 +1,51 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "ExecutionConflictResultV1",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "conflict_id",
+    "execution_reference",
+    "conflict_type",
+    "resolution",
+    "resolution_reason",
+    "timestamp"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "EXECUTION_CONFLICT_RESULT-v1"
+    },
+    "conflict_id": {
+      "type": "string",
+      "pattern": "^cnf_[a-zA-Z0-9_-]+$"
+    },
+    "execution_reference": {
+      "type": "string",
+      "pattern": "^exec_[a-zA-Z0-9_-]+$"
+    },
+    "conflict_type": {
+      "type": "string",
+      "enum": ["ACTIVE_GRANT_VS_REVOCATION", "EXPIRED_LEASE_VS_APPROVAL", "SCOPE_OVERLAP_CONTRADICTION"]
+    },
+    "resolution": {
+      "type": "string",
+      "enum": ["DENY"]
+    },
+    "resolution_reason": {
+      "type": "string",
+      "minLength": 1
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "not": {
+    "anyOf": [
+      { "required": ["execution_token"] },
+      { "required": ["override_flag"] }
+    ]
+  },
+  "additionalProperties": false
+}

@@ -1,0 +1,56 @@
+{
+  "": "https://json-schema.org/draft/2020-12/schema",
+  "title": "RepositoryStageFailureResultV1",
+  "type": "object",
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "REPOSITORY_STAGE_FAILURE_RESULT-v1"
+    },
+    "failure_result_id": {
+      "type": "string",
+      "pattern": "^fail_stage_[a-zA-Z0-9_-]+$"
+    },
+    "repository_reference": {
+      "type": "string",
+      "minLength": 1
+    },
+    "mutation_reference": {
+      "type": "string",
+      "minLength": 1
+    },
+    "effect_classification": {
+      "type": "string",
+      "enum": ["NO_EFFECT", "PARTIAL_EFFECT", "FULL_EFFECT_UNVERIFIED", "UNKNOWN"]
+    },
+    "authorized_paths": {
+      "type": "array",
+      "items": { "type": "string" },
+      "minItems": 1
+    },
+    "observed_transitioned_paths": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "failure_stage": {
+      "type": "string",
+      "enum": ["PRE_EFFECT", "DURING_EFFECT", "POST_EFFECT_VERIFICATION"]
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "required": [
+    "schema_version",
+    "failure_result_id",
+    "repository_reference",
+    "mutation_reference",
+    "effect_classification",
+    "authorized_paths",
+    "observed_transitioned_paths",
+    "failure_stage",
+    "timestamp"
+  ],
+  "additionalProperties": false
+}

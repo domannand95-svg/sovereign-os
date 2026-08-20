@@ -1,0 +1,8 @@
+{
+  "schema_version": "CAPABILITY_STATE_QUERY-v1",
+  "query_id": "csq_001",
+  "grant_reference": "grant_001",
+  "evaluation_timestamp": "2026-08-20T10:12:00Z",
+  "supported_evidence_lineage": ["REQ-001", "EVAL-001", "NEG-001", "ADM-001", "LIFE-001"],
+  "timestamp": "2026-08-20T10:15:00Z"
+}

@@ -1,0 +1,12 @@
+{
+  "schema_version": "EFFECT_EVALUATION_RESULT-v1",
+  "proposal_reference": "sha256:proposal005",
+  "evaluation_context_reference": "sha256:context005",
+  "decision": "rejected",
+  "decision_reason_class": "POLICY_DENIED",
+  "evaluation_basis": [],
+  "capability_candidate_reference": null,
+  "capability_grant": {
+    "permission": "filesystem_write"
+  }
+}

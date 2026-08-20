@@ -1,0 +1,60 @@
+{
+  "": "https://json-schema.org/draft/2020-12/schema",
+  "title": "RepositoryRefTransitionCandidateV1",
+  "type": "object",
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "REPOSITORY_REF_TRANSITION_CANDIDATE-v1"
+    },
+    "candidate_id": {
+      "type": "string",
+      "pattern": "^cand_ref_[a-zA-Z0-9_-]+$"
+    },
+    "repository_reference": {
+      "type": "string",
+      "minLength": 1
+    },
+    "commit_verification_reference": {
+      "type": "string",
+      "minLength": 1
+    },
+    "ref_name": {
+      "type": "string",
+      "pattern": "^refs/heads/[a-zA-Z0-9_/-]+$"
+    },
+    "expected_old_commit": {
+      "type": "string",
+      "minLength": 1
+    },
+    "new_commit": {
+      "type": "string",
+      "minLength": 1
+    },
+    "transition_kind": {
+      "type": "string",
+      "const": "ONE_STEP_FAST_FORWARD"
+    },
+    "expected_index_tree": {
+      "type": "string",
+      "pattern": "^sha256:[a-f0-9]{16,64}$"
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "required": [
+    "schema_version",
+    "candidate_id",
+    "repository_reference",
+    "commit_verification_reference",
+    "ref_name",
+    "expected_old_commit",
+    "new_commit",
+    "transition_kind",
+    "expected_index_tree",
+    "created_at"
+  ],
+  "additionalProperties": false
+}

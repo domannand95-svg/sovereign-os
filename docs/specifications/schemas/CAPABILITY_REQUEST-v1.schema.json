@@ -1,0 +1,85 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "CapabilityRequestV1",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "request_id",
+    "requester_identity",
+    "requested_capability",
+    "declared_purpose",
+    "required_scope",
+    "duration_requirement",
+    "risk_classification",
+    "supporting_evidence_references"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "CAPABILITY_REQUEST-v1"
+    },
+    "request_id": {
+      "type": "string",
+      "pattern": "^req_[a-zA-Z0-9_-]+$"
+    },
+    "requester_identity": {
+      "type": "string",
+      "minLength": 1
+    },
+    "requested_capability": {
+      "type": "object",
+      "required": ["capability"],
+      "properties": {
+        "capability": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "additionalProperties": false
+    },
+    "declared_purpose": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 512
+    },
+    "required_scope": {
+      "type": "object",
+      "required": ["resource", "operations"],
+      "properties": {
+        "resource": {
+          "type": "string",
+          "minLength": 1
+        },
+        "operations": {
+          "type": "array",
+          "items": { "type": "string" },
+          "minItems": 1
+        }
+      },
+      "additionalProperties": false
+    },
+    "duration_requirement": {
+      "type": "string",
+      "pattern": "^[0-9]+[smhd]$"
+    },
+    "risk_classification": {
+      "type": "string",
+      "enum": ["LOW", "MEDIUM", "HIGH", "CRITICAL"]
+    },
+    "supporting_evidence_references": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^(EVID|TRACE|AUDIT)-[0-9]+$"
+      }
+    }
+  },
+  "not": {
+    "anyOf": [
+      { "required": ["execution_token"] },
+      { "required": ["permission_grant"] },
+      { "required": ["runtime_credential"] }
+    ]
+  },
+  "additionalProperties": false
+}

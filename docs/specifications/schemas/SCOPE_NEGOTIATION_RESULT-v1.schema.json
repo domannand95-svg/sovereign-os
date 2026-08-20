@@ -1,0 +1,103 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "ScopeNegotiationResultV1",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "negotiation_id",
+    "request_reference",
+    "evaluation_reference",
+    "requested_scope",
+    "negotiated_scope",
+    "reduction_reason",
+    "constraint_application",
+    "duration_adjustment",
+    "risk_reduction_result",
+    "negotiation_status",
+    "supporting_evidence_references",
+    "timestamp"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "SCOPE_NEGOTIATION_RESULT-v1"
+    },
+    "negotiation_id": {
+      "type": "string",
+      "pattern": "^neg_[a-zA-Z0-9_-]+$"
+    },
+    "request_reference": {
+      "type": "string",
+      "pattern": "^req_[a-zA-Z0-9_-]+$"
+    },
+    "evaluation_reference": {
+      "type": "string",
+      "pattern": "^eval_[a-zA-Z0-9_-]+$"
+    },
+    "requested_scope": {
+      "type": "object",
+      "required": ["resource", "operations"],
+      "properties": {
+        "resource": { "type": "string", "minLength": 1 },
+        "operations": {
+          "type": "array",
+          "items": { "type": "string" },
+          "minItems": 1
+        }
+      },
+      "additionalProperties": false
+    },
+    "negotiated_scope": {
+      "type": "object",
+      "required": ["resource", "operations"],
+      "properties": {
+        "resource": { "type": "string", "minLength": 1 },
+        "operations": {
+          "type": "array",
+          "items": { "type": "string" },
+          "minItems": 1
+        }
+      },
+      "additionalProperties": false
+    },
+    "reduction_reason": {
+      "type": "string",
+      "minLength": 1
+    },
+    "constraint_application": {
+      "type": "string",
+      "enum": ["TIGHTENED", "UNCHANGED"]
+    },
+    "duration_adjustment": {
+      "type": "string",
+      "pattern": "^[0-9]+[smhd]$"
+    },
+    "risk_reduction_result": {
+      "type": "string",
+      "enum": ["MITIGATED", "ACCEPTED", "UNACCEPTABLE"]
+    },
+    "negotiation_status": {
+      "type": "string",
+      "enum": ["SUCCESS", "REJECTED_OVER_EXPANSION"]
+    },
+    "supporting_evidence_references": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^(EVID|TRACE|AUDIT|REQ|EVAL)-[0-9]+$"
+      }
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "not": {
+    "anyOf": [
+      { "required": ["execution_token"] },
+      { "required": ["permission_grant"] },
+      { "required": ["runtime_credential"] }
+    ]
+  },
+  "additionalProperties": false
+}

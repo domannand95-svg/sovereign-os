@@ -1,0 +1,7 @@
+{
+  "schema_version": "CAPABILITY_STATE_QUERY-v1",
+  "query_id": "csq_002",
+  "grant_reference": "grant_001",
+  "evaluation_timestamp": "2026-08-20T10:15:00Z",
+  "renewal_request": "extend_duration_30m"
+}

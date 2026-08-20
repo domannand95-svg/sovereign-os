@@ -1,0 +1,53 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "OperationMatchRequestV1",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "operation_match_id",
+    "grant_reference",
+    "requested_operation",
+    "requested_resource",
+    "requested_parameters_digest",
+    "timestamp"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "OPERATION_MATCH_REQUEST-v1"
+    },
+    "operation_match_id": {
+      "type": "string",
+      "pattern": "^opm_[a-zA-Z0-9_-]+$"
+    },
+    "grant_reference": {
+      "type": "string",
+      "pattern": "^grant_[a-zA-Z0-9_-]+$"
+    },
+    "requested_operation": {
+      "type": "string",
+      "minLength": 1
+    },
+    "requested_resource": {
+      "type": "string",
+      "minLength": 1
+    },
+    "requested_parameters_digest": {
+      "type": "string",
+      "pattern": "^sha256:[a-fA-F0-9]{64}$"
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "not": {
+    "anyOf": [
+      { "required": ["credentials"] },
+      { "required": ["authority_claim"] },
+      { "required": ["policy_override"] },
+      { "required": ["scope_escalation"] }
+    ]
+  },
+  "additionalProperties": false
+}

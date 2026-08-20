@@ -1,0 +1,53 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "CapabilityExecutionRequestV1",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "execution_id",
+    "grant_reference",
+    "target_resource",
+    "requested_operation",
+    "invocation_payload_digest",
+    "timestamp"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "CAPABILITY_EXECUTION_REQUEST-v1"
+    },
+    "execution_id": {
+      "type": "string",
+      "pattern": "^exec_[a-zA-Z0-9_-]+$"
+    },
+    "grant_reference": {
+      "type": "string",
+      "pattern": "^grant_[a-zA-Z0-9_-]+$"
+    },
+    "target_resource": {
+      "type": "string",
+      "minLength": 1
+    },
+    "requested_operation": {
+      "type": "string",
+      "minLength": 1
+    },
+    "invocation_payload_digest": {
+      "type": "string",
+      "pattern": "^sha256:[a-fA-F0-9]{64}$"
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "not": {
+    "anyOf": [
+      { "required": ["execution_token"] },
+      { "required": ["permission_grant"] },
+      { "required": ["runtime_credential"] },
+      { "required": ["api_key"] }
+    ]
+  },
+  "additionalProperties": false
+}

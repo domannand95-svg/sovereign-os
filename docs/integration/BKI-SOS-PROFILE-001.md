@@ -2,11 +2,11 @@
 Document: BKI and Sovereign OS Language Compatibility Profile v1
 ID: BKI-SOS-PROFILE-001
 Version: 1.0
-Status: Proposed Compatibility Profile
+Status: Active Read-Only Beta Compatibility Profile
 Owner: Repository Maintainer
 Reviewers:
   - Core Reviewers
-Last Updated: 2026-08-11
+Last Updated: 2026-08-21
 Evidence:
   - BKI PR 13
 Depends On:
@@ -19,7 +19,7 @@ Supersedes: None
 
 ## Purpose
 
-Sovereign OS adopts `bki.sovereign.profile.v1` as the proposed metadata and
+Sovereign OS adopts `bki.sovereign.profile.v1` as the active read-only-beta metadata and
 language boundary for designated BKI validation during beta testing. This
 profile does not make BKI a Sovereign policy, disposition, promotion, registry,
 or execution authority.
@@ -29,14 +29,14 @@ or execution authority.
 | Item | Value |
 | --- | --- |
 | Profile version | `bki.sovereign.profile.v1` |
-| BKI contract commit | `27d75a5c33a5e40bbbd0359704fe10ef52bdf1f2` |
-| BKI compatibility runtime commit | `0ace31f9071969825b75187d31c5f418212e9ae9` |
+| BKI release | `bki-sovereign-v1.0.0-beta.1` |
+| BKI release candidate commit | `f1c2cde2865d2fb45cc4a748930dd90d55a55d83` |
 | Schema | `bki-sovereign-profile-v1.schema.json` |
 | Schema SHA-256 | `1a513455e09063f41d03023688ffc7b89bdababaf8ed9d1a78c101edb7b8845d` |
-| Activation | Not activated |
+| Activation | Active for read-only beta evidence intake |
 
-The commit is the immutable merge result of BKI PR 13. Beta activation still
-requires a tagged BKI pre-release and all gates defined below.
+The release commit contains the qualified runtime contract and the activation
+record. Consumers pin both the release tag and exact commit.
 
 The schema digest is calculated over canonical repository bytes with LF line
 endings. Compatibility checks normalize checkout line endings before hashing so
@@ -92,4 +92,20 @@ The `BKI Compatibility` workflow exercises this boundary on Windows and Linux
 using a repository-scoped read-only deploy key. It checks out the runtime commit
 above, never a moving branch, and verifies both worktrees remain unchanged.
 
-Until every gate passes, BKI integration remains not activated.
+Any gate failure suspends BKI consumption and fails closed.
+
+## Qualification Evidence — 2026-08-20
+
+The live cross-repository suite was executed on Windows against the exact pinned
+BKI runtime commit `0ace31f9071969825b75187d31c5f418212e9ae9`. All eight checks passed,
+including commit identity, canonical schema bytes and digest, profile
+translation, schema-valid CLI output, exact content hashes, quarantine,
+unknown-contract rejection, metadata-confusion rejection, and malformed-output
+rejection. The BKI repository regression gate independently passed with 83
+tests and one platform-specific skip.
+
+The repository owner authorized activation. The qualified runtime is published
+through `bki-sovereign-v1.0.0-beta.1`, and the Sovereign consumer pins its exact
+commit. The profile is **active only for read-only beta evidence intake**.
+Windows and Linux CI remain mandatory release evidence; a failure, identity
+mismatch, or schema drift suspends consumption and fails closed.

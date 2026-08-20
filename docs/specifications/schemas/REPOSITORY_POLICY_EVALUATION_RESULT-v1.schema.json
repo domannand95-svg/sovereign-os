@@ -1,0 +1,88 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "RepositoryPolicyEvaluationResultV1",
+  "description": "Defines structured policy evaluation outcomes. Grants ZERO execution authority or operational leases.",
+  "type": "object",
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "REPOSITORY_POLICY_EVALUATION_RESULT-v1"
+    },
+    "evaluation_id": {
+      "type": "string",
+      "pattern": "^eval_[a-zA-Z0-9_-]+$"
+    },
+    "policy_reference": {
+      "type": "object",
+      "properties": {
+        "policy_id": { "type": "string", "minLength": 1 },
+        "policy_version": {
+          "type": "string",
+          "pattern": "^v[0-9]+\\.[0-9]+\\.[0-9]+$"
+        },
+        "policy_digest": {
+          "type": "string",
+          "pattern": "^sha256:[0-9a-f]{64}$"
+        }
+      },
+      "required": ["policy_id", "policy_version", "policy_digest"],
+      "additionalProperties": false
+    },
+    "evidence_references": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "evidence_id": {
+            "type": "string",
+            "pattern": "^evid_[a-zA-Z0-9_-]+$"
+          },
+          "digest": {
+            "type": "string",
+            "pattern": "^sha256:[0-9a-f]{64}$"
+          }
+        },
+        "required": ["evidence_id", "digest"],
+        "additionalProperties": false
+      },
+      "minItems": 1
+    },
+    "governance_classification": {
+      "type": "string",
+      "enum": [
+        "COMPLIANT",
+        "NON_COMPLIANT",
+        "REQUIRES_REVIEW",
+        "INSUFFICIENT_EVIDENCE",
+        "CONFLICT_DETECTED"
+      ]
+    },
+    "human_review_required": {
+      "type": "boolean"
+    },
+    "evaluation_summary": {
+      "type": "string",
+      "minLength": 1
+    },
+    "evaluation_digest": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "evaluated_at": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "required": [
+    "schema_version",
+    "evaluation_id",
+    "policy_reference",
+    "evidence_references",
+    "governance_classification",
+    "human_review_required",
+    "evaluation_summary",
+    "evaluation_digest",
+    "evaluated_at"
+  ],
+  "additionalProperties": false
+}

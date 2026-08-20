@@ -1,0 +1,10 @@
+{
+  "schema_version": "CAPABILITY_ADMISSION_RESULT-v1",
+  "compilation_reference": "sha256:compile003",
+  "candidate_reference": "sha256:candidate003",
+  "admission_status": "REJECTED",
+  "admission_timestamp": "2026-08-20T10:40:00Z",
+  "registry_gate_result": "PASS",
+  "failure_reason_class": "GATE_3_POLICY_CONFLICT",
+  "bridge_identity": "host-admission-bridge-v1"
+}

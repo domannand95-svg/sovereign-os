@@ -1,4 +1,5 @@
 pub mod adapter;
+pub mod agent;
 pub mod containment;
 pub mod corpus;
 pub mod evaluator;

@@ -1,0 +1,70 @@
+{
+  "": "https://json-schema.org/draft/2020-12/schema",
+  "title": "RepositoryRefTransitionVerificationResultV1",
+  "type": "object",
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "REPOSITORY_REF_TRANSITION_VERIFICATION_RESULT-v1"
+    },
+    "verification_id": {
+      "type": "string",
+      "pattern": "^ver_ref_[a-zA-Z0-9_-]+$"
+    },
+    "transition_result_reference": {
+      "type": "string",
+      "minLength": 1
+    },
+    "candidate_reference": {
+      "type": "string",
+      "minLength": 1
+    },
+    "repository_reference": {
+      "type": "string",
+      "minLength": 1
+    },
+    "ref_name": {
+      "type": "string",
+      "pattern": "^refs/heads/[a-zA-Z0-9_/-]+$"
+    },
+    "expected_old_commit": {
+      "type": "string",
+      "minLength": 1
+    },
+    "expected_new_commit": {
+      "type": "string",
+      "minLength": 1
+    },
+    "observed_ref_commit": {
+      "type": "string",
+      "minLength": 1
+    },
+    "verification_disposition": {
+      "type": "string",
+      "enum": ["VERIFIED_TRANSITION", "NO_EFFECT", "FULL_EFFECT_UNVERIFIED", "UNKNOWN", "MISMATCH"]
+    },
+    "verification_reasons": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "checked_at": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "required": [
+    "schema_version",
+    "verification_id",
+    "transition_result_reference",
+    "candidate_reference",
+    "repository_reference",
+    "ref_name",
+    "expected_old_commit",
+    "expected_new_commit",
+    "observed_ref_commit",
+    "verification_disposition",
+    "verification_reasons",
+    "checked_at"
+  ],
+  "additionalProperties": false
+}

@@ -13,6 +13,7 @@ mod claim;
 mod disposition;
 mod dispute;
 mod failed_attempt;
+mod identity;
 mod method;
 mod objective;
 mod reviewer_finding;
@@ -28,15 +29,25 @@ pub use admission::{
     ExternalIdentityKind, RecordKindRequirement, ReviewerIndependenceRequirement,
 };
 pub use claim::{ClaimError, ClaimKind, ClaimPayload, Substantiation};
+
 pub use disposition::{DispositionDecision, DispositionError, DispositionPayload};
+
 pub use dispute::{DisputeError, DisputePayload, DisputeStatus};
+
 pub use failed_attempt::{FailedAttemptError, FailedAttemptPayload, FailureKind};
+
+pub use identity::*;
+
 pub use method::{MethodError, MethodPayload};
+
 pub use objective::{ObjectiveError, ObjectivePayload, MAX_LIST_ITEMS, MAX_TEXT_FIELD_LEN};
+
 pub use reviewer_finding::{
     FindingKind, FindingSeverity, IndependenceResult, ReviewerFindingError, ReviewerFindingPayload,
 };
+
 pub use source::{DigestAlgorithm, SourceError, SourcePayload};
+
 pub use uncertainty::{UncertaintyError, UncertaintyKind, UncertaintyPayload};
 
 pub const EVIDENCE_SCHEMA_VERSION: u16 = 1;
@@ -1245,3 +1256,6 @@ mod tests {
         );
     }
 }
+
+#[cfg(feature = "governance-evidence-chain")]
+pub mod replay;

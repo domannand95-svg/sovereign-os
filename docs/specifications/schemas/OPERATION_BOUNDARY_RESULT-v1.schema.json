@@ -1,0 +1,66 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "OperationBoundaryResultV1",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "boundary_result_id",
+    "operation_reference",
+    "match_disposition",
+    "matched_scope",
+    "boundary_constraints",
+    "rejection_reasons",
+    "timestamp"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "OPERATION_BOUNDARY_RESULT-v1"
+    },
+    "boundary_result_id": {
+      "type": "string",
+      "pattern": "^obr_[a-zA-Z0-9_-]+$"
+    },
+    "operation_reference": {
+      "type": "string",
+      "pattern": "^opm_[a-zA-Z0-9_-]+$"
+    },
+    "match_disposition": {
+      "type": "string",
+      "enum": ["MATCH", "DENY"]
+    },
+    "matched_scope": {
+      "type": "object",
+      "required": ["resource", "operations"],
+      "properties": {
+        "resource": { "type": "string", "minLength": 1 },
+        "operations": {
+          "type": "array",
+          "items": { "type": "string" },
+          "minItems": 1
+        }
+      },
+      "additionalProperties": false
+    },
+    "boundary_constraints": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "rejection_reasons": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "not": {
+    "anyOf": [
+      { "required": ["execution_token"] },
+      { "required": ["permission_grant"] },
+      { "required": ["runtime_credential"] }
+    ]
+  },
+  "additionalProperties": false
+}

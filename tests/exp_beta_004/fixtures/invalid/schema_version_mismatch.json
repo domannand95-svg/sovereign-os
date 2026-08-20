@@ -1,0 +1,6 @@
+{
+  "schema_version": "CAPABILITY-v1",
+  "proposed_effect_type": "invoke_tool",
+  "target_resource": "tool:test",
+  "parameters": {}
+}

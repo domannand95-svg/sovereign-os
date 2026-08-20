@@ -1,0 +1,75 @@
+{
+  "": "https://json-schema.org/draft/2020-12/schema",
+  "title": "RepositoryRefTransitionResultV1",
+  "type": "object",
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "REPOSITORY_REF_TRANSITION_RESULT-v1"
+    },
+    "result_id": {
+      "type": "string",
+      "pattern": "^res_ref_[a-zA-Z0-9_-]+$"
+    },
+    "candidate_reference": {
+      "type": "string",
+      "minLength": 1
+    },
+    "repository_reference": {
+      "type": "string",
+      "minLength": 1
+    },
+    "commit_verification_reference": {
+      "type": "string",
+      "minLength": 1
+    },
+    "ref_name": {
+      "type": "string",
+      "pattern": "^refs/heads/[a-zA-Z0-9_/-]+$"
+    },
+    "expected_old_commit": {
+      "type": "string",
+      "minLength": 1
+    },
+    "observed_pre_commit": {
+      "type": "string",
+      "minLength": 1
+    },
+    "expected_new_commit": {
+      "type": "string",
+      "minLength": 1
+    },
+    "observed_post_commit": {
+      "type": "string",
+      "minLength": 1
+    },
+    "transition_disposition": {
+      "type": "string",
+      "enum": ["TRANSITIONED", "DENIED", "FAILED", "MISMATCH"]
+    },
+    "transition_reasons": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "transitioned_at": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "required": [
+    "schema_version",
+    "result_id",
+    "candidate_reference",
+    "repository_reference",
+    "commit_verification_reference",
+    "ref_name",
+    "expected_old_commit",
+    "observed_pre_commit",
+    "expected_new_commit",
+    "observed_post_commit",
+    "transition_disposition",
+    "transition_reasons",
+    "transitioned_at"
+  ],
+  "additionalProperties": false
+}

@@ -1,0 +1,66 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "CapabilityExecutionAuditEventV1",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "execution_audit_id",
+    "execution_reference",
+    "capability_reference",
+    "enforcement_reference",
+    "decision_result",
+    "decision_timestamp",
+    "evidence_lineage_reference",
+    "timestamp"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "CAPABILITY_EXECUTION_AUDIT_EVENT-v1"
+    },
+    "execution_audit_id": {
+      "type": "string",
+      "pattern": "^aud_[a-zA-Z0-9_-]+$"
+    },
+    "execution_reference": {
+      "type": "string",
+      "pattern": "^exec_[a-zA-Z0-9_-]+$"
+    },
+    "capability_reference": {
+      "type": "string",
+      "pattern": "^grant_[a-zA-Z0-9_-]+$"
+    },
+    "enforcement_reference": {
+      "type": "string",
+      "pattern": "^enf_[a-zA-Z0-9_-]+$"
+    },
+    "decision_result": {
+      "type": "string",
+      "enum": ["ALLOW", "DENY"]
+    },
+    "decision_timestamp": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "evidence_lineage_reference": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^(REQ|EVAL|NEG|ADM|LIFE|EXEC|ENF)-[0-9]+$"
+      },
+      "minItems": 1
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "not": {
+    "anyOf": [
+      { "required": ["runtime_credential"] },
+      { "required": ["execution_token"] },
+      { "required": ["renewal_instruction"] }
+    ]
+  },
+  "additionalProperties": false
+}

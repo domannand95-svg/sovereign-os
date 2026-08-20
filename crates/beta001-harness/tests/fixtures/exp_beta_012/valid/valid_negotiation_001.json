@@ -1,0 +1,21 @@
+{
+  "schema_version": "SCOPE_NEGOTIATION_RESULT-v1",
+  "negotiation_id": "neg_001",
+  "request_reference": "req_001",
+  "evaluation_reference": "eval_001",
+  "requested_scope": {
+    "resource": "/",
+    "operations": ["write"]
+  },
+  "negotiated_scope": {
+    "resource": "/workspace/project/build",
+    "operations": ["write"]
+  },
+  "reduction_reason": "Constrained broad root access to minimum necessary project workspace.",
+  "constraint_application": "TIGHTENED",
+  "duration_adjustment": "15m",
+  "risk_reduction_result": "MITIGATED",
+  "negotiation_status": "SUCCESS",
+  "supporting_evidence_references": ["REQ-001", "EVAL-001"],
+  "timestamp": "2026-08-20T10:05:00Z"
+}

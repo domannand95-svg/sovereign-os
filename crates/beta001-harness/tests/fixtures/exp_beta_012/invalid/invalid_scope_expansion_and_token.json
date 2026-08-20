@@ -1,0 +1,22 @@
+{
+  "schema_version": "SCOPE_NEGOTIATION_RESULT-v1",
+  "negotiation_id": "neg_002",
+  "request_reference": "req_002",
+  "evaluation_reference": "eval_002",
+  "requested_scope": {
+    "resource": "/workspace/project",
+    "operations": ["write"]
+  },
+  "negotiated_scope": {
+    "resource": "/",
+    "operations": ["write", "execute", "delete"]
+  },
+  "reduction_reason": "Attempted illegal scope expansion",
+  "constraint_application": "TIGHTENED",
+  "duration_adjustment": "1h",
+  "risk_reduction_result": "UNACCEPTABLE",
+  "negotiation_status": "SUCCESS",
+  "supporting_evidence_references": ["REQ-002"],
+  "timestamp": "2026-08-20T10:05:00Z",
+  "execution_token": "unauthorized_escalation_token"
+}

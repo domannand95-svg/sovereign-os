@@ -1,0 +1,83 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "RepositoryPublicationAuthorizationV1",
+  "description": "Defines the explicit, bounded permission to execute a specific remote publication candidate.",
+  "type": "object",
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "REPOSITORY_PUBLICATION_AUTHORIZATION-v1"
+    },
+    "authorization_id": {
+      "type": "string",
+      "pattern": "^pub_auth_[a-zA-Z0-9_-]+$"
+    },
+    "purpose": {
+      "type": "string",
+      "const": "REMOTE_PUBLICATION"
+    },
+    "authorized_candidate": {
+      "description": "Strict binding to the immutable candidate being authorized.",
+      "type": "object",
+      "properties": {
+        "candidate_schema_version": {
+          "type": "string",
+          "const": "REPOSITORY_PUBLICATION_CANDIDATE-v1"
+        },
+        "candidate_id": { 
+          "type": "string", 
+          "pattern": "^pub_cand_[a-zA-Z0-9_-]+$" 
+        },
+        "candidate_commit_oid": { 
+          "type": "string", 
+          "pattern": "^[0-9a-f]{40}$" 
+        }
+      },
+      "required": ["candidate_schema_version", "candidate_id", "candidate_commit_oid"],
+      "additionalProperties": false
+    },
+    "temporal_bounds": {
+      "type": "object",
+      "properties": {
+        "issued_at": { "type": "string", "format": "date-time" },
+        "expires_at": { "type": "string", "format": "date-time" }
+      },
+      "required": ["issued_at", "expires_at"],
+      "additionalProperties": false
+    },
+    "authorized_scope": {
+      "description": "Explicit capability granted by this authorization. Forbidden authorities are structurally absent.",
+      "type": "object",
+      "properties": {
+        "operation": { 
+          "type": "string",
+          "const": "repository.remote.publish_exact" 
+        }
+      },
+      "required": ["operation"],
+      "additionalProperties": false
+    },
+    "consumption_policy": {
+      "type": "object",
+      "properties": {
+        "single_use_only": { "type": "boolean", "const": true },
+        "consumption_id": {
+          "type": "string",
+          "pattern": "^pub_consume_[a-zA-Z0-9_-]+$"
+        }
+      },
+      "required": ["single_use_only", "consumption_id"],
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "schema_version",
+    "authorization_id",
+    "purpose",
+    "authorized_candidate",
+    "temporal_bounds",
+    "authorized_scope",
+    "consumption_policy"
+  ],
+  "additionalProperties": false
+}

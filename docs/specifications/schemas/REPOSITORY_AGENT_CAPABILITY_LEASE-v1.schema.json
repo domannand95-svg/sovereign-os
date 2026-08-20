@@ -1,0 +1,66 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "RepositoryAgentCapabilityLeaseV1",
+  "description": "Defines bounded, temporary capability leases for autonomous agents. Grants ZERO sovereign authority or permanent privilege.",
+  "type": "object",
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "REPOSITORY_AGENT_CAPABILITY_LEASE-v1"
+    },
+    "lease_id": {
+      "type": "string",
+      "pattern": "^lease_[a-zA-Z0-9_-]+$"
+    },
+    "agent_identity": {
+      "type": "object",
+      "properties": {
+        "agent_id": { "type": "string", "minLength": 1 },
+        "provenance_ref": { "type": "string", "minLength": 1 }
+      },
+      "required": ["agent_id", "provenance_ref"],
+      "additionalProperties": false
+    },
+    "capability_scope": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": [
+          "REPOSITORY_READ",
+          "EVIDENCE_QUERY",
+          "POLICY_EVALUATE",
+          "WORKFLOW_OBSERVE"
+        ]
+      },
+      "minItems": 1
+    },
+    "objective_reference": {
+      "type": "string",
+      "minLength": 1
+    },
+    "temporal_bounds": {
+      "type": "object",
+      "properties": {
+        "issued_at": { "type": "string", "format": "date-time" },
+        "expires_at": { "type": "string", "format": "date-time" },
+        "single_use_only": { "type": "boolean" }
+      },
+      "required": ["issued_at", "expires_at", "single_use_only"],
+      "additionalProperties": false
+    },
+    "issuing_authority_reference": {
+      "type": "string",
+      "pattern": "^auth_[a-zA-Z0-9_-]+$"
+    }
+  },
+  "required": [
+    "schema_version",
+    "lease_id",
+    "agent_identity",
+    "capability_scope",
+    "objective_reference",
+    "temporal_bounds",
+    "issuing_authority_reference"
+  ],
+  "additionalProperties": false
+}

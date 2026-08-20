@@ -1,0 +1,11 @@
+{
+  "schema_version": "CAPABILITY_ADMISSION_RESULT-v1",
+  "compilation_reference": "sha256:compile006",
+  "candidate_reference": "sha256:candidate006",
+  "admission_status": "ADMITTED",
+  "admission_timestamp": "2026-08-20T10:55:00Z",
+  "registry_gate_result": "PASS",
+  "failure_reason_class": null,
+  "bridge_identity": "host-admission-bridge-v1",
+  "execution_token": "exec-auth-001"
+}

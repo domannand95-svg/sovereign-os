@@ -1,0 +1,101 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "RepositoryPublicationCandidateV1",
+  "description": "Defines an immutable proposed remote publication state transition. Does NOT grant permission to execute.",
+  "type": "object",
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "REPOSITORY_PUBLICATION_CANDIDATE-v1"
+    },
+    "candidate_id": {
+      "type": "string",
+      "pattern": "^pub_cand_[a-zA-Z0-9_-]+$"
+    },
+    "local_repository_identity": {
+      "type": "string",
+      "minLength": 1
+    },
+    "candidate_commit_oid": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{40}$",
+      "description": "MUST equal proposed_transition.to_oid during semantic validation."
+    },
+    "source_local_ref": {
+      "type": "string",
+      "pattern": "^refs/heads/[a-zA-Z0-9_/-]+$",
+      "description": "AGENT-BETA-008 restricts publication candidates to governed local branch references only."
+    },
+    "canonical_remote_identity": {
+      "type": "object",
+      "description": "Independently resolved provider identity, never a local alias like 'origin'.",
+      "properties": {
+        "provider": { "type": "string", "minLength": 1 },
+        "provider_repository_id": { "type": "string", "minLength": 1 },
+        "owner": { "type": "string", "minLength": 1 },
+        "name": { "type": "string", "minLength": 1 },
+        "endpoint": { "type": "string", "format": "uri" }
+      },
+      "required": [
+        "provider",
+        "provider_repository_id",
+        "owner",
+        "name",
+        "endpoint"
+      ],
+      "additionalProperties": false
+    },
+    "destination_ref": {
+      "type": "string",
+      "pattern": "^refs/heads/[a-zA-Z0-9_/-]+$"
+    },
+    "expected_remote_state": {
+      "description": "For state_type present, oid MUST equal proposed_transition.from_oid during semantic validation.",
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "state_type": { "const": "present" },
+            "oid": { "type": "string", "pattern": "^[0-9a-f]{40}$" }
+          },
+          "required": ["state_type", "oid"],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "state_type": { "const": "absent" }
+          },
+          "required": ["state_type"],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "proposed_transition": {
+      "type": "object",
+      "properties": {
+        "from_oid": { 
+          "type": "string", 
+          "pattern": "^([0-9a-f]{40}|0000000000000000000000000000000000000000)$" 
+        },
+        "to_oid": { 
+          "type": "string", 
+          "pattern": "^[0-9a-f]{40}$" 
+        }
+      },
+      "required": ["from_oid", "to_oid"],
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "schema_version",
+    "candidate_id",
+    "local_repository_identity",
+    "candidate_commit_oid",
+    "canonical_remote_identity",
+    "destination_ref",
+    "expected_remote_state",
+    "proposed_transition"
+  ],
+  "additionalProperties": false
+}

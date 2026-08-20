@@ -1,0 +1,75 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "RepositoryAgentCommunicationEvidenceV1",
+  "description": "Defines immutable epistemic evidence of agent interaction. Grants ZERO authority or instruction privileges.",
+  "type": "object",
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "REPOSITORY_AGENT_COMMUNICATION_EVIDENCE-v1"
+    },
+    "message_id": {
+      "type": "string",
+      "pattern": "^msg_[a-zA-Z0-9_-]+$"
+    },
+    "sender_agent_identity": {
+      "type": "string",
+      "pattern": "^agent_[a-zA-Z0-9_-]+$"
+    },
+    "communication_context_reference": {
+      "type": "string",
+      "pattern": "^ctx_[a-zA-Z0-9_-]+$"
+    },
+    "message_type": {
+      "type": "string",
+      "enum": [
+        "OBSERVATION",
+        "PROPOSAL",
+        "REQUEST",
+        "EVALUATION_RESULT",
+        "STATUS_UPDATE",
+        "REFERENCE"
+      ]
+    },
+    "epistemic_classification": {
+      "type": "string",
+      "enum": [
+        "OBSERVED",
+        "ASSERTED",
+        "PROPOSED",
+        "DERIVED",
+        "UNVERIFIED",
+        "CONFLICTING"
+      ]
+    },
+    "provenance": {
+      "type": "object",
+      "properties": {
+        "message_digest": {
+          "type": "string",
+          "pattern": "^sha256:[0-9a-f]{64}$"
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "source_reference": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": ["message_digest", "created_at", "source_reference"],
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "schema_version",
+    "message_id",
+    "sender_agent_identity",
+    "communication_context_reference",
+    "message_type",
+    "epistemic_classification",
+    "provenance"
+  ],
+  "additionalProperties": false
+}

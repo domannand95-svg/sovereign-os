@@ -41,7 +41,7 @@ jobs:
         uses: actions/checkout@v7
         with:
           repository: domannand95-svg/knowledge-infrastructure-bootstrap-kit
-          ref: 0ace31f9071969825b75187d31c5f418212e9ae9
+          ref: f1c2cde2865d2fb45cc4a748930dd90d55a55d83
           ssh-key: ${{ secrets.BKI_READ_DEPLOY_KEY }}
           path: bki
           persist-credentials: false
