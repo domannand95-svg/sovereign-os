@@ -1,0 +1,56 @@
+{
+  "": "https://json-schema.org/draft/2020-12/schema",
+  "title": "RepositoryMutationResultV1",
+  "type": "object",
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "REPOSITORY_MUTATION_RESULT-v1"
+    },
+    "mutation_id": {
+      "type": "string",
+      "pattern": "^mut_[a-zA-Z0-9_-]+$"
+    },
+    "repository_reference": {
+      "type": "string",
+      "minLength": 1
+    },
+    "candidate_reference": {
+      "type": "string",
+      "minLength": 1
+    },
+    "pre_mutation_baseline": {
+      "type": "string",
+      "minLength": 1
+    },
+    "target_paths": {
+      "type": "array",
+      "items": { "type": "string" },
+      "minItems": 1
+    },
+    "mutation_disposition": {
+      "type": "string",
+      "enum": ["APPLIED", "DENIED", "FAILED"]
+    },
+    "resulting_diff_digest": {
+      "type": "string",
+      "pattern": "^sha256:[a-f0-9]{16,64}$"
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "required": [
+    "schema_version",
+    "mutation_id",
+    "repository_reference",
+    "candidate_reference",
+    "pre_mutation_baseline",
+    "target_paths",
+    "mutation_disposition",
+    "resulting_diff_digest",
+    "timestamp"
+  ],
+  "additionalProperties": false
+}
