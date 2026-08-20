@@ -6,9 +6,8 @@ use serde_json::Value;
 fn load_schema() -> Validator {
     let manifest_dir = env!("CARGO_MANIFEST_DIR");
     let schema_path = Path::new(manifest_dir)
-        .join("../..\..\docs/specifications/schemas/CAPABILITY_REQUEST-v1.schema.json");
+        .join(r#"../../docs/specifications/schemas/CAPABILITY_REQUEST-v1.schema.json"#);
 
-    // Fallback search across common relative locations
     let schema_path = if schema_path.exists() {
         schema_path.canonicalize().unwrap()
     } else {
