@@ -1,0 +1,61 @@
+{
+  "": "https://json-schema.org/draft/2020-12/schema",
+  "title": "RepositoryMutationFailureResultV1",
+  "type": "object",
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "REPOSITORY_MUTATION_FAILURE_RESULT-v1"
+    },
+    "failure_result_id": {
+      "type": "string",
+      "pattern": "^fail_[a-zA-Z0-9_-]+$"
+    },
+    "mutation_reference": {
+      "type": "string",
+      "minLength": 1
+    },
+    "repository_reference": {
+      "type": "string",
+      "minLength": 1
+    },
+    "candidate_reference": {
+      "type": "string",
+      "minLength": 1
+    },
+    "effect_classification": {
+      "type": "string",
+      "enum": ["NO_EFFECT", "PARTIAL_EFFECT", "FULL_EFFECT_UNVERIFIED", "UNKNOWN"]
+    },
+    "observed_changed_paths": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "expected_target_paths": {
+      "type": "array",
+      "items": { "type": "string" },
+      "minItems": 1
+    },
+    "failure_stage": {
+      "type": "string",
+      "enum": ["PRE_EFFECT", "DURING_EFFECT", "POST_EFFECT_VERIFICATION"]
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "required": [
+    "schema_version",
+    "failure_result_id",
+    "mutation_reference",
+    "repository_reference",
+    "candidate_reference",
+    "effect_classification",
+    "observed_changed_paths",
+    "expected_target_paths",
+    "failure_stage",
+    "timestamp"
+  ],
+  "additionalProperties": false
+}
