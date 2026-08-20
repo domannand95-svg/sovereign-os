@@ -1,0 +1,60 @@
+{
+  "": "https://json-schema.org/draft/2020-12/schema",
+  "title": "RepositoryProposalValidationResultV1",
+  "type": "object",
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "REPOSITORY_PROPOSAL_VALIDATION_RESULT-v1"
+    },
+    "validation_id": {
+      "type": "string",
+      "pattern": "^val_[a-zA-Z0-9_-]+$"
+    },
+    "candidate_reference": {
+      "type": "string",
+      "minLength": 1
+    },
+    "repository_reference": {
+      "type": "string",
+      "minLength": 1
+    },
+    "candidate_baseline_commit": {
+      "type": "string",
+      "minLength": 1
+    },
+    "observed_baseline_commit": {
+      "type": "string",
+      "minLength": 1
+    },
+    "candidate_diff_digest": {
+      "type": "string",
+      "pattern": "^sha256:[a-f0-9]{16,64}$"
+    },
+    "validation_disposition": {
+      "type": "string",
+      "enum": ["MATCHED", "STALE", "REJECTED"]
+    },
+    "validation_reasons": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "checked_at": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "required": [
+    "schema_version",
+    "validation_id",
+    "candidate_reference",
+    "repository_reference",
+    "candidate_baseline_commit",
+    "observed_baseline_commit",
+    "candidate_diff_digest",
+    "validation_disposition",
+    "validation_reasons",
+    "checked_at"
+  ],
+  "additionalProperties": false
+}
