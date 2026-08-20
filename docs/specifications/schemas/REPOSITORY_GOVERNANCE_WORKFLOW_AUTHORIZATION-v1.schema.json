@@ -1,0 +1,84 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "RepositoryGovernanceWorkflowAuthorizationV1",
+  "description": "Defines bounded permission to coordinate a governance workflow. Grants ZERO execution or operational capabilities.",
+  "type": "object",
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "REPOSITORY_GOVERNANCE_WORKFLOW_AUTHORIZATION-v1"
+    },
+    "workflow_authorization_id": {
+      "type": "string",
+      "pattern": "^wf_auth_[a-zA-Z0-9_-]+$"
+    },
+    "workflow_candidate_ref": {
+      "type": "object",
+      "properties": {
+        "workflow_candidate_id": {
+          "type": "string",
+          "pattern": "^wf_cand_[a-zA-Z0-9_-]+$"
+        },
+        "candidate_digest": {
+          "type": "string",
+          "pattern": "^sha256:[0-9a-f]{64}$"
+        }
+      },
+      "required": ["workflow_candidate_id", "candidate_digest"],
+      "additionalProperties": false
+    },
+    "authorized_coordination_scope": {
+      "type": "object",
+      "properties": {
+        "operation": {
+          "type": "string",
+          "const": "repository.governance.coordinate_exact"
+        },
+        "observe_lifecycle": { "type": "boolean", "const": true },
+        "aggregate_evidence": { "type": "boolean", "const": true },
+        "request_evaluation": { "type": "boolean", "const": true },
+        "advance_state": { "type": "boolean", "const": true },
+        "execute_deployment": { "type": "boolean", "const": false },
+        "merge_repository": { "type": "boolean", "const": false },
+        "publish_artifact": { "type": "boolean", "const": false }
+      },
+      "required": [
+        "operation",
+        "observe_lifecycle",
+        "aggregate_evidence",
+        "request_evaluation",
+        "advance_state",
+        "execute_deployment",
+        "merge_repository",
+        "publish_artifact"
+      ],
+      "additionalProperties": false
+    },
+    "temporal_bounds": {
+      "type": "object",
+      "properties": {
+        "issued_at": { "type": "string", "format": "date-time" },
+        "expires_at": { "type": "string", "format": "date-time" }
+      },
+      "required": ["issued_at", "expires_at"],
+      "additionalProperties": false
+    },
+    "consumption_policy": {
+      "type": "object",
+      "properties": {
+        "single_use_only": { "type": "boolean", "const": true }
+      },
+      "required": ["single_use_only"],
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "schema_version",
+    "workflow_authorization_id",
+    "workflow_candidate_ref",
+    "authorized_coordination_scope",
+    "temporal_bounds",
+    "consumption_policy"
+  ],
+  "additionalProperties": false
+}
