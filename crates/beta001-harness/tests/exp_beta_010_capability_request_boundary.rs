@@ -6,12 +6,16 @@ use serde_json::Value;
 fn load_schema() -> Validator {
     let manifest_dir = env!("CARGO_MANIFEST_DIR");
     let schema_path = Path::new(manifest_dir)
-        .join("../../../docs/specifications/schemas/CAPABILITY_REQUEST-v1.schema.json");
+        .join("../..\..\docs/specifications/schemas/CAPABILITY_REQUEST-v1.schema.json");
 
-    let schema_path = schema_path.canonicalize()
-        .unwrap_or_else(|_| Path::new("docs/specifications/schemas/CAPABILITY_REQUEST-v1.schema.json")
+    // Fallback search across common relative locations
+    let schema_path = if schema_path.exists() {
+        schema_path.canonicalize().unwrap()
+    } else {
+        Path::new("docs/specifications/schemas/CAPABILITY_REQUEST-v1.schema.json")
             .canonicalize()
-            .expect("Failed to locate CAPABILITY_REQUEST-v1 schema"));
+            .expect("Failed to locate CAPABILITY_REQUEST-v1 schema")
+    };
 
     let schema_str = fs::read_to_string(&schema_path)
         .unwrap_or_else(|_| panic!("Failed to read schema at {:?}", schema_path));
