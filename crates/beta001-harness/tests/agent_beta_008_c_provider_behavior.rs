@@ -333,7 +333,7 @@ impl NetworkTransport for SmartHttpServerFixture {
 
         let oid = git2::Oid::from_str(&self.target_commit_oid)
             .map_err(|_| NetworkError::ProtocolViolation)?;
-        let commit_obj = local_repo
+        let _commit_obj = local_repo
             .find_object(oid, Some(git2::ObjectType::Commit))
             .map_err(|_| NetworkError::ProtocolViolation)?;
 

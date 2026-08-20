@@ -2,10 +2,10 @@ use std::collections::HashMap;
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum AdversarialRefTransitionDisposition {
-    TRANSITIONED,
-    DENIED,
-    STALE,
-    MISMATCH,
+    Transitioned,
+    Denied,
+    Stale,
+    Mismatch,
 }
 
 #[derive(Debug, Clone)]
@@ -20,6 +20,7 @@ pub struct AdversarialRefContext {
 pub struct AdversarialRefOrchestrator;
 
 impl AdversarialRefOrchestrator {
+    #[allow(clippy::too_many_arguments)]
     pub fn execute_adversarial_ref_transition(
         &self,
         context: &AdversarialRefContext,
@@ -32,7 +33,7 @@ impl AdversarialRefOrchestrator {
     ) -> AdversarialRefTransitionDisposition {
         // Enforce INVARIANT-391: Denial dominance
         if !context.grant_active || context.revoked {
-            return AdversarialRefTransitionDisposition::DENIED;
+            return AdversarialRefTransitionDisposition::Denied;
         }
 
         // Enforce INVARIANT-394 & 395: Exact ref name and local heads namespace confinement
@@ -40,28 +41,28 @@ impl AdversarialRefOrchestrator {
             || requested_ref != context.authorized_ref
             || !requested_ref.starts_with("refs/heads/")
         {
-            return AdversarialRefTransitionDisposition::DENIED;
+            return AdversarialRefTransitionDisposition::Denied;
         }
 
         // Enforce INVARIANT-392: Stale candidate rejection
         if is_stale_candidate {
-            return AdversarialRefTransitionDisposition::STALE;
+            return AdversarialRefTransitionDisposition::Stale;
         }
 
         // Get live ref state
         let current_val = match live_refs.get(requested_ref) {
             Some(v) => v,
-            None => return AdversarialRefTransitionDisposition::MISMATCH,
+            None => return AdversarialRefTransitionDisposition::Mismatch,
         };
 
         // Enforce INVARIANT-393: Atomic Compare-and-Swap (fails closed on race)
-        if current_val != requested_old || requested_old != &context.expected_old_commit {
-            return AdversarialRefTransitionDisposition::DENIED;
+        if current_val != requested_old || requested_old != context.expected_old_commit {
+            return AdversarialRefTransitionDisposition::Denied;
         }
 
         // Apply atomic transition
         live_refs.insert(requested_ref.to_string(), new_commit.to_string());
-        AdversarialRefTransitionDisposition::TRANSITIONED
+        AdversarialRefTransitionDisposition::Transitioned
     }
 }
 
@@ -89,7 +90,7 @@ fn test_agent_007_d_cas_race_denied() {
         false,
     );
 
-    assert_eq!(disposition, AdversarialRefTransitionDisposition::DENIED);
+    assert_eq!(disposition, AdversarialRefTransitionDisposition::Denied);
     assert_eq!(
         live_refs.get("refs/heads/main"),
         Some(&"commit_B".to_string())
@@ -123,7 +124,7 @@ fn test_agent_007_d_alternate_branch_substitution_denied() {
         true, // Alternate ref indicator
     );
 
-    assert_eq!(disposition, AdversarialRefTransitionDisposition::DENIED);
+    assert_eq!(disposition, AdversarialRefTransitionDisposition::Denied);
     assert_eq!(
         live_refs.get("refs/heads/release"),
         Some(&"commit_A".to_string())
@@ -156,7 +157,7 @@ fn test_agent_007_d_push_boundary_isolated() {
 
     assert_eq!(
         disposition,
-        AdversarialRefTransitionDisposition::TRANSITIONED
+        AdversarialRefTransitionDisposition::Transitioned
     );
 
     // Verify local ref updated while remote publication authority remains absent (isolated)

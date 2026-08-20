@@ -66,7 +66,7 @@ fn o17_b_05_duplicate_node_does_not_mutate_graph() {
         make_node("prop", "dig_prop", None),
         make_node("life", "dig_life", Some("dig_prop")),
     ];
-    let mut graph = EvidenceGraph::new(nodes);
+    let graph = EvidenceGraph::new(nodes);
     let graph_before = graph.clone();
 
     let _ = traverse_ancestry(&graph, &NodeId("life".into())).unwrap();

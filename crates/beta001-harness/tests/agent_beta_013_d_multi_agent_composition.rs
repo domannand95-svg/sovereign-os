@@ -1,4 +1,3 @@
-use chrono::Utc;
 use serde::Serialize;
 use serde_json::json;
 
@@ -31,6 +30,7 @@ pub struct MultiAgentCompositionResult {
 pub struct MultiAgentCompositionHarness;
 
 impl MultiAgentCompositionHarness {
+    #[allow(clippy::too_many_arguments)]
     pub fn execute_replay(
         replay_id: &str,
         scenario_name: &str,
@@ -42,8 +42,6 @@ impl MultiAgentCompositionHarness {
         is_conflict: bool,
         delegation_depth: usize,
     ) -> MultiAgentCompositionResult {
-        let evaluated_at = Utc::now().to_rfc3339();
-
         // 1. Communication & Provenance Check (TC-AGENT-COMP-004, TC-AGENT-COMP-007)
         if !has_valid_provenance {
             return MultiAgentCompositionResult {

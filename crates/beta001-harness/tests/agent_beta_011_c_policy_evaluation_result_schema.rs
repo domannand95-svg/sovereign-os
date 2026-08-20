@@ -54,7 +54,7 @@ impl PolicyEvaluationResultValidator {
         if value
             .get("evidence_references")
             .and_then(|v| v.as_array())
-            .map_or(true, |arr| arr.is_empty())
+            .is_none_or(|arr| arr.is_empty())
         {
             return PolicyEvaluationResultValidationResult::Invalid(
                 "Missing or empty evidence_references provenance".into(),

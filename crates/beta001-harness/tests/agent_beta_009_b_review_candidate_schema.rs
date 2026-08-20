@@ -1,4 +1,4 @@
-use chrono::{DateTime, Utc};
+use chrono::Utc;
 use serde_json::json;
 
 #[derive(Debug, Clone, PartialEq)]

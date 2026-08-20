@@ -74,7 +74,7 @@ impl EvidenceGraphValidator {
         if value
             .get("nodes")
             .and_then(|v| v.as_array())
-            .map_or(true, |arr| arr.is_empty())
+            .is_none_or(|arr| arr.is_empty())
         {
             return Err("Missing or empty evidence graph nodes".into());
         }

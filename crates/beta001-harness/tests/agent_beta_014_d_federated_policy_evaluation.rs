@@ -32,6 +32,12 @@ pub enum PolicyError {
 
 pub struct FederatedPolicyBoundary;
 
+impl Default for FederatedPolicyBoundary {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl FederatedPolicyBoundary {
     pub fn new() -> Self {
         Self
@@ -56,16 +62,12 @@ impl FederatedPolicyBoundary {
 
         // FPT-02 & FPT-03: External policy injection attempts are ignored,
         // and prohibited terms trigger a safe denial.
-        if payload_str.contains("forbidden_action")
-            || payload_str.contains("\"policy_override\": \"permit_all\"")
-        {
-            if payload_str.contains("forbidden_action") {
-                return Ok(PolicyEvaluationResult {
-                    decision: PolicyDecision::Deny,
-                    evaluated_rule_id: "RULE-FED-DENY-001".to_string(),
-                    authority_expansion: 0,
-                });
-            }
+        if payload_str.contains("forbidden_action") {
+            return Ok(PolicyEvaluationResult {
+                decision: PolicyDecision::Deny,
+                evaluated_rule_id: "RULE-FED-DENY-001".to_string(),
+                authority_expansion: 0,
+            });
         }
 
         Ok(PolicyEvaluationResult {

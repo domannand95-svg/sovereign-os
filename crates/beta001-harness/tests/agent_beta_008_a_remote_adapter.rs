@@ -1,5 +1,3 @@
-use std::path::PathBuf;
-
 #[derive(Debug, PartialEq, Eq)]
 pub enum NetworkError {
     Timeout,

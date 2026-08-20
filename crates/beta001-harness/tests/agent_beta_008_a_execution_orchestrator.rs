@@ -366,11 +366,6 @@ mod tests {
         let adapter = MockAdapter {
             response: ExecutionObservation::AdapterReportedSuccess,
         };
-        let verifier = MockVerifier {
-            response_oid: "Y".into(),
-            observation_state: ObservationState::Present,
-        }; // Pre-state check happens, but we mock it returning Y in post for success. (In reality, pre needs X, post needs Y. For this simple mock, we assume pre/post return same, which breaks Gate 5 if we enforce X -> Y strictly in mocks. Let's fix verifier mock to handle state transitions).
-
         // Advanced Verifier Mock for State Changes
         struct StateVerifier {
             pre_state: String,

@@ -1,4 +1,4 @@
-use chrono::{DateTime, Duration, Utc};
+use chrono::{DateTime, Utc};
 
 // =====================================================================
 // 1. C-004 T008 REPLAY EVIDENCE & COMPOSITION DOMAIN TYPES
@@ -67,9 +67,6 @@ pub struct T008ReplayEngine;
 impl T008ReplayEngine {
     pub fn execute_replay(threat_id: &str, injected_condition: &str) -> T008ReplayEvidence {
         let prohibited = Vec::new();
-        let mut disposition = TerminalDisposition::Denied;
-        let mut exec_obs = ExecutionObservation::NotDispatched;
-
         // Extract numeric threat suffix for robust classification
         let parts: Vec<&str> = threat_id.split('-').collect();
         let threat_num = parts
@@ -77,37 +74,37 @@ impl T008ReplayEngine {
             .and_then(|s| s.parse::<u32>().ok())
             .unwrap_or(0);
 
-        match threat_num {
+        let (disposition, exec_obs) = match threat_num {
             // Suite A: Identity x Credential Boundary (T008-001..004, 015, 027)
-            1..=4 | 15 | 27 => {
-                disposition = TerminalDisposition::IdentityMismatch;
-                exec_obs = ExecutionObservation::NotDispatched;
-            }
+            1..=4 | 15 | 27 => (
+                TerminalDisposition::IdentityMismatch,
+                ExecutionObservation::NotDispatched,
+            ),
             // Suite B: CAS x Network Ambiguity (T008-008..010, 017..023, 051)
-            8..=10 | 17..=23 | 51 => {
-                disposition = TerminalDisposition::PreconditionFailed;
-                exec_obs = ExecutionObservation::TransportOutcomeUnknown;
-            }
+            8..=10 | 17..=23 | 51 => (
+                TerminalDisposition::PreconditionFailed,
+                ExecutionObservation::TransportOutcomeUnknown,
+            ),
             // Suite C: Publication Authority Escalation (T008-024..033)
-            24..=33 => {
-                disposition = TerminalDisposition::Denied;
-                exec_obs = ExecutionObservation::NotDispatched;
-            }
+            24..=33 => (
+                TerminalDisposition::Denied,
+                ExecutionObservation::NotDispatched,
+            ),
             // Suite D: Publication-Induced Authority (T008-034..038)
-            34..=38 => {
-                disposition = TerminalDisposition::Denied;
-                exec_obs = ExecutionObservation::NotDispatched;
-            }
+            34..=38 => (
+                TerminalDisposition::Denied,
+                ExecutionObservation::NotDispatched,
+            ),
             // Suite E: Environment & Adapter Boundary (T008-039..050)
-            39..=50 => {
-                disposition = TerminalDisposition::IdentityMismatch;
-                exec_obs = ExecutionObservation::NotDispatched;
-            }
-            _ => {
-                disposition = TerminalDisposition::Denied;
-                exec_obs = ExecutionObservation::NotDispatched;
-            }
-        }
+            39..=50 => (
+                TerminalDisposition::IdentityMismatch,
+                ExecutionObservation::NotDispatched,
+            ),
+            _ => (
+                TerminalDisposition::Denied,
+                ExecutionObservation::NotDispatched,
+            ),
+        };
 
         T008ReplayEvidence {
             threat_id: threat_id.to_string(),

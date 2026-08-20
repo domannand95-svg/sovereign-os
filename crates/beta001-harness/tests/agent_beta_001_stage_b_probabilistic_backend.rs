@@ -1,6 +1,4 @@
-use beta001_harness::agent::{
-    AgentBackend, AgentBackendError, AgentInput, AgentOutput, RealModelBackend,
-};
+use beta001_harness::agent::{AgentBackend, AgentBackendError, AgentInput, RealModelBackend};
 
 #[test]
 fn test_stage_b_real_model_backend_credential_isolation() {

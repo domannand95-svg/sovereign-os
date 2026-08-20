@@ -11,7 +11,7 @@ pub struct RefTransitionAdapter;
 impl RefTransitionAdapter {
     pub fn advance_exact(
         &self,
-        ref_name: &str,
+        _ref_name: &str,
         expected_old: &str,
         new_commit: &str,
         current_head: &mut String,

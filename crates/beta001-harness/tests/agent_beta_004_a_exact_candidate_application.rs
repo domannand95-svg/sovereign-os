@@ -1,7 +1,7 @@
 use std::collections::hash_map::DefaultHasher;
 use std::fs;
 use std::hash::{Hash, Hasher};
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
 pub struct RepositoryMutationAdapter {
     checkout_root: PathBuf,
@@ -80,7 +80,7 @@ impl RepositoryMutationAdapter {
         }
 
         // Perform exact bounded mutation
-        if let Err(_) = fs::write(&target_file_path, &context.new_content) {
+        if fs::write(&target_file_path, &context.new_content).is_err() {
             return Ok(MutationDisposition::FAILED);
         }
 

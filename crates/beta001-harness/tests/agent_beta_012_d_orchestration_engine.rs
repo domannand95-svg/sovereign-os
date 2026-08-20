@@ -1,6 +1,5 @@
 use chrono::Utc;
 use serde::Serialize;
-use serde_json::json;
 
 // =====================================================================
 // 1. DETERMINISTIC ORCHESTRATION ENGINE DOMAIN TYPES & CONTRACT
@@ -145,7 +144,7 @@ mod orchestration_engine_tests {
         let digest = "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855";
 
         // Attempting to jump directly from Created to Completed
-        let mut forced_state = WorkflowState::Completed;
+        let forced_state = WorkflowState::Completed;
         let res =
             orchestrator.evaluate_transition(digest, digest, true, false, forced_state.clone());
         assert!(res.is_err());

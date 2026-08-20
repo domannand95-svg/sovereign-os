@@ -124,7 +124,7 @@ mod governance_composition_tests {
     #[test]
     fn tc_gov_comp_002_compliant_result_authority_injection() {
         let chain = get_valid_evidence_chain();
-        let mut res = GovernanceCompositionValidator::evaluate_composition(&chain, "v1.0.0", false);
+        let res = GovernanceCompositionValidator::evaluate_composition(&chain, "v1.0.0", false);
 
         // Attempt to inject authority fields into evaluation result object
         let mut serialized = serde_json::to_value(&res).unwrap_or_default();

@@ -1,0 +1,13 @@
+{
+  "schema_version": "CAPABILITY_LIFECYCLE_EVENT-v1",
+  "capability_reference": "sha256:capability-001",
+  "admission_reference": "sha256:admission-001",
+  "compilation_reference": "sha256:compilation-001",
+  "evaluation_reference": "sha256:evaluation-001",
+  "proposal_reference": "sha256:proposal-001",
+  "event_type": "SUSPENDED",
+  "event_timestamp": "2026-08-20T00:00:00Z",
+  "previous_state": "ACTIVE",
+  "new_state": "SUSPENDED",
+  "authority_reference": "host-controller"
+}

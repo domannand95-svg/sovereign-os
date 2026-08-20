@@ -67,7 +67,7 @@ fn test_agent_005_a01_exact_staging_succeeds() {
     let adapter = RepositoryStageAdapter;
     let mut index = HashMap::new();
     let mut worktree = HashMap::new();
-    let mut unrelated_index = HashMap::new();
+    let unrelated_index = HashMap::new();
 
     let target = "src/lib.rs";
     worktree.insert(target.to_string(), "fn verified() {} ".to_string());

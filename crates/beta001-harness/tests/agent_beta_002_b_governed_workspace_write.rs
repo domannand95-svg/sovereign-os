@@ -13,6 +13,7 @@ impl WorkspaceWriteAdapter {
         }
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub fn execute_write(
         &self,
         granted_scope: &str,
@@ -152,7 +153,7 @@ fn test_agent_002_b11_payload_digest_mismatch_denied() {
         "sandbox/session-001/output",
         "report.md",
         payload,
-        &fake_digest,
+        fake_digest,
         true,
         false,
         false,

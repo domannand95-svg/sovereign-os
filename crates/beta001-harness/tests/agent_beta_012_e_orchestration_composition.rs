@@ -1,4 +1,3 @@
-use chrono::Utc;
 use serde::Serialize;
 use serde_json::json;
 
@@ -32,6 +31,7 @@ pub struct ComposedWorkflowExecution {
 pub struct ComposedGovernanceOrchestrationHarness;
 
 impl ComposedGovernanceOrchestrationHarness {
+    #[allow(clippy::too_many_arguments)]
     pub fn execute_workflow(
         workflow_id: &str,
         candidate_digest: &str,

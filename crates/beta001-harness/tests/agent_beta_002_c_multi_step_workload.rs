@@ -4,7 +4,7 @@ use std::path::{Component, Path, PathBuf};
 
 // Import or mirror adapters from Increments A & B for composition testing
 pub struct MultiStepOrchestrator {
-    sandbox_root: PathBuf,
+    _sandbox_root: PathBuf,
 }
 
 #[derive(Debug, Clone)]
@@ -19,7 +19,7 @@ pub struct WorkloadSession {
 impl MultiStepOrchestrator {
     pub fn new(sandbox_root: impl Into<PathBuf>) -> Self {
         Self {
-            sandbox_root: sandbox_root.into(),
+            _sandbox_root: sandbox_root.into(),
         }
     }
 

@@ -130,7 +130,7 @@ pub fn replay_evidence_graph(req: &ReplayRequest) -> ReplayResult {
 
         if let Some(&parent_node) = nodes_by_digest.get(&parent_dig) {
             // Verify cryptographic lineage linkage
-            if let Some(ref grand_parent_dig) = parent_node.parent_digest {
+            if let Some(ref _grand_parent_dig) = parent_node.parent_digest {
                 // In our model, parent_digest matches the node's digest further up
             }
             trace.push(parent_node.node_id.clone());

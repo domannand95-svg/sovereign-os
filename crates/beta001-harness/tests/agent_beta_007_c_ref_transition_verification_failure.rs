@@ -1,8 +1,8 @@
 #[derive(Debug, Clone, PartialEq)]
 pub enum RefVerificationDisposition {
-    VERIFIED_TRANSITION,
-    NO_EFFECT,
-    FULL_EFFECT_UNVERIFIED,
+    VerifiedTransition,
+    NoEffect,
+    FullEffectUnverified,
     UNKNOWN,
     MISMATCH,
 }
@@ -31,13 +31,13 @@ impl RefTransitionVerifier {
         // Enforce INVARIANT-375: Adapter success claim is untrusted; verify actual observed ref state
         if observed_ref_commit == context.expected_new_commit {
             if adapter_success_claimed {
-                RefVerificationDisposition::VERIFIED_TRANSITION
+                RefVerificationDisposition::VerifiedTransition
             } else {
                 // Effect occurred even though adapter reported error/failure
-                RefVerificationDisposition::FULL_EFFECT_UNVERIFIED
+                RefVerificationDisposition::FullEffectUnverified
             }
         } else if observed_ref_commit == context.expected_old_commit {
-            RefVerificationDisposition::NO_EFFECT
+            RefVerificationDisposition::NoEffect
         } else {
             RefVerificationDisposition::MISMATCH
         }
@@ -54,7 +54,7 @@ fn test_agent_007_c01_exact_ref_transition_verified() {
     };
 
     let disposition = verifier.verify_transition(&context, "commit_C", true, false);
-    assert_eq!(disposition, RefVerificationDisposition::VERIFIED_TRANSITION);
+    assert_eq!(disposition, RefVerificationDisposition::VerifiedTransition);
 }
 
 #[test]
@@ -68,7 +68,7 @@ fn test_agent_007_c03_cas_failed_no_effect() {
     };
 
     let disposition = verifier.verify_transition(&context, "commit_A", false, false);
-    assert_eq!(disposition, RefVerificationDisposition::NO_EFFECT);
+    assert_eq!(disposition, RefVerificationDisposition::NoEffect);
 }
 
 #[test]
@@ -84,6 +84,6 @@ fn test_agent_007_c04_error_after_success_full_effect_unverified() {
     let disposition = verifier.verify_transition(&context, "commit_C", false, false);
     assert_eq!(
         disposition,
-        RefVerificationDisposition::FULL_EFFECT_UNVERIFIED
+        RefVerificationDisposition::FullEffectUnverified
     );
 }

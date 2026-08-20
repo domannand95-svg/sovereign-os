@@ -4,7 +4,7 @@
 // Invariant: Full Pipeline Proof -> Zero Ambient Authority -> Deterministic State
 // ============================================================================
 
-use std::collections::{HashMap, HashSet};
+use std::collections::HashSet;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ProposalId(pub String);
@@ -84,6 +84,12 @@ pub enum PipelineError {
 
 pub struct ExecutionOrchestrator {
     consumed_tokens: HashSet<String>,
+}
+
+impl Default for ExecutionOrchestrator {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl ExecutionOrchestrator {

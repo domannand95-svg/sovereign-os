@@ -1,6 +1,5 @@
 use chrono::Utc;
 use serde::Serialize;
-use serde_json::json;
 
 // =====================================================================
 // 1. DELEGATION EVALUATION DOMAIN TYPES & CONTRACT

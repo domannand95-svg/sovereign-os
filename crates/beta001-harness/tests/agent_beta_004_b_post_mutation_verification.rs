@@ -4,7 +4,7 @@ use std::hash::{Hash, Hasher};
 use std::path::PathBuf;
 
 pub struct PostMutationVerifier {
-    checkout_root: PathBuf,
+    _checkout_root: PathBuf,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -27,7 +27,7 @@ pub struct VerificationContext {
 impl PostMutationVerifier {
     pub fn new(checkout_root: impl Into<PathBuf>) -> Self {
         Self {
-            checkout_root: checkout_root.into(),
+            _checkout_root: checkout_root.into(),
         }
     }
 

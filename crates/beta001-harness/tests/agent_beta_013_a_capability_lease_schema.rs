@@ -31,7 +31,7 @@ impl AgentLeaseValidator {
         if value
             .get("objective_reference")
             .and_then(|v| v.as_str())
-            .map_or(true, |s| s.is_empty())
+            .is_none_or(|s| s.is_empty())
         {
             return AgentLeaseValidationResult::Invalid(
                 "Capability lease must be bound to a declared objective reference".into(),

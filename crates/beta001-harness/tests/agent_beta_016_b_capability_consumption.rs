@@ -54,6 +54,12 @@ pub struct CapabilityConsumptionLedger {
     consumed_tokens: HashSet<String>,
 }
 
+impl Default for CapabilityConsumptionLedger {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl CapabilityConsumptionLedger {
     pub fn new() -> Self {
         Self {

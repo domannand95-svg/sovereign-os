@@ -38,6 +38,12 @@ pub struct CapabilityLifecycleEngine {
     records: HashMap<String, CapabilityLifecycleRecord>,
 }
 
+impl Default for CapabilityLifecycleEngine {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl CapabilityLifecycleEngine {
     pub fn new() -> Self {
         Self {

@@ -137,6 +137,12 @@ pub struct LifecycleIntegrityLedger {
     consumed_approvals: HashSet<String>,
 }
 
+impl Default for LifecycleIntegrityLedger {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl LifecycleIntegrityLedger {
     pub fn new() -> Self {
         Self {

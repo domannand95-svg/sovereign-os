@@ -29,7 +29,7 @@ pub enum AdversarialDisposition {
     APPLIED,
     DENIED,
     STALE,
-    PARTIAL_EFFECT,
+    PartialEffect,
     UNKNOWN,
 }
 

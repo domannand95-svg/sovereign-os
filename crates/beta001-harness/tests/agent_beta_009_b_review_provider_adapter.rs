@@ -104,7 +104,7 @@ pub struct ReviewDispositionResolver;
 
 impl ReviewDispositionResolver {
     pub fn resolve(
-        request_op: &ReviewTransportOperation,
+        _request_op: &ReviewTransportOperation,
         exec_obs: &ReviewExecutionObservation,
         verification: &ReviewVerificationObservation,
     ) -> ReviewTerminalDisposition {
@@ -162,11 +162,7 @@ impl ReviewProviderAdapter for MockReviewProviderAdapter {
                 ReviewExecutionObservation::ProviderReportedObservation(self.reported_state.clone())
             }
             ReviewTransportOperation::SubmitComment { .. } => {
-                if self.fake_success_without_state {
-                    ReviewExecutionObservation::ProviderReportedCommentCreated
-                } else {
-                    ReviewExecutionObservation::ProviderReportedCommentCreated
-                }
+                ReviewExecutionObservation::ProviderReportedCommentCreated
             }
         }
     }

@@ -50,7 +50,7 @@ impl WorkflowCandidateValidator {
             for r in refs {
                 if r.get("policy_digest")
                     .and_then(|v| v.as_str())
-                    .map_or(true, |d| !d.starts_with("sha256:"))
+                    .is_none_or(|d| !d.starts_with("sha256:"))
                 {
                     return WorkflowCandidateValidationResult::Invalid(
                         "Floating or unpinned policy digest reference".into(),

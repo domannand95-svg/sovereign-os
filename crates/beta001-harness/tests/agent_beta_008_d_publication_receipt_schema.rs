@@ -59,20 +59,19 @@ impl ReceiptEpistemicValidator {
         let obs_oid = post_obs.get("observed_oid").and_then(|v| v.as_str());
 
         // Epistemic Rule: VERIFIED_SUCCESS requires independent observation == expected_y
-        if term_disp == "VERIFIED_SUCCESS" {
-            if obs_state != "PRESENT" || obs_oid != Some(expected_candidate_y) {
-                return Err("EPISTEMIC_INVALID: VERIFIED_SUCCESS requires independent observation of candidate OID".into());
-            }
+        if term_disp == "VERIFIED_SUCCESS"
+            && (obs_state != "PRESENT" || obs_oid != Some(expected_candidate_y))
+        {
+            return Err("EPISTEMIC_INVALID: VERIFIED_SUCCESS requires independent observation of candidate OID".into());
         }
 
         // Epistemic Rule: False Negative Prevention (Adapter failure + remote is Y -> MUST be VERIFIED_SUCCESS)
         if exec_obs == "ADAPTER_REPORTED_FAILURE"
             && obs_state == "PRESENT"
             && obs_oid == Some(expected_candidate_y)
+            && term_disp != "VERIFIED_SUCCESS"
         {
-            if term_disp != "VERIFIED_SUCCESS" {
-                return Err("EPISTEMIC_INVALID: Adapter failure with independent observation of target state MUST resolve to VERIFIED_SUCCESS".into());
-            }
+            return Err("EPISTEMIC_INVALID: Adapter failure with independent observation of target state MUST resolve to VERIFIED_SUCCESS".into());
         }
 
         Ok(())

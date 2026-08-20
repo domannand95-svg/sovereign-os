@@ -20,6 +20,7 @@ pub struct AdversarialStagingContext {
 pub struct AdversarialStagingOrchestrator;
 
 impl AdversarialStagingOrchestrator {
+    #[allow(clippy::too_many_arguments)]
     pub fn execute_adversarial_staging(
         &self,
         context: &AdversarialStagingContext,
@@ -137,7 +138,7 @@ fn test_agent_005_d_stale_stage_authority_replay_denied() {
         &drifted_pre_state,
         &worktree,
         &unrelated,
-        &vec!["src/lib.rs".to_string()],
+        &["src/lib.rs".to_string()],
         true,
     );
 

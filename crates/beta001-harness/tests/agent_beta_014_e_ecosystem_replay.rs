@@ -33,6 +33,12 @@ pub enum PolicyError {
 
 pub struct FederatedPolicyBoundary;
 
+impl Default for FederatedPolicyBoundary {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl FederatedPolicyBoundary {
     pub fn new() -> Self {
         Self
@@ -77,6 +83,12 @@ pub struct ReplayContext {
 pub struct EcosystemReplayGuardrail {
     seen_nonces: HashSet<(String, u64)>,
     policy_boundary: FederatedPolicyBoundary,
+}
+
+impl Default for EcosystemReplayGuardrail {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl EcosystemReplayGuardrail {
