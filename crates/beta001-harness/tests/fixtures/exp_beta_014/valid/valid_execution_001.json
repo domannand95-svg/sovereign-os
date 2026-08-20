@@ -1,0 +1,9 @@
+{
+  "schema_version": "CAPABILITY_EXECUTION_REQUEST-v1",
+  "execution_id": "exec_001",
+  "grant_reference": "grant_001",
+  "target_resource": "/workspace/project/build/output.bin",
+  "requested_operation": "write",
+  "invocation_payload_digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "timestamp": "2026-08-20T10:15:00Z"
+}

@@ -1,0 +1,53 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "CapabilityEnforcementResultV1",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "enforcement_id",
+    "execution_reference",
+    "enforcement_disposition",
+    "matching_rule",
+    "enforcement_reasons",
+    "timestamp"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "CAPABILITY_ENFORCEMENT_RESULT-v1"
+    },
+    "enforcement_id": {
+      "type": "string",
+      "pattern": "^enf_[a-zA-Z0-9_-]+$"
+    },
+    "execution_reference": {
+      "type": "string",
+      "pattern": "^exec_[a-zA-Z0-9_-]+$"
+    },
+    "enforcement_disposition": {
+      "type": "string",
+      "enum": ["ALLOW", "DENY"]
+    },
+    "matching_rule": {
+      "type": "string",
+      "minLength": 1
+    },
+    "enforcement_reasons": {
+      "type": "array",
+      "items": { "type": "string" },
+      "minItems": 1
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "not": {
+    "anyOf": [
+      { "required": ["execution_token"] },
+      { "required": ["permission_grant"] },
+      { "required": ["runtime_credential"] }
+    ]
+  },
+  "additionalProperties": false
+}
