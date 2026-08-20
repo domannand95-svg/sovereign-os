@@ -37,9 +37,10 @@ The root Cargo workspace is the authoritative build boundary. The deterministic 
 | `sovereign-registry` | Implemented | Content-addressed registry graph, admission validation, and ledger projection |
 | `sovereign-policy` | Implemented | Deterministic directive admission |
 | `sovereign-engine` | Implemented | Single-node boot, directive orchestration, durable append, and restart reconstruction |
-| `sovereign-audit` | Scaffold | Reserved governed audit capability |
+| `sovereign-audit` | Implemented / feature-gated | Evidence graph traversal, cryptographic verification, state reconstruction, and deterministic audit replay |
 | `sovereign-discovery` | Scaffold | Reserved governed discovery capability |
-| `beta001-harness` | Experimental | Read-only deterministic evaluation of bounded local-agent candidates and raw output |
+| `sovereign-agent-runtime` | Experimental | Canonical agent identity, observation and proposal binding, signed capability negotiation, one-time execution authorization, signed receipts, and deterministic replay |
+| `beta001-harness` | Experimental | Deterministic evaluation of bounded local-agent candidates, raw output, capability boundaries, and adversarial runtime composition |
 
 Only root workspace members are verified by the authoritative Cargo commands and CI. Earlier service-layer prototypes retained under `crates/` are design references, not active production capabilities.
 
@@ -65,7 +66,9 @@ The implemented registry and engine paths enforce parts of the authority boundar
 
 ## BETA-001 and Experimental Agent Evaluation
 
-The `beta001-harness` and `docs/experiments/local-agent-beta/` artifacts evaluate bounded probabilistic-agent behavior without granting production authority.
+The `beta001-harness`, `sovereign-agent-runtime`, and
+`docs/experiments/local-agent-beta/` artifacts evaluate bounded
+probabilistic-agent behavior without granting production authority.
 
 The experimental path separates:
 
@@ -76,28 +79,82 @@ The experimental path separates:
 5. independent containment and integrity evidence; and
 6. governed evidence persistence outside the agent effect surface.
 
-The current raw-output admission boundary deterministically preserves original bytes, permits only contracted representation handling, rejects malformed or semantically inadmissible output, and prevents the model from constructing authoritative terminal results. This is experimental candidate admission only.
+The raw-output admission boundary deterministically preserves original bytes,
+permits only contracted representation handling, rejects malformed or
+semantically inadmissible output, and prevents the model from constructing
+authoritative terminal results.
 
-It does not grant live-agent production authority, ambient filesystem or network access, automatic repository mutation, capability expansion, execution permission, promotion authority, or production orchestration. Issue #174 remains parked pending separately authorized semantics for requester binding, delegation, state freshness and revocation, runtime capability exercise, and composite orchestration.
+AGENT-BETA-018 extends that boundary with:
+
+- canonical, domain-separated identities for observations, proposals,
+  requests, grants, attempts, and receipts;
+- Ed25519-signed policy evaluations and execution receipts;
+- policy-key, policy-ID, requester, scope, operation, target, and lifetime
+  binding;
+- active-identity and revocation checks;
+- private registry admission and atomic one-time grant consumption;
+- trusted-clock expiry enforcement; and
+- deterministic replay that rejects stale authority, duplicate execution,
+  target substitution, and tampered receipts.
+
+The complete `beta001-harness` regression suite passes with these boundaries.
+This remains an experimental host-controlled authority path, not a packaged
+production node.
+
+It does not grant ambient filesystem or network access, automatic repository
+mutation, promotion authority, or production orchestration. Production use
+still requires durable atomic persistence of registry and execution events,
+operational signing-key custody, an independently governed policy service, and
+tool adapters that dispatch effects only after registry consumption.
+
+### Local model smoke test
+
+An OpenAI-compatible local inference adapter is available for Ollama, LM
+Studio, vLLM, llama.cpp servers, and compatible endpoints. Model output remains
+an inert `AgentOutput`; the adapter never receives policy or execution signing
+keys, a mutable capability registry, or tool handles.
+
+For Ollama:
+
+```powershell
+ollama pull qwen2.5-coder:7b
+ollama serve
+
+$env:SOVEREIGN_LOCAL_MODEL_ENDPOINT = "http://127.0.0.1:11434/v1/chat/completions"
+$env:SOVEREIGN_LOCAL_MODEL_NAME = "qwen2.5-coder:7b"
+cargo run -p beta001-harness --example local_model_candidate
+```
+
+See
+[`docs/specifications/AGENT-BETA-018-Local-Model-Setup.md`](docs/specifications/AGENT-BETA-018-Local-Model-Setup.md)
+for authority wiring, key-custody requirements, and verification commands.
 
 ## Knowledge Infrastructure Bootstrap Kit
 
 BKI is a separate deterministic knowledge-validation system. It may produce validation and provenance evidence for Sovereign review, but it is not a Sovereign policy engine or authority source.
 
-The proposed `bki.sovereign.profile.v1` contract aligns selected metadata while preserving the boundary:
+The active read-only-beta `bki.sovereign.profile.v1` contract aligns selected metadata while preserving the boundary:
 
 - BKI validation does not admit a record;
 - BKI quarantine does not itself create a Sovereign disposition;
 - schema or profile compatibility does not activate integration; and
 - BKI success cannot authorize registry mutation, promotion, capability creation, or effect execution.
 
-Any BKI integration requires pinned artifacts, matching schema identities, cross-platform negative and positive tests, fail-closed behavior, and explicit owner approval.
+The AGENT-BETA-018 runtime does not activate or widen this compatibility
+profile. BKI output may enter the observation/evidence plane, but it cannot
+produce a signed policy evaluation, enter the private capability registry, or
+authorize execution.
+
+The activated integration pins `bki-sovereign-v1.0.0-beta.1`, matching schema
+identities, cross-platform negative and positive tests, fail-closed behavior,
+and explicit owner approval. Activation is limited to candidate evidence intake;
+it grants no production execution, promotion, policy, or registry authority.
 
 ## Repository Map
 
 | Path | Responsibility |
 | --- | --- |
-| `crates/` | Authoritative workspace crates, experimental harness, and preserved prototypes |
+| `crates/` | Authoritative workspace crates, experimental agent runtime and harness, and preserved prototypes |
 | `src/` and `tests/` | Legacy/root implementation surfaces retained in the repository |
 | `docs/specifications/` | Governed component, registry, and beta contracts |
 | `docs/architecture/` | Authority boundaries and system architecture |

@@ -1,11 +1,8 @@
-use crate::replay::error::ReplayError;
+﻿use crate::replay::error::ReplayError;
 use crate::replay::graph::EvidenceGraph;
 use crate::replay::model::NodeId;
 
-pub fn verify_ancestry(
-    graph: &EvidenceGraph,
-    lineage: &[NodeId],
-) -> Result<(), ReplayError> {
+pub fn verify_ancestry(graph: &EvidenceGraph, lineage: &[NodeId]) -> Result<(), ReplayError> {
     if lineage.is_empty() {
         return Err(ReplayError::InvalidEvidenceGraph);
     }
@@ -44,11 +41,10 @@ pub fn verify_ancestry(
 
     Ok(())
 }
-
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::replay::model::{EvidenceDigest, EvidenceNode, SchemaVersion, ReplayTimestamp};
+    use crate::replay::model::{EvidenceDigest, EvidenceNode, ReplayTimestamp, SchemaVersion};
 
     fn make_node(id: &str, digest: &str, parent_digest: Option<&str>) -> EvidenceNode {
         EvidenceNode {
@@ -58,6 +54,7 @@ mod tests {
             digest: EvidenceDigest(digest.into()),
             parent_digest: parent_digest.map(|p| EvidenceDigest(p.into())),
             timestamp: ReplayTimestamp("2026-08-20T10:00:00Z".into()),
+            payload: serde_json::json!({}),
         }
     }
 
@@ -87,14 +84,10 @@ mod tests {
     fn test_invalid_parent_digest_rejected() {
         let nodes = vec![
             make_node("prop", "dig_prop", None),
-            // Corrupted parent digest linkage
             make_node("life", "dig_life", Some("dig_tampered")),
         ];
         let graph = EvidenceGraph::new(nodes);
-        let lineage = vec![
-            NodeId("life".into()),
-            NodeId("prop".into()),
-        ];
+        let lineage = vec![NodeId("life".into()), NodeId("prop".into())];
 
         let res = verify_ancestry(&graph, &lineage);
         assert_eq!(res, Err(ReplayError::InvalidCryptographicAncestry));
@@ -102,13 +95,9 @@ mod tests {
 
     #[test]
     fn test_root_node_without_parent_is_valid() {
-        let nodes = vec![
-            make_node("prop", "dig_prop", None),
-        ];
+        let nodes = vec![make_node("prop", "dig_prop", None)];
         let graph = EvidenceGraph::new(nodes);
-        let lineage = vec![
-            NodeId("prop".into()),
-        ];
+        let lineage = vec![NodeId("prop".into())];
 
         let res = verify_ancestry(&graph, &lineage);
         assert!(res.is_ok());
@@ -116,16 +105,11 @@ mod tests {
 
     #[test]
     fn test_missing_digest_reference_rejected() {
-        let nodes = vec![
-            make_node("life", "dig_life", Some("dig_nonexistent")),
-        ];
+        let nodes = vec![make_node("life", "dig_life", Some("dig_nonexistent"))];
         let graph = EvidenceGraph::new(nodes);
-        let lineage = vec![
-            NodeId("life".into()),
-        ];
+        let lineage = vec![NodeId("life".into()), NodeId("nonexistent".into())];
 
         let res = verify_ancestry(&graph, &lineage);
-        // Single node trace with unresolvable parent digest
         assert!(res.is_err());
     }
 }

@@ -11,7 +11,7 @@ from jsonschema import Draft202012Validator, FormatChecker
 
 SOVEREIGN_ROOT = Path(__file__).resolve().parents[2]
 BKI_ROOT = Path(os.environ["BKI_ROOT"]).resolve()
-PINNED_BKI_COMMIT = "0ace31f9071969825b75187d31c5f418212e9ae9"
+PINNED_BKI_COMMIT = "f1c2cde2865d2fb45cc4a748930dd90d55a55d83"
 PROFILE_SCHEMA_SHA256 = (
     "1a513455e09063f41d03023688ffc7b89bdababaf8ed9d1a78c101edb7b8845d"
 )

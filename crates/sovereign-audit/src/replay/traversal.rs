@@ -1,7 +1,7 @@
-use std::collections::HashSet;
-use crate::replay::error::ReplayError;
+﻿use crate::replay::error::ReplayError;
 use crate::replay::graph::EvidenceGraph;
 use crate::replay::model::NodeId;
+use std::collections::HashSet;
 
 pub fn traverse_ancestry(
     graph: &EvidenceGraph,
@@ -17,10 +17,8 @@ pub fn traverse_ancestry(
         if !visited_nodes.insert(node.id.clone()) {
             return Err(ReplayError::CyclicLineage);
         }
-        if let Some(ref dig) = node.digest {
-            if !visited_digests.insert(dig.clone()) {
-                return Err(ReplayError::CyclicLineage);
-            }
+        if !visited_digests.insert(node.digest.clone()) {
+            return Err(ReplayError::CyclicLineage);
         }
 
         trace.push(node.id.clone());
@@ -42,7 +40,7 @@ pub fn traverse_ancestry(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::replay::model::{EvidenceDigest, EvidenceNode, SchemaVersion, ReplayTimestamp};
+    use crate::replay::model::{EvidenceDigest, EvidenceNode, ReplayTimestamp, SchemaVersion};
 
     fn make_node(id: &str, digest: &str, parent_digest: Option<&str>) -> EvidenceNode {
         EvidenceNode {
@@ -52,6 +50,7 @@ mod tests {
             digest: EvidenceDigest(digest.into()),
             parent_digest: parent_digest.map(|p| EvidenceDigest(p.into())),
             timestamp: ReplayTimestamp("2026-08-20T10:00:00Z".into()),
+            payload: serde_json::json!({}),
         }
     }
 
@@ -81,9 +80,7 @@ mod tests {
 
     #[test]
     fn test_missing_parent_breaks_lineage() {
-        let nodes = vec![
-            make_node("life", "dig_life", Some("dig_missing")),
-        ];
+        let nodes = vec![make_node("life", "dig_life", Some("dig_missing"))];
         let graph = EvidenceGraph::new(nodes);
         let res = traverse_ancestry(&graph, &NodeId("life".into()));
 

@@ -1,0 +1,48 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "EFFECT_PROPOSAL-v1",
+  "title": "Effect Proposal v1",
+  "description": "Non-authoritative proposal layer for model-generated tool/effect intents. This object represents intent only and confers zero execution permission or authorization.",
+  "type": "object",
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "EFFECT_PROPOSAL-v1",
+      "description": "Semantic type identity. Distinct from CapabilityPayloadV1 binary revisions."
+    },
+    "proposed_effect_type": {
+      "type": "string",
+      "enum": [
+        "invoke_tool",
+        "mutate_filesystem",
+        "network_communication",
+        "external_interaction",
+        "state_transition"
+      ],
+      "description": "The categorical consequence desired by the model. Does not map directly to a capability type."
+    },
+    "target_resource": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 512,
+      "description": "Opaque handle or intended target. Resource interpretation is strictly deferred to the host authority layer."
+    },
+    "parameters": {
+      "type": "object",
+      "additionalProperties": true,
+      "description": "Flexible payload for the proposed effect. Validation occurs during host capability translation, not at the proposal boundary."
+    },
+    "reasoning": {
+      "type": "string",
+      "maxLength": 8192,
+      "description": "Optional model explanation or evidence. Does not constitute authorization rationale."
+    }
+  },
+  "required": [
+    "schema_version",
+    "proposed_effect_type",
+    "target_resource",
+    "parameters"
+  ],
+  "additionalProperties": false
+}

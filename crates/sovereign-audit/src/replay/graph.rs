@@ -1,5 +1,5 @@
+﻿use super::model::{EvidenceDigest, EvidenceNode, NodeId};
 use std::collections::HashMap;
-use super::model::{EvidenceDigest, EvidenceNode, NodeId};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct EvidenceGraph {
@@ -36,7 +36,7 @@ impl EvidenceGraph {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::replay::model::{SchemaVersion, ReplayTimestamp};
+    use crate::replay::model::{ReplayTimestamp, SchemaVersion};
 
     fn sample_node(id: &str, digest: &str, parent_digest: Option<&str>) -> EvidenceNode {
         EvidenceNode {
@@ -46,13 +46,20 @@ mod tests {
             digest: EvidenceDigest(digest.into()),
             parent_digest: parent_digest.map(|p| EvidenceDigest(p.into())),
             timestamp: ReplayTimestamp("2026-08-20T10:00:00Z".into()),
+            payload: serde_json::json!({}),
         }
     }
 
     #[test]
     fn test_graph_ingestion_is_deterministic() {
-        let nodes_a = vec![sample_node("a", "dig_a", None), sample_node("b", "dig_b", Some("dig_a"))];
-        let nodes_b = vec![sample_node("b", "dig_b", Some("dig_a")), sample_node("a", "dig_a", None)];
+        let nodes_a = vec![
+            sample_node("a", "dig_a", None),
+            sample_node("b", "dig_b", Some("dig_a")),
+        ];
+        let nodes_b = vec![
+            sample_node("b", "dig_b", Some("dig_a")),
+            sample_node("a", "dig_a", None),
+        ];
 
         let graph_a = EvidenceGraph::new(nodes_a);
         let graph_b = EvidenceGraph::new(nodes_b);

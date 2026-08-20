@@ -60,7 +60,14 @@ mod tests {
     use super::*;
     use crate::replay::model::{EvidenceDigest, EvidenceNode, SchemaVersion};
 
-    fn make_node(id: &str, record_type: &str, digest: &str, parent_digest: Option<&str>, timestamp: &str, payload: serde_json::Value) -> EvidenceNode {
+    fn make_node(
+        id: &str,
+        record_type: &str,
+        digest: &str,
+        parent_digest: Option<&str>,
+        timestamp: &str,
+        payload: serde_json::Value,
+    ) -> EvidenceNode {
         EvidenceNode {
             id: NodeId(id.into()),
             record_type: record_type.into(),
@@ -75,8 +82,22 @@ mod tests {
     #[test]
     fn test_active_state_reconstructed_at_historical_timestamp() {
         let nodes = vec![
-            make_node("prop", "EFFECT_PROPOSAL-v1", "dig_prop", None, "2026-08-20T09:00:00Z", serde_json::json!({})),
-            make_node("life", "CAPABILITY_LIFECYCLE_EVENT-v1", "dig_life", Some("dig_prop"), "2026-08-20T10:00:00Z", serde_json::json!({"new_state": "ACTIVE"})),
+            make_node(
+                "prop",
+                "EFFECT_PROPOSAL-v1",
+                "dig_prop",
+                None,
+                "2026-08-20T09:00:00Z",
+                serde_json::json!({}),
+            ),
+            make_node(
+                "life",
+                "CAPABILITY_LIFECYCLE_EVENT-v1",
+                "dig_life",
+                Some("dig_prop"),
+                "2026-08-20T10:00:00Z",
+                serde_json::json!({"new_state": "ACTIVE"}),
+            ),
         ];
         let graph = EvidenceGraph::new(nodes);
         let lineage = vec![NodeId("life".into()), NodeId("prop".into())];
@@ -89,12 +110,37 @@ mod tests {
     #[test]
     fn test_revoked_state_reconstructed_after_revocation() {
         let nodes = vec![
-            make_node("prop", "EFFECT_PROPOSAL-v1", "dig_prop", None, "2026-08-20T09:00:00Z", serde_json::json!({})),
-            make_node("life1", "CAPABILITY_LIFECYCLE_EVENT-v1", "dig_life1", Some("dig_prop"), "2026-08-20T10:00:00Z", serde_json::json!({"new_state": "ACTIVE"})),
-            make_node("life2", "CAPABILITY_LIFECYCLE_EVENT-v1", "dig_life2", Some("dig_life1"), "2026-08-21T10:00:00Z", serde_json::json!({"new_state": "REVOKED"})),
+            make_node(
+                "prop",
+                "EFFECT_PROPOSAL-v1",
+                "dig_prop",
+                None,
+                "2026-08-20T09:00:00Z",
+                serde_json::json!({}),
+            ),
+            make_node(
+                "life1",
+                "CAPABILITY_LIFECYCLE_EVENT-v1",
+                "dig_life1",
+                Some("dig_prop"),
+                "2026-08-20T10:00:00Z",
+                serde_json::json!({"new_state": "ACTIVE"}),
+            ),
+            make_node(
+                "life2",
+                "CAPABILITY_LIFECYCLE_EVENT-v1",
+                "dig_life2",
+                Some("dig_life1"),
+                "2026-08-21T10:00:00Z",
+                serde_json::json!({"new_state": "REVOKED"}),
+            ),
         ];
         let graph = EvidenceGraph::new(nodes);
-        let lineage = vec![NodeId("life2".into()), NodeId("life1".into()), NodeId("prop".into())];
+        let lineage = vec![
+            NodeId("life2".into()),
+            NodeId("life1".into()),
+            NodeId("prop".into()),
+        ];
         let t = ReplayTimestamp("2026-08-21T12:00:00Z".into());
 
         let state = reconstruct_state(&graph, &lineage, &t).unwrap();
@@ -103,9 +149,14 @@ mod tests {
 
     #[test]
     fn test_missing_lifecycle_anchor_rejected() {
-        let nodes = vec![
-            make_node("prop", "EFFECT_PROPOSAL-v1", "dig_prop", None, "2026-08-20T09:00:00Z", serde_json::json!({})),
-        ];
+        let nodes = vec![make_node(
+            "prop",
+            "EFFECT_PROPOSAL-v1",
+            "dig_prop",
+            None,
+            "2026-08-20T09:00:00Z",
+            serde_json::json!({}),
+        )];
         let graph = EvidenceGraph::new(nodes);
         let lineage = vec![NodeId("prop".into())];
         let t = ReplayTimestamp("2026-08-20T11:00:00Z".into());

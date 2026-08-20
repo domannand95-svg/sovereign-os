@@ -1,0 +1,108 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "CAPABILITY_ADMISSION_RESULT-v1",
+  "title": "Capability Admission Result v1",
+  "description": "Host-controlled admission evidence recording the evaluation outcome of compiled CapabilityPayloadV1 candidates against Registry v2 gates. Confers zero execution permission or direct authority.",
+  "type": "object",
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "CAPABILITY_ADMISSION_RESULT-v1",
+      "description": "Semantic type identity. Distinct from compilation, evaluation, and capability schemas."
+    },
+    "compilation_reference": {
+      "type": "string",
+      "minLength": 8,
+      "maxLength": 128,
+      "description": "Cryptographic reference binding this admission evidence to the upstream CAPABILITY_COMPILATION_RESULT-v1 instance."
+    },
+    "candidate_reference": {
+      "type": "string",
+      "minLength": 8,
+      "maxLength": 128,
+      "description": "Cryptographic reference binding this admission evidence to the specific CapabilityPayloadV1 candidate evaluated."
+    },
+    "admission_status": {
+      "type": "string",
+      "enum": [
+        "ADMITTED",
+        "REJECTED"
+      ],
+      "description": "Terminal outcome of the Registry v2 admission pipeline traversal."
+    },
+    "admission_timestamp": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Deterministic ISO-8601 timestamp representing when admission evaluation occurred."
+    },
+    "registry_gate_result": {
+      "type": "string",
+      "enum": [
+        "PASS",
+        "GATE_1_FAILURE",
+        "GATE_2_FAILURE",
+        "GATE_3_FAILURE",
+        "GATE_4_FAILURE",
+        "GATE_5_FAILURE",
+        "GATE_6_FAILURE"
+      ],
+      "description": "Closed enumeration of gate inspection outcomes from Registry v2 evaluation."
+    },
+    "failure_reason_class": {
+      "type": ["string", "null"],
+      "enum": [
+        null,
+        "BRIDGE_PROVENANCE_FAILURE",
+        "GATE_1_STRUCTURAL_FAILURE",
+        "GATE_2_IDENTITY_CONFLICT",
+        "GATE_3_POLICY_CONFLICT",
+        "GATE_4_EXPIRED_OR_REVOKED",
+        "GATE_5_ENVIRONMENT_MISMATCH",
+        "GATE_6_ADMISSION_DENIED"
+      ],
+      "description": "Categorized classification of admission failure. Enforced via conditional state rules."
+    },
+    "bridge_identity": {
+      "type": "string",
+      "minLength": 3,
+      "maxLength": 64,
+      "description": "Identifier of the host admission routing subsystem responsible for gate interfacing."
+    }
+  },
+  "required": [
+    "schema_version",
+    "compilation_reference",
+    "candidate_reference",
+    "admission_status",
+    "admission_timestamp",
+    "registry_gate_result",
+    "failure_reason_class",
+    "bridge_identity"
+  ],
+  "oneOf": [
+    {
+      "properties": {
+        "admission_status": { "const": "ADMITTED" },
+        "registry_gate_result": { "const": "PASS" },
+        "failure_reason_class": { "type": "null" }
+      }
+    },
+    {
+      "properties": {
+        "admission_status": { "const": "REJECTED" },
+        "registry_gate_result": {
+          "enum": [
+            "GATE_1_FAILURE",
+            "GATE_2_FAILURE",
+            "GATE_3_FAILURE",
+            "GATE_4_FAILURE",
+            "GATE_5_FAILURE",
+            "GATE_6_FAILURE"
+          ]
+        },
+        "failure_reason_class": { "type": "string" }
+      }
+    }
+  ],
+  "additionalProperties": false
+}

@@ -1,0 +1,134 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "CAPABILITY_LIFECYCLE_EVENT-v1",
+  "title": "Capability Lifecycle Event v1",
+  "description": "Host-controlled lifecycle governance evidence recording append-only post-admission status transitions for capability instances. Confers zero execution permission or authority revival.",
+  "type": "object",
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "CAPABILITY_LIFECYCLE_EVENT-v1",
+      "description": "Semantic type identity. Distinct from compilation, admission, and capability schemas."
+    },
+    "capability_reference": {
+      "type": "string",
+      "minLength": 8,
+      "maxLength": 128,
+      "description": "Cryptographic reference binding this lifecycle event to the specific CapabilityPayloadV1 instance."
+    },
+    "admission_reference": {
+      "type": "string",
+      "minLength": 8,
+      "maxLength": 128,
+      "description": "Cryptographic reference binding this lifecycle event to the upstream CAPABILITY_ADMISSION_RESULT-v1 instance."
+    },
+    "compilation_reference": {
+      "type": "string",
+      "minLength": 8,
+      "maxLength": 128,
+      "description": "Cryptographic reference binding this lifecycle event to the upstream CAPABILITY_COMPILATION_RESULT-v1 instance."
+    },
+    "evaluation_reference": {
+      "type": "string",
+      "minLength": 8,
+      "maxLength": 128,
+      "description": "Cryptographic reference binding this lifecycle event to the upstream EFFECT_EVALUATION_RESULT-v1 instance."
+    },
+    "proposal_reference": {
+      "type": "string",
+      "minLength": 8,
+      "maxLength": 128,
+      "description": "Cryptographic reference binding this lifecycle event to the original source EFFECT_PROPOSAL-v1 instance."
+    },
+    "event_type": {
+      "type": "string",
+      "enum": [
+        "ACTIVATED",
+        "SUSPENDED",
+        "EXPIRED",
+        "REVOKED"
+      ],
+      "description": "Governed classification of the lifecycle operational event."
+    },
+    "event_timestamp": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Deterministic ISO-8601 timestamp representing when the lifecycle transition occurred."
+    },
+    "previous_state": {
+      "type": "string",
+      "enum": [
+        "ACTIVE",
+        "SUSPENDED"
+      ],
+      "description": "Pre-transition capability state."
+    },
+    "new_state": {
+      "type": "string",
+      "enum": [
+        "ACTIVE",
+        "SUSPENDED",
+        "EXPIRED",
+        "REVOKED",
+        "INERT"
+      ],
+      "description": "Post-transition capability state enforcing monotonic progression."
+    },
+    "authority_reference": {
+      "type": "string",
+      "minLength": 3,
+      "maxLength": 64,
+      "description": "Identifier of the host-controlled lifecycle controller or supervisor recording the event."
+    }
+  },
+  "required": [
+    "schema_version",
+    "capability_reference",
+    "admission_reference",
+    "compilation_reference",
+    "evaluation_reference",
+    "proposal_reference",
+    "event_type",
+    "event_timestamp",
+    "previous_state",
+    "new_state",
+    "authority_reference"
+  ],
+  "oneOf": [
+    {
+      "properties": {
+        "event_type": { "const": "ACTIVATED" },
+        "previous_state": { "const": "SUSPENDED" },
+        "new_state": { "const": "ACTIVE" }
+      }
+    },
+    {
+      "properties": {
+        "event_type": { "const": "SUSPENDED" },
+        "previous_state": { "const": "ACTIVE" },
+        "new_state": { "const": "SUSPENDED" }
+      }
+    },
+    {
+      "properties": {
+        "event_type": { "const": "EXPIRED" },
+        "previous_state": {
+          "enum": ["ACTIVE", "SUSPENDED"]
+        },
+        "new_state": { "const": "EXPIRED" }
+      }
+    },
+    {
+      "properties": {
+        "event_type": { "const": "REVOKED" },
+        "previous_state": {
+          "enum": ["ACTIVE", "SUSPENDED"]
+        },
+        "new_state": {
+          "enum": ["REVOKED", "INERT"]
+        }
+      }
+    }
+  ],
+  "additionalProperties": false
+}

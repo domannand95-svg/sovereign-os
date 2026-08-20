@@ -1,0 +1,68 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "EFFECT_EVALUATION_RESULT-v1",
+  "title": "Effect Evaluation Result v1",
+  "description": "Host-controlled evaluation decision evidence for model-originated Effect Proposals. This object records inspection evidence and confers zero execution permission, authorization, or capability admission.",
+  "type": "object",
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "EFFECT_EVALUATION_RESULT-v1",
+      "description": "Semantic type identity. Distinct from proposal and capability schemas."
+    },
+    "proposal_reference": {
+      "type": "string",
+      "minLength": 8,
+      "maxLength": 128,
+      "description": "Cryptographic reference or identifier binding this evaluation evidence to a specific EFFECT_PROPOSAL-v1 instance."
+    },
+    "evaluation_context_reference": {
+      "type": "string",
+      "minLength": 8,
+      "maxLength": 128,
+      "description": "Reference binding the evaluation decision to the exact host state and policy context used during inspection."
+    },
+    "decision": {
+      "type": "string",
+      "enum": [
+        "rejected",
+        "deferred",
+        "accepted"
+      ],
+      "description": "The terminal host-controlled outcome of the evaluation process."
+    },
+    "decision_reason_class": {
+      "type": "string",
+      "enum": [
+        "POLICY_DENIED",
+        "RESOURCE_UNAVAILABLE",
+        "INSUFFICIENT_CONTEXT",
+        "HOST_APPROVED",
+        "SCHEMA_INVALID"
+      ],
+      "description": "Categorized governance classification of the decision outcome."
+    },
+    "evaluation_basis": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "maxLength": 256
+      },
+      "description": "List of policy rules, context constraints, or check identifiers evaluated by the host."
+    },
+    "capability_candidate_reference": {
+      "type": ["string", "null"],
+      "maxLength": 128,
+      "description": "Optional reference to a host-compiled CapabilityPayloadV1 candidate. Must be null unless decision is accepted."}
+  },
+  "required": [
+    "schema_version",
+    "proposal_reference",
+    "evaluation_context_reference",
+    "decision",
+    "decision_reason_class",
+    "evaluation_basis",
+    "capability_candidate_reference"
+  ],
+  "additionalProperties": false
+}
