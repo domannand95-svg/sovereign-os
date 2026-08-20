@@ -1,4 +1,4 @@
-﻿// ============================================================================
+// ============================================================================
 // AGENT-BETA-014-D: Federated Policy Evaluation Boundary & Harness
 // ============================================================================
 
@@ -56,7 +56,9 @@ impl FederatedPolicyBoundary {
 
         // FPT-02 & FPT-03: External policy injection attempts are ignored,
         // and prohibited terms trigger a safe denial.
-        if payload_str.contains("forbidden_action") || payload_str.contains("\"policy_override\": \"permit_all\"") {
+        if payload_str.contains("forbidden_action")
+            || payload_str.contains("\"policy_override\": \"permit_all\"")
+        {
             if payload_str.contains("forbidden_action") {
                 return Ok(PolicyEvaluationResult {
                     decision: PolicyDecision::Deny,
@@ -95,7 +97,7 @@ mod fpt_tests {
     fn fpt_01_unverified_object_rejection() {
         let boundary = FederatedPolicyBoundary::new();
         let mut obj = valid_epistemic_object(b"standard payload".to_vec());
-        obj.provenance_verified = false; 
+        obj.provenance_verified = false;
 
         let result = boundary.evaluate(&obj, "v1.0.0");
         assert_eq!(result, Err(PolicyError::UnverifiedProvenance));
@@ -104,7 +106,8 @@ mod fpt_tests {
     #[test]
     fn fpt_02_external_policy_injection_probe() {
         let boundary = FederatedPolicyBoundary::new();
-        let attack_payload = br#"{"data": "test", "policy_override": "permit_all", "rule": "ALLOW"}"#.to_vec();
+        let attack_payload =
+            br#"{"data": "test", "policy_override": "permit_all", "rule": "ALLOW"}"#.to_vec();
         let obj = valid_epistemic_object(attack_payload);
 
         let result = boundary.evaluate(&obj, "v1.0.0").unwrap();

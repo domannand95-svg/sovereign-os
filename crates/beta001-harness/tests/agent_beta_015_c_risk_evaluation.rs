@@ -1,4 +1,4 @@
-﻿// ============================================================================
+// ============================================================================
 // AGENT-BETA-015-C: Risk and Scope Evaluation Layer
 // ============================================================================
 // Invariant: Risk Assessment != Approval. Scope Evaluation != Permission Grant.
@@ -44,9 +44,18 @@ pub enum ProposalStatus {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ProposedOperation {
-    EmitNotification { target: String, message_hash: String },
-    QuarantineEntity { entity_id: String, reason: String },
-    RequestStateMutation { key: String, new_value_hash: String },
+    EmitNotification {
+        target: String,
+        message_hash: String,
+    },
+    QuarantineEntity {
+        entity_id: String,
+        reason: String,
+    },
+    RequestStateMutation {
+        key: String,
+        new_value_hash: String,
+    },
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -137,26 +146,27 @@ impl RiskEvaluator {
             return Err(RiskEvaluationError::InvalidLifecycleState);
         }
 
-        let (risk_level, blast_radius, mut mandated_approval_level, rationale) = match &proposal.proposed_operation {
-            ProposedOperation::EmitNotification { .. } => (
-                RiskLevel::Low,
-                BlastRadius::Isolated,
-                ApprovalLevel::Peer,
-                String::from("Standard baseline notification"),
-            ),
-            ProposedOperation::QuarantineEntity { .. } => (
-                RiskLevel::Medium,
-                BlastRadius::Subsystem,
-                ApprovalLevel::Operator,
-                String::from("Subsystem quarantine requires operator clearance"),
-            ),
-            ProposedOperation::RequestStateMutation { .. } => (
-                RiskLevel::High,
-                BlastRadius::Global,
-                ApprovalLevel::Governance,
-                String::from("Global state mutation mandates strict governance approval"),
-            ),
-        };
+        let (risk_level, blast_radius, mut mandated_approval_level, rationale) =
+            match &proposal.proposed_operation {
+                ProposedOperation::EmitNotification { .. } => (
+                    RiskLevel::Low,
+                    BlastRadius::Isolated,
+                    ApprovalLevel::Peer,
+                    String::from("Standard baseline notification"),
+                ),
+                ProposedOperation::QuarantineEntity { .. } => (
+                    RiskLevel::Medium,
+                    BlastRadius::Subsystem,
+                    ApprovalLevel::Operator,
+                    String::from("Subsystem quarantine requires operator clearance"),
+                ),
+                ProposedOperation::RequestStateMutation { .. } => (
+                    RiskLevel::High,
+                    BlastRadius::Global,
+                    ApprovalLevel::Governance,
+                    String::from("Global state mutation mandates strict governance approval"),
+                ),
+            };
 
         // Monotonic Escalation Guard: never downgrade existing stricter constraints
         for constraint in &proposal.constraints {
@@ -185,10 +195,19 @@ mod pav_risk_tests {
     fn generate_validated_proposal(op: ProposedOperation) -> GovernedActionProposal {
         let mut proposal = GovernedActionProposal::new(
             ProposalId("PROP-RISK-01".to_string()),
-            EpistemicObjectReference { object_digest: "digest".to_string(), verification_epoch: 1000 },
-            PolicyEvaluationReference { rule_id: "RULE-01".to_string(), derived_decision: DerivedPolicyDecision::Permit },
+            EpistemicObjectReference {
+                object_digest: "digest".to_string(),
+                verification_epoch: 1000,
+            },
+            PolicyEvaluationReference {
+                rule_id: "RULE-01".to_string(),
+                derived_decision: DerivedPolicyDecision::Permit,
+            },
             op,
-            vec![Constraint { expiration_timestamp: 2000000000, required_approval_level: ApprovalLevel::Peer }],
+            vec![Constraint {
+                expiration_timestamp: 2000000000,
+                required_approval_level: ApprovalLevel::Peer,
+            }],
         );
         proposal.mark_validated().unwrap();
         proposal
@@ -196,27 +215,26 @@ mod pav_risk_tests {
 
     #[test]
     fn pav_08_scope_escalation_containment() {
-        let proposal = generate_validated_proposal(
-            ProposedOperation::RequestStateMutation {
-                key: "urn:internal:critical_config".to_string(),
-                new_value_hash: "a".repeat(64),
-            }
-        );
+        let proposal = generate_validated_proposal(ProposedOperation::RequestStateMutation {
+            key: "urn:internal:critical_config".to_string(),
+            new_value_hash: "a".repeat(64),
+        });
 
         let risk_context = RiskEvaluator::evaluate_proposal(&proposal).unwrap();
         assert_eq!(risk_context.risk_level, RiskLevel::High);
         assert_eq!(risk_context.blast_radius, BlastRadius::Global);
-        assert_eq!(risk_context.mandated_approval_level, ApprovalLevel::Governance);
+        assert_eq!(
+            risk_context.mandated_approval_level,
+            ApprovalLevel::Governance
+        );
     }
 
     #[test]
     fn pav_09_authorization_isolation() {
-        let proposal = generate_validated_proposal(
-            ProposedOperation::EmitNotification {
-                target: "urn:internal:log".to_string(),
-                message_hash: "b".repeat(64),
-            }
-        );
+        let proposal = generate_validated_proposal(ProposedOperation::EmitNotification {
+            target: "urn:internal:log".to_string(),
+            message_hash: "b".repeat(64),
+        });
 
         let risk_context = RiskEvaluator::evaluate_proposal(&proposal).unwrap();
         assert_eq!(risk_context.risk_level, RiskLevel::Low);
@@ -228,9 +246,18 @@ mod pav_risk_tests {
     fn pav_10_lifecycle_prerequisite_enforcement() {
         let draft_proposal = GovernedActionProposal::new(
             ProposalId("PROP-RISK-02".to_string()),
-            EpistemicObjectReference { object_digest: "digest".to_string(), verification_epoch: 1000 },
-            PolicyEvaluationReference { rule_id: "RULE-02".to_string(), derived_decision: DerivedPolicyDecision::Permit },
-            ProposedOperation::EmitNotification { target: "urn:internal:target".to_string(), message_hash: "hash".to_string() },
+            EpistemicObjectReference {
+                object_digest: "digest".to_string(),
+                verification_epoch: 1000,
+            },
+            PolicyEvaluationReference {
+                rule_id: "RULE-02".to_string(),
+                derived_decision: DerivedPolicyDecision::Permit,
+            },
+            ProposedOperation::EmitNotification {
+                target: "urn:internal:target".to_string(),
+                message_hash: "hash".to_string(),
+            },
             vec![],
         );
 

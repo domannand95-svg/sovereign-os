@@ -1,4 +1,4 @@
-﻿use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Serialize};
 use serde_json::json;
 use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
@@ -31,7 +31,9 @@ pub struct PolicyDefinitionValidator;
 
 impl PolicyDefinitionValidator {
     pub fn validate(value: &serde_json::Value) -> PolicyValidationResult {
-        if value.get("schema_version").and_then(|v| v.as_str()) != Some("REPOSITORY_GOVERNANCE_POLICY_DEFINITION-v1") {
+        if value.get("schema_version").and_then(|v| v.as_str())
+            != Some("REPOSITORY_GOVERNANCE_POLICY_DEFINITION-v1")
+        {
             return PolicyValidationResult::Invalid("Invalid or missing schema_version".into());
         }
 
@@ -45,13 +47,19 @@ impl PolicyDefinitionValidator {
 
         let rules = match value.get("rules").and_then(|v| v.as_array()) {
             Some(arr) if !arr.is_empty() => arr,
-            _ => return PolicyValidationResult::Invalid("Policy must contain at least one rule".into()),
+            _ => {
+                return PolicyValidationResult::Invalid(
+                    "Policy must contain at least one rule".into(),
+                )
+            }
         };
 
         for rule in rules {
             if let Some(target) = rule.get("target_domain").and_then(|v| v.as_str()) {
                 if target.is_empty() {
-                    return PolicyValidationResult::Invalid("Floating policy rule: missing target domain binding".into());
+                    return PolicyValidationResult::Invalid(
+                        "Floating policy rule: missing target domain binding".into(),
+                    );
                 }
             } else {
                 return PolicyValidationResult::Invalid("Missing target_domain in rule".into());
@@ -62,16 +70,27 @@ impl PolicyDefinitionValidator {
                     || cond.contains("MERGE_FORCE")
                     || cond.contains("GRANT_CAPABILITY")
                 {
-                    return PolicyValidationResult::Invalid("Forbidden operational command or execution directive in rule".into());
+                    return PolicyValidationResult::Invalid(
+                        "Forbidden operational command or execution directive in rule".into(),
+                    );
                 }
             }
         }
 
-        let allowed_keys = ["schema_version", "policy_id", "rules", "policy_digest", "created_at"];
+        let allowed_keys = [
+            "schema_version",
+            "policy_id",
+            "rules",
+            "policy_digest",
+            "created_at",
+        ];
         if let Some(obj) = value.as_object() {
             for key in obj.keys() {
                 if !allowed_keys.contains(&key.as_str()) {
-                    return PolicyValidationResult::Invalid(format!("Authority injection or forbidden field detected: {}", key));
+                    return PolicyValidationResult::Invalid(format!(
+                        "Authority injection or forbidden field detected: {}",
+                        key
+                    ));
                 }
             }
         }
@@ -103,16 +122,15 @@ mod policy_definition_schema_tests {
         PolicyDefinition {
             schema_version: "REPOSITORY_GOVERNANCE_POLICY_DEFINITION-v1".into(),
             policy_id: "pol_01XYZ".into(),
-            rules: vec![
-                PolicyRule {
-                    rule_id: "rule_require_review".into(),
-                    description: "Require at least one verified review".into(),
-                    target_domain: "PULL_REQUEST".into(),
-                    condition_expression: "count(evidence.review.approved) >= 1".into(),
-                    required_evidence_types: vec!["REVIEW".into()],
-                },
-            ],
-            policy_digest: "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855".into(),
+            rules: vec![PolicyRule {
+                rule_id: "rule_require_review".into(),
+                description: "Require at least one verified review".into(),
+                target_domain: "PULL_REQUEST".into(),
+                condition_expression: "count(evidence.review.approved) >= 1".into(),
+                required_evidence_types: vec!["REVIEW".into()],
+            }],
+            policy_digest:
+                "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855".into(),
             created_at: "2026-08-20T07:00:00Z".into(),
         }
     }
@@ -121,7 +139,10 @@ mod policy_definition_schema_tests {
     fn tc_pol_def_001_valid_policy_accepted() {
         let policy = get_valid_policy();
         let val = serde_json::to_value(&policy).unwrap();
-        assert_eq!(PolicyDefinitionValidator::validate(&val), PolicyValidationResult::Valid);
+        assert_eq!(
+            PolicyDefinitionValidator::validate(&val),
+            PolicyValidationResult::Valid
+        );
     }
 
     #[test]
@@ -129,15 +150,23 @@ mod policy_definition_schema_tests {
         let mut policy = get_valid_policy();
         policy.rules[0].target_domain = "".into();
         let val = serde_json::to_value(&policy).unwrap();
-        assert!(matches!(PolicyDefinitionValidator::validate(&val), PolicyValidationResult::Invalid(_)));
+        assert!(matches!(
+            PolicyDefinitionValidator::validate(&val),
+            PolicyValidationResult::Invalid(_)
+        ));
     }
 
     #[test]
     fn tc_pol_def_003_authority_injection_rejected() {
         let policy = get_valid_policy();
         let mut val = serde_json::to_value(&policy).unwrap();
-        val.as_object_mut().unwrap().insert("grant_capability".to_string(), json!("admin"));
-        assert!(matches!(PolicyDefinitionValidator::validate(&val), PolicyValidationResult::Invalid(_)));
+        val.as_object_mut()
+            .unwrap()
+            .insert("grant_capability".to_string(), json!("admin"));
+        assert!(matches!(
+            PolicyDefinitionValidator::validate(&val),
+            PolicyValidationResult::Invalid(_)
+        ));
     }
 
     #[test]
@@ -145,7 +174,10 @@ mod policy_definition_schema_tests {
         let mut policy = get_valid_policy();
         policy.rules[0].required_evidence_types = vec![];
         let val = serde_json::to_value(&policy).unwrap();
-        assert_eq!(PolicyDefinitionValidator::validate(&val), PolicyValidationResult::Valid);
+        assert_eq!(
+            PolicyDefinitionValidator::validate(&val),
+            PolicyValidationResult::Valid
+        );
     }
 
     #[test]
@@ -153,7 +185,10 @@ mod policy_definition_schema_tests {
         let mut policy = get_valid_policy();
         policy.rules[0].condition_expression = "EXECUTE_DEPLOYMENT == true".into();
         let val = serde_json::to_value(&policy).unwrap();
-        assert!(matches!(PolicyDefinitionValidator::validate(&val), PolicyValidationResult::Invalid(_)));
+        assert!(matches!(
+            PolicyDefinitionValidator::validate(&val),
+            PolicyValidationResult::Invalid(_)
+        ));
     }
 
     #[test]
@@ -176,6 +211,9 @@ mod policy_definition_schema_tests {
             required_evidence_types: vec!["PULL_REQUEST".into()],
         });
         let val = serde_json::to_value(&policy).unwrap();
-        assert_eq!(PolicyDefinitionValidator::validate(&val), PolicyValidationResult::Valid);
+        assert_eq!(
+            PolicyDefinitionValidator::validate(&val),
+            PolicyValidationResult::Valid
+        );
     }
 }

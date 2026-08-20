@@ -29,14 +29,19 @@ struct Receipt {
 fn safe_target(target: &str, allowed_root: &Path) -> bool {
     let path = PathBuf::from(target);
     path.is_absolute()
-        && !path.components().any(|part| matches!(part, Component::ParentDir))
+        && !path
+            .components()
+            .any(|part| matches!(part, Component::ParentDir))
         && path.starts_with(allowed_root)
 }
 
 fn authorize(raw: &[u8]) -> Result<Receipt, String> {
     let proposal: Proposal = serde_json::from_slice(raw).map_err(|_| "malformed proposal")?;
     if proposal.report_sha256.len() != 64
-        || !proposal.report_sha256.bytes().all(|byte| byte.is_ascii_hexdigit())
+        || !proposal
+            .report_sha256
+            .bytes()
+            .all(|byte| byte.is_ascii_hexdigit())
     {
         return Err("invalid report identity".into());
     }
@@ -58,7 +63,8 @@ fn authorize(raw: &[u8]) -> Result<Receipt, String> {
         .map_err(|_| "invalid policy seed")?
         .try_into()
         .map_err(|_| "invalid policy seed length")?;
-    let policy_id = env::var("SOVEREIGN_POLICY_ID").unwrap_or_else(|_| "local-workbench-policy-v1".into());
+    let policy_id =
+        env::var("SOVEREIGN_POLICY_ID").unwrap_or_else(|_| "local-workbench-policy-v1".into());
     let proposal_digest = Sha256::digest(raw);
     let proposal_sha256 = hex::encode(proposal_digest);
     let mut grant_hasher = blake3::Hasher::new();
@@ -92,7 +98,10 @@ fn main() {
         std::process::exit(3);
     }
     match authorize(&raw) {
-        Ok(receipt) => println!("{}", serde_json::to_string(&receipt).expect("receipt serialization")),
+        Ok(receipt) => println!(
+            "{}",
+            serde_json::to_string(&receipt).expect("receipt serialization")
+        ),
         Err(error) => {
             eprintln!("authorization denied: {error}");
             std::process::exit(2);
@@ -106,11 +115,17 @@ mod tests {
 
     #[test]
     fn target_traversal_is_denied() {
-        assert!(!safe_target("C:/approved/../escape.json", Path::new("C:/approved")));
+        assert!(!safe_target(
+            "C:/approved/../escape.json",
+            Path::new("C:/approved")
+        ));
     }
 
     #[test]
     fn exact_descendant_is_allowed() {
-        assert!(safe_target("C:/approved/review.json", Path::new("C:/approved")));
+        assert!(safe_target(
+            "C:/approved/review.json",
+            Path::new("C:/approved")
+        ));
     }
 }

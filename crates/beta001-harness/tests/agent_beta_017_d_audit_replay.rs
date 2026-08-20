@@ -1,6 +1,8 @@
-﻿use sovereign_audit::replay::{
+use sovereign_audit::replay::{
     graph::EvidenceGraph,
-    model::{CapabilityState, EvidenceDigest, EvidenceNode, NodeId, ReplayTimestamp, SchemaVersion},
+    model::{
+        CapabilityState, EvidenceDigest, EvidenceNode, NodeId, ReplayTimestamp, SchemaVersion,
+    },
     reconstruction::reconstruct_state,
     traversal::traverse_ancestry,
     verification::verify_ancestry,
@@ -33,7 +35,12 @@ fn o17_d_01_complete_history_replays() {
     let lineage = traverse_ancestry(&graph, &NodeId("life".into())).unwrap();
     assert!(verify_ancestry(&graph, &lineage).is_ok());
 
-    let state = reconstruct_state(&graph, &lineage, &ReplayTimestamp("2026-08-20T11:00:00Z".into())).unwrap();
+    let state = reconstruct_state(
+        &graph,
+        &lineage,
+        &ReplayTimestamp("2026-08-20T11:00:00Z".into()),
+    )
+    .unwrap();
     assert_eq!(state, CapabilityState::Active);
 }
 
@@ -63,7 +70,12 @@ fn o17_d_02_runtime_state_equals_audit_state() {
     let graph = EvidenceGraph::new(nodes);
     let lineage = traverse_ancestry(&graph, &NodeId("life".into())).unwrap();
 
-    let audit_view = reconstruct_state(&graph, &lineage, &ReplayTimestamp("2026-08-20T11:00:00Z".into())).unwrap();
+    let audit_view = reconstruct_state(
+        &graph,
+        &lineage,
+        &ReplayTimestamp("2026-08-20T11:00:00Z".into()),
+    )
+    .unwrap();
     let runtime_view = CapabilityState::Active;
 
     assert_eq!(audit_view, runtime_view);
@@ -71,17 +83,15 @@ fn o17_d_02_runtime_state_equals_audit_state() {
 
 #[test]
 fn o17_d_03_audit_has_no_execution_authority() {
-    let nodes = vec![
-        EvidenceNode {
-            id: NodeId("prop".into()),
-            record_type: "EFFECT_PROPOSAL-v1".into(),
-            schema_version: SchemaVersion("v1".into()),
-            digest: EvidenceDigest("dig_prop".into()),
-            parent_digest: None,
-            timestamp: ReplayTimestamp("2026-08-20T09:00:00Z".into()),
-            payload: serde_json::json!({}),
-        },
-    ];
+    let nodes = vec![EvidenceNode {
+        id: NodeId("prop".into()),
+        record_type: "EFFECT_PROPOSAL-v1".into(),
+        schema_version: SchemaVersion("v1".into()),
+        digest: EvidenceDigest("dig_prop".into()),
+        parent_digest: None,
+        timestamp: ReplayTimestamp("2026-08-20T09:00:00Z".into()),
+        payload: serde_json::json!({}),
+    }];
     let graph = EvidenceGraph::new(nodes);
     assert_eq!(graph.len(), 1);
 }

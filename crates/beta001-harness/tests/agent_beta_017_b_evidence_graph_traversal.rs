@@ -1,8 +1,8 @@
-﻿use sovereign_audit::replay::{
+use sovereign_audit::replay::{
+    error::ReplayError,
     graph::EvidenceGraph,
     model::{EvidenceDigest, EvidenceNode, NodeId, ReplayTimestamp, SchemaVersion},
     traversal::traverse_ancestry,
-    error::ReplayError,
 };
 
 fn make_node(id: &str, digest: &str, parent_digest: Option<&str>) -> EvidenceNode {
@@ -43,9 +43,7 @@ fn o17_b_02_branching_lineage_order_is_deterministic() {
 
 #[test]
 fn o17_b_03_self_reference_cycle_rejected() {
-    let nodes = vec![
-        make_node("a", "dig_a", Some("dig_a")),
-    ];
+    let nodes = vec![make_node("a", "dig_a", Some("dig_a"))];
     let graph = EvidenceGraph::new(nodes);
     let res = traverse_ancestry(&graph, &NodeId("a".into()));
     assert_eq!(res, Err(ReplayError::CyclicLineage));

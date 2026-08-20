@@ -7,17 +7,17 @@
 //! It does not bypass policy.
 //! It does not mutate audit history.
 
+pub mod capability;
+mod encoding;
+pub mod execution;
 pub mod identity;
 pub mod observation;
 pub mod proposal;
-pub mod capability;
-pub mod execution;
 pub mod replay;
-mod encoding;
 
+pub use capability::*;
+pub use execution::*;
 pub use identity::*;
 pub use observation::*;
 pub use proposal::*;
-pub use capability::*;
-pub use execution::*;
 pub use replay::*;

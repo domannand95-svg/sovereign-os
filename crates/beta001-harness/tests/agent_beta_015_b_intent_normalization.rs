@@ -1,4 +1,4 @@
-﻿// ============================================================================
+// ============================================================================
 // AGENT-BETA-015-B: Intent Normalization Boundary
 // ============================================================================
 // Invariant: Ambiguity != Flexibility. Normalization != Execution.
@@ -44,9 +44,18 @@ pub enum ProposalStatus {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ProposedOperation {
-    EmitNotification { target: String, message_hash: String },
-    QuarantineEntity { entity_id: String, reason: String },
-    RequestStateMutation { key: String, new_value_hash: String },
+    EmitNotification {
+        target: String,
+        message_hash: String,
+    },
+    QuarantineEntity {
+        entity_id: String,
+        reason: String,
+    },
+    RequestStateMutation {
+        key: String,
+        new_value_hash: String,
+    },
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -124,7 +133,10 @@ impl IntentNormalizer {
 
         // Parameter bounding & namespace checks
         match &proposal.proposed_operation {
-            ProposedOperation::EmitNotification { target, message_hash } => {
+            ProposedOperation::EmitNotification {
+                target,
+                message_hash,
+            } => {
                 if !target.starts_with("urn:internal:") {
                     return Err(NormalizationError::AmbiguousTargetNamespace);
                 }
@@ -140,7 +152,10 @@ impl IntentNormalizer {
                     return Err(NormalizationError::UnboundedParameterSize);
                 }
             }
-            ProposedOperation::RequestStateMutation { key, new_value_hash } => {
+            ProposedOperation::RequestStateMutation {
+                key,
+                new_value_hash,
+            } => {
                 if key.is_empty() || !key.starts_with("urn:internal:") {
                     return Err(NormalizationError::AmbiguousTargetNamespace);
                 }
@@ -150,7 +165,9 @@ impl IntentNormalizer {
             }
         }
 
-        proposal.mark_validated().map_err(|_| NormalizationError::InvalidLifecycleState)?;
+        proposal
+            .mark_validated()
+            .map_err(|_| NormalizationError::InvalidLifecycleState)?;
         Ok(())
     }
 }
@@ -163,11 +180,20 @@ impl IntentNormalizer {
 mod pav_normalization_tests {
     use super::*;
 
-    fn generate_draft_proposal(op: ProposedOperation, decision: DerivedPolicyDecision) -> GovernedActionProposal {
+    fn generate_draft_proposal(
+        op: ProposedOperation,
+        decision: DerivedPolicyDecision,
+    ) -> GovernedActionProposal {
         GovernedActionProposal::new(
             ProposalId("PROP-NORM-01".to_string()),
-            EpistemicObjectReference { object_digest: "digest".to_string(), verification_epoch: 1000 },
-            PolicyEvaluationReference { rule_id: "RULE-01".to_string(), derived_decision: decision },
+            EpistemicObjectReference {
+                object_digest: "digest".to_string(),
+                verification_epoch: 1000,
+            },
+            PolicyEvaluationReference {
+                rule_id: "RULE-01".to_string(),
+                derived_decision: decision,
+            },
             op,
             vec![],
         )
@@ -199,7 +225,10 @@ mod pav_normalization_tests {
         );
 
         let result = IntentNormalizer::normalize_and_validate(&mut proposal);
-        assert_eq!(result, Err(NormalizationError::InvalidCryptographicHashLength));
+        assert_eq!(
+            result,
+            Err(NormalizationError::InvalidCryptographicHashLength)
+        );
     }
 
     #[test]

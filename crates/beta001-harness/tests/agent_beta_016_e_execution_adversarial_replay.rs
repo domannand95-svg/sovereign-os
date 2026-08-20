@@ -1,4 +1,4 @@
-﻿// ============================================================================
+// ============================================================================
 // AGENT-BETA-016-E: End-to-End Adversarial Execution Replay Suite
 // ============================================================================
 // Invariant: Full Pipeline Proof -> Zero Ambient Authority -> Deterministic State
@@ -200,13 +200,15 @@ mod adversarial_execution_replay_tests {
         let dossier = get_valid_dossier();
         let token = orchestrator.mint_token(&dossier, 1710000010, 1).unwrap();
 
-        let receipt = orchestrator.dispatch_and_execute(
-            &token,
-            &dossier.capability_scope,
-            "blake3:1111111111111111111111111111111111111111111111111111111111111111",
-            "blake3:2222222222222222222222222222222222222222222222222222222222222222",
-            1710000020,
-        ).unwrap();
+        let receipt = orchestrator
+            .dispatch_and_execute(
+                &token,
+                &dossier.capability_scope,
+                "blake3:1111111111111111111111111111111111111111111111111111111111111111",
+                "blake3:2222222222222222222222222222222222222222222222222222222222222222",
+                1710000020,
+            )
+            .unwrap();
 
         assert_eq!(receipt.disposition, ExecutionDisposition::Success);
         assert_eq!(receipt.residual_authority_retained, 0);
@@ -218,13 +220,15 @@ mod adversarial_execution_replay_tests {
         let dossier = get_valid_dossier();
         let token = orchestrator.mint_token(&dossier, 1710000010, 1).unwrap();
 
-        assert!(orchestrator.dispatch_and_execute(
-            &token,
-            &dossier.capability_scope,
-            "blake3:1111",
-            "blake3:2222",
-            1710000020,
-        ).is_ok());
+        assert!(orchestrator
+            .dispatch_and_execute(
+                &token,
+                &dossier.capability_scope,
+                "blake3:1111",
+                "blake3:2222",
+                1710000020,
+            )
+            .is_ok());
 
         let replay = orchestrator.dispatch_and_execute(
             &token,

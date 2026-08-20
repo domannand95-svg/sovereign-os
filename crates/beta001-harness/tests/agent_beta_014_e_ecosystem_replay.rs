@@ -1,4 +1,4 @@
-﻿// ============================================================================
+// ============================================================================
 // AGENT-BETA-014-E: External Ecosystem Adversarial Replay & Guardrail
 // ============================================================================
 
@@ -106,7 +106,9 @@ impl EcosystemReplayGuardrail {
         self.seen_nonces.insert(nonce_key);
 
         // Delegate to local policy boundary
-        let evaluation = self.policy_boundary.evaluate(object, policy_registry_version)
+        let evaluation = self
+            .policy_boundary
+            .evaluate(object, policy_registry_version)
             .map_err(ReplayError::PolicyEvaluationFailed)?;
 
         // EAR-03: Authority drift guardrail
@@ -181,13 +183,25 @@ mod ear_tests {
         let mut guardrail = EcosystemReplayGuardrail::new();
 
         let malicious_obj = valid_epistemic_object(b"action: forbidden_action".to_vec());
-        let ctx_1 = ReplayContext { session_id: "gamma".into(), nonce: 3001, epoch_timestamp: 1710000000 };
-        let res_1 = guardrail.evaluate_stream(&malicious_obj, &ctx_1, "v1.0.0").unwrap();
+        let ctx_1 = ReplayContext {
+            session_id: "gamma".into(),
+            nonce: 3001,
+            epoch_timestamp: 1710000000,
+        };
+        let res_1 = guardrail
+            .evaluate_stream(&malicious_obj, &ctx_1, "v1.0.0")
+            .unwrap();
         assert_eq!(res_1.authority_expansion, 0);
 
         let valid_obj = valid_epistemic_object(b"standard payload".to_vec());
-        let ctx_2 = ReplayContext { session_id: "gamma".into(), nonce: 3002, epoch_timestamp: 1710000010 };
-        let res_2 = guardrail.evaluate_stream(&valid_obj, &ctx_2, "v1.0.0").unwrap();
+        let ctx_2 = ReplayContext {
+            session_id: "gamma".into(),
+            nonce: 3002,
+            epoch_timestamp: 1710000010,
+        };
+        let res_2 = guardrail
+            .evaluate_stream(&valid_obj, &ctx_2, "v1.0.0")
+            .unwrap();
         assert_eq!(res_2.authority_expansion, 0);
     }
 

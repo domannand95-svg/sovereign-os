@@ -1,4 +1,4 @@
-﻿// ============================================================================
+// ============================================================================
 // AGENT-BETA-016-A: Ephemeral Capability Token Schema & Minting Boundary
 // ============================================================================
 // Authority Expansion Target: ZERO (Strict Ephemeral Lease Only)
@@ -154,7 +154,10 @@ mod capability_token_tests {
         let token = CapabilityTokenMinter::mint_token(&dossier, 1710000010, 42).unwrap();
 
         assert_eq!(token.proposal_id.0, "PROP-EXEC-001");
-        assert_eq!(token.capability_scope.target_resource, "urn:internal:entity:x");
+        assert_eq!(
+            token.capability_scope.target_resource,
+            "urn:internal:entity:x"
+        );
         assert_eq!(token.capability_scope.operation_type, "QUARANTINE");
         assert_eq!(token.expires_at - token.issued_at, 60);
         assert_eq!(token.nonce, 42);

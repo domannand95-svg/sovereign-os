@@ -1,4 +1,4 @@
-﻿use std::fmt;
+use std::fmt;
 
 // ============================================================================
 // AGENT-BETA-014-C: Interoperability Adapter Contract & Harness
@@ -88,7 +88,9 @@ impl InteroperabilityAdapter {
         }
 
         let payload_str = String::from_utf8_lossy(&input.raw_payload);
-        if payload_str.contains("\"role\": \"administrator\"") || payload_str.contains("\"capability\": \"execute\"") {
+        if payload_str.contains("\"role\": \"administrator\"")
+            || payload_str.contains("\"capability\": \"execute\"")
+        {
             return Err(AdapterError::AuthorityEscalationDetected);
         }
 
@@ -125,7 +127,10 @@ mod interoperability_adapter_tests {
             identity_assertion: dummy_identity("agent-alpha"),
             raw_payload: b"payload".to_vec(),
         };
-        assert_eq!(adapter.translate(input, 1000), Err(AdapterError::MalformedSchema));
+        assert_eq!(
+            adapter.translate(input, 1000),
+            Err(AdapterError::MalformedSchema)
+        );
     }
 
     #[test]
@@ -143,7 +148,10 @@ mod interoperability_adapter_tests {
             identity_assertion: assertion,
             raw_payload: b"payload".to_vec(),
         };
-        assert_eq!(adapter.translate(input, 1000), Err(AdapterError::CryptographicBindingFailure));
+        assert_eq!(
+            adapter.translate(input, 1000),
+            Err(AdapterError::CryptographicBindingFailure)
+        );
     }
 
     #[test]
@@ -158,7 +166,10 @@ mod interoperability_adapter_tests {
             identity_assertion: dummy_identity("agent-alpha"),
             raw_payload: br#"{"role": "administrator", "capability": "execute"}"#.to_vec(),
         };
-        assert_eq!(adapter.translate(input, 1000), Err(AdapterError::AuthorityEscalationDetected));
+        assert_eq!(
+            adapter.translate(input, 1000),
+            Err(AdapterError::AuthorityEscalationDetected)
+        );
     }
 
     #[test]
@@ -173,7 +184,10 @@ mod interoperability_adapter_tests {
             identity_assertion: dummy_identity("agent-alpha"),
             raw_payload: b"payload".to_vec(),
         };
-        assert_eq!(adapter.translate(input, 2000), Err(AdapterError::TemporalValidationFailure));
+        assert_eq!(
+            adapter.translate(input, 2000),
+            Err(AdapterError::TemporalValidationFailure)
+        );
     }
 
     #[test]
@@ -188,7 +202,10 @@ mod interoperability_adapter_tests {
             identity_assertion: dummy_identity("agent-alpha"),
             raw_payload: b"payload".to_vec(),
         };
-        assert_eq!(adapter.translate(input, 1000), Err(AdapterError::TypeConfusionDetected));
+        assert_eq!(
+            adapter.translate(input, 1000),
+            Err(AdapterError::TypeConfusionDetected)
+        );
     }
 
     #[test]
@@ -222,6 +239,9 @@ mod interoperability_adapter_tests {
             identity_assertion: dummy_identity("agent-alpha"),
             raw_payload: b"payload".to_vec(),
         };
-        assert_eq!(adapter.translate(input, 1000), Err(AdapterError::SanitizationFailure));
+        assert_eq!(
+            adapter.translate(input, 1000),
+            Err(AdapterError::SanitizationFailure)
+        );
     }
 }

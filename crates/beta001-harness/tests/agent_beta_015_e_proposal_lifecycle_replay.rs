@@ -1,4 +1,4 @@
-﻿// ============================================================================
+// ============================================================================
 // AGENT-BETA-015-E: Proposal Lifecycle Replay & Integrity
 // ============================================================================
 // Invariant: Historical Record != Active Authority. Replay != Capability.
@@ -46,9 +46,18 @@ pub enum ProposalStatus {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ProposedOperation {
-    EmitNotification { target: String, message_hash: String },
-    QuarantineEntity { entity_id: String, reason: String },
-    RequestStateMutation { key: String, new_value_hash: String },
+    EmitNotification {
+        target: String,
+        message_hash: String,
+    },
+    QuarantineEntity {
+        entity_id: String,
+        reason: String,
+    },
+    RequestStateMutation {
+        key: String,
+        new_value_hash: String,
+    },
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -155,11 +164,15 @@ impl LifecycleIntegrityLedger {
             }
         }
 
-        if self.consumed_approvals.contains(&approval_record.signature_hash) {
+        if self
+            .consumed_approvals
+            .contains(&approval_record.signature_hash)
+        {
             return Err(IntegrityError::ApprovalReplayAttack);
         }
 
-        self.consumed_approvals.insert(approval_record.signature_hash.clone());
+        self.consumed_approvals
+            .insert(approval_record.signature_hash.clone());
 
         Ok(SealedGovernanceDossier {
             proposal_id: proposal.proposal_id.clone(),
@@ -182,10 +195,22 @@ mod pav_integrity_tests {
     fn setup_integrity_scenario() -> (GovernedActionProposal, ApprovalRecord) {
         let mut proposal = GovernedActionProposal::new(
             ProposalId("PROP-INT-01".to_string()),
-            EpistemicObjectReference { object_digest: "digest".to_string(), verification_epoch: 1000 },
-            PolicyEvaluationReference { rule_id: "RULE-01".to_string(), derived_decision: DerivedPolicyDecision::Permit },
-            ProposedOperation::EmitNotification { target: "urn:internal:log".to_string(), message_hash: "hash".to_string() },
-            vec![Constraint { expiration_timestamp: 1710005000, required_approval_level: ApprovalLevel::Peer }],
+            EpistemicObjectReference {
+                object_digest: "digest".to_string(),
+                verification_epoch: 1000,
+            },
+            PolicyEvaluationReference {
+                rule_id: "RULE-01".to_string(),
+                derived_decision: DerivedPolicyDecision::Permit,
+            },
+            ProposedOperation::EmitNotification {
+                target: "urn:internal:log".to_string(),
+                message_hash: "hash".to_string(),
+            },
+            vec![Constraint {
+                expiration_timestamp: 1710005000,
+                required_approval_level: ApprovalLevel::Peer,
+            }],
         );
         proposal.mark_validated().unwrap();
 
@@ -206,7 +231,12 @@ mod pav_integrity_tests {
         let (proposal, approval) = setup_integrity_scenario();
         let current_time_expired = 1710006000;
 
-        let result = ledger.seal_and_verify(&proposal, &approval, "HASH-123".to_string(), current_time_expired);
+        let result = ledger.seal_and_verify(
+            &proposal,
+            &approval,
+            "HASH-123".to_string(),
+            current_time_expired,
+        );
         assert_eq!(result, Err(IntegrityError::TemporalDriftDetected));
     }
 
@@ -216,10 +246,20 @@ mod pav_integrity_tests {
         let (proposal, approval) = setup_integrity_scenario();
         let current_time_valid = 1710002000;
 
-        let first_result = ledger.seal_and_verify(&proposal, &approval, "HASH-123".to_string(), current_time_valid);
+        let first_result = ledger.seal_and_verify(
+            &proposal,
+            &approval,
+            "HASH-123".to_string(),
+            current_time_valid,
+        );
         assert!(first_result.is_ok());
 
-        let second_result = ledger.seal_and_verify(&proposal, &approval, "HASH-123".to_string(), current_time_valid);
+        let second_result = ledger.seal_and_verify(
+            &proposal,
+            &approval,
+            "HASH-123".to_string(),
+            current_time_valid,
+        );
         assert_eq!(second_result, Err(IntegrityError::ApprovalReplayAttack));
     }
 
@@ -228,7 +268,9 @@ mod pav_integrity_tests {
         let mut ledger = LifecycleIntegrityLedger::new();
         let (proposal, approval) = setup_integrity_scenario();
 
-        let dossier = ledger.seal_and_verify(&proposal, &approval, "HASH-123".to_string(), 1710002000).unwrap();
+        let dossier = ledger
+            .seal_and_verify(&proposal, &approval, "HASH-123".to_string(), 1710002000)
+            .unwrap();
         assert_eq!(dossier.authority_expansion, 0);
         assert_eq!(dossier.proposal_id.0, "PROP-INT-01");
     }

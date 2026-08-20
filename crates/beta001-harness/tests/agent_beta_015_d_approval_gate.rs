@@ -1,4 +1,4 @@
-﻿// ============================================================================
+// ============================================================================
 // AGENT-BETA-015-D: Approval Gate Interface
 // ============================================================================
 // Invariant: Approval != Execution. Approval != Capability Creation.
@@ -44,9 +44,18 @@ pub enum ProposalStatus {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ProposedOperation {
-    EmitNotification { target: String, message_hash: String },
-    QuarantineEntity { entity_id: String, reason: String },
-    RequestStateMutation { key: String, new_value_hash: String },
+    EmitNotification {
+        target: String,
+        message_hash: String,
+    },
+    QuarantineEntity {
+        entity_id: String,
+        reason: String,
+    },
+    RequestStateMutation {
+        key: String,
+        new_value_hash: String,
+    },
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -184,12 +193,23 @@ impl ApprovalGate {
 mod pav_approval_tests {
     use super::*;
 
-    fn setup_approval_scenario(mandated_level: ApprovalLevel) -> (GovernedActionProposal, RiskEvaluationContext) {
+    fn setup_approval_scenario(
+        mandated_level: ApprovalLevel,
+    ) -> (GovernedActionProposal, RiskEvaluationContext) {
         let mut proposal = GovernedActionProposal::new(
             ProposalId("PROP-APP-01".to_string()),
-            EpistemicObjectReference { object_digest: "digest".to_string(), verification_epoch: 1000 },
-            PolicyEvaluationReference { rule_id: "RULE-01".to_string(), derived_decision: DerivedPolicyDecision::Permit },
-            ProposedOperation::QuarantineEntity { entity_id: "urn:entity:x".to_string(), reason: "risk".to_string() },
+            EpistemicObjectReference {
+                object_digest: "digest".to_string(),
+                verification_epoch: 1000,
+            },
+            PolicyEvaluationReference {
+                rule_id: "RULE-01".to_string(),
+                derived_decision: DerivedPolicyDecision::Permit,
+            },
+            ProposedOperation::QuarantineEntity {
+                entity_id: "urn:entity:x".to_string(),
+                reason: "risk".to_string(),
+            },
             vec![],
         );
         proposal.mark_validated().unwrap();
@@ -231,10 +251,14 @@ mod pav_approval_tests {
             ApprovalLevel::Operator,
             "SIG-456".to_string(),
             1710000000,
-        ).unwrap();
+        )
+        .unwrap();
 
         assert_eq!(approval_record.proposal_id.0, "PROP-APP-01");
-        assert_eq!(approval_record.granted_approval_level, ApprovalLevel::Operator);
+        assert_eq!(
+            approval_record.granted_approval_level,
+            ApprovalLevel::Operator
+        );
         assert!(proposal.asserts_no_authority_expansion());
     }
 

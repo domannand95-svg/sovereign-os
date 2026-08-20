@@ -1,8 +1,10 @@
-﻿use sovereign_audit::replay::{
-    graph::EvidenceGraph,
-    model::{CapabilityState, EvidenceDigest, EvidenceNode, NodeId, ReplayTimestamp, SchemaVersion},
-    reconstruction::reconstruct_state,
+use sovereign_audit::replay::{
     error::ReplayError,
+    graph::EvidenceGraph,
+    model::{
+        CapabilityState, EvidenceDigest, EvidenceNode, NodeId, ReplayTimestamp, SchemaVersion,
+    },
+    reconstruction::reconstruct_state,
 };
 
 fn make_node(
@@ -27,8 +29,22 @@ fn make_node(
 #[test]
 fn o17_a_01_valid_history_reconstructs_state() {
     let nodes = vec![
-        make_node("prop", "EFFECT_PROPOSAL-v1", "dig_prop", None, "2026-08-20T09:00:00Z", serde_json::json!({})),
-        make_node("life", "CAPABILITY_LIFECYCLE_EVENT-v1", "dig_life", Some("dig_prop"), "2026-08-20T10:00:00Z", serde_json::json!({"new_state": "ACTIVE"})),
+        make_node(
+            "prop",
+            "EFFECT_PROPOSAL-v1",
+            "dig_prop",
+            None,
+            "2026-08-20T09:00:00Z",
+            serde_json::json!({}),
+        ),
+        make_node(
+            "life",
+            "CAPABILITY_LIFECYCLE_EVENT-v1",
+            "dig_life",
+            Some("dig_prop"),
+            "2026-08-20T10:00:00Z",
+            serde_json::json!({"new_state": "ACTIVE"}),
+        ),
     ];
     let graph = EvidenceGraph::new(nodes);
     let lineage = vec![NodeId("life".into()), NodeId("prop".into())];
@@ -40,9 +56,14 @@ fn o17_a_01_valid_history_reconstructs_state() {
 
 #[test]
 fn o17_a_02_truncated_record_fails_closed() {
-    let nodes = vec![
-        make_node("prop", "EFFECT_PROPOSAL-v1", "dig_prop", None, "2026-08-20T09:00:00Z", serde_json::json!({})),
-    ];
+    let nodes = vec![make_node(
+        "prop",
+        "EFFECT_PROPOSAL-v1",
+        "dig_prop",
+        None,
+        "2026-08-20T09:00:00Z",
+        serde_json::json!({}),
+    )];
     let graph = EvidenceGraph::new(nodes);
     let lineage = vec![NodeId("prop".into())];
     let t = ReplayTimestamp("2026-08-20T11:00:00Z".into());
@@ -54,8 +75,22 @@ fn o17_a_02_truncated_record_fails_closed() {
 #[test]
 fn o17_a_03_interleaved_invalid_event_fails_closed() {
     let nodes = vec![
-        make_node("prop", "EFFECT_PROPOSAL-v1", "dig_prop", None, "2026-08-20T09:00:00Z", serde_json::json!({})),
-        make_node("life", "CAPABILITY_LIFECYCLE_EVENT-v1", "dig_life", Some("dig_prop"), "2026-08-20T10:00:00Z", serde_json::json!({"new_state": "CORRUPT_STATE"})),
+        make_node(
+            "prop",
+            "EFFECT_PROPOSAL-v1",
+            "dig_prop",
+            None,
+            "2026-08-20T09:00:00Z",
+            serde_json::json!({}),
+        ),
+        make_node(
+            "life",
+            "CAPABILITY_LIFECYCLE_EVENT-v1",
+            "dig_life",
+            Some("dig_prop"),
+            "2026-08-20T10:00:00Z",
+            serde_json::json!({"new_state": "CORRUPT_STATE"}),
+        ),
     ];
     let graph = EvidenceGraph::new(nodes);
     let lineage = vec![NodeId("life".into()), NodeId("prop".into())];
@@ -68,8 +103,22 @@ fn o17_a_03_interleaved_invalid_event_fails_closed() {
 #[test]
 fn o17_a_04_replay_twice_produces_identical_state() {
     let nodes = vec![
-        make_node("prop", "EFFECT_PROPOSAL-v1", "dig_prop", None, "2026-08-20T09:00:00Z", serde_json::json!({})),
-        make_node("life", "CAPABILITY_LIFECYCLE_EVENT-v1", "dig_life", Some("dig_prop"), "2026-08-20T10:00:00Z", serde_json::json!({"new_state": "ACTIVE"})),
+        make_node(
+            "prop",
+            "EFFECT_PROPOSAL-v1",
+            "dig_prop",
+            None,
+            "2026-08-20T09:00:00Z",
+            serde_json::json!({}),
+        ),
+        make_node(
+            "life",
+            "CAPABILITY_LIFECYCLE_EVENT-v1",
+            "dig_life",
+            Some("dig_prop"),
+            "2026-08-20T10:00:00Z",
+            serde_json::json!({"new_state": "ACTIVE"}),
+        ),
     ];
     let graph = EvidenceGraph::new(nodes);
     let lineage = vec![NodeId("life".into()), NodeId("prop".into())];

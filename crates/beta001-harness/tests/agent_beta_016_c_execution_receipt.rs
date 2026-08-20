@@ -1,4 +1,4 @@
-﻿// ============================================================================
+// ============================================================================
 // AGENT-BETA-016-C: Execution Receipt & State Attestation Schema
 // ============================================================================
 // Authority Expansion Target: ZERO
@@ -36,9 +36,7 @@ pub enum AttestationError {
 pub struct ExecutionReceiptValidator;
 
 impl ExecutionReceiptValidator {
-    pub fn validate_and_attest(
-        receipt: &ExecutionReceipt,
-    ) -> Result<String, AttestationError> {
+    pub fn validate_and_attest(receipt: &ExecutionReceipt) -> Result<String, AttestationError> {
         if receipt.residual_authority_retained != 0 {
             return Err(AttestationError::ResidualAuthorityViolation);
         }
@@ -47,7 +45,9 @@ impl ExecutionReceiptValidator {
             return Err(AttestationError::MissingTargetResource);
         }
 
-        if !receipt.pre_state_digest.starts_with("blake3:") || !receipt.post_state_digest.starts_with("blake3:") {
+        if !receipt.pre_state_digest.starts_with("blake3:")
+            || !receipt.post_state_digest.starts_with("blake3:")
+        {
             return Err(AttestationError::InvalidStateTransitionDigest);
         }
 
@@ -85,8 +85,10 @@ mod execution_receipt_tests {
             target_resource: "urn:internal:entity:x".into(),
             operation_executed: "QUARANTINE".into(),
             disposition: ExecutionDisposition::Success,
-            pre_state_digest: "blake3:1111111111111111111111111111111111111111111111111111111111111111".into(),
-            post_state_digest: "blake3:2222222222222222222222222222222222222222222222222222222222222222".into(),
+            pre_state_digest:
+                "blake3:1111111111111111111111111111111111111111111111111111111111111111".into(),
+            post_state_digest:
+                "blake3:2222222222222222222222222222222222222222222222222222222222222222".into(),
             executed_at: 1710000030,
             residual_authority_retained: 0,
         }

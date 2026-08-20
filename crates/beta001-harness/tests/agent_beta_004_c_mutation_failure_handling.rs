@@ -1,4 +1,4 @@
-﻿use std::collections::HashMap;
+use std::collections::HashMap;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum MutationOutcome {
@@ -65,7 +65,7 @@ mod tests {
             ("file1.txt".to_string(), "old_content_1".to_string()),
             ("file2.txt".to_string(), "old_content_2".to_string()),
         ]);
-        
+
         // file1 updated, file2 left untouched
         let actual = HashMap::from([
             ("file1.txt".to_string(), "new_content_1".to_string()),

@@ -1,4 +1,4 @@
-﻿// ============================================================================
+// ============================================================================
 // AGENT-BETA-016-B: Capability Consumption & Single-Use Enforcement Boundary
 // ============================================================================
 // Invariant: Token Minted -> Single-Use Consumption -> Permanent Invalidation
@@ -84,7 +84,9 @@ impl CapabilityConsumptionLedger {
             return Err(ConsumptionError::ScopeMismatch);
         }
 
-        if !token.cryptographic_proof.starts_with("blake3:") || token.cryptographic_proof.len() != 71 {
+        if !token.cryptographic_proof.starts_with("blake3:")
+            || token.cryptographic_proof.len() != 71
+        {
             return Err(ConsumptionError::ProofMismatch);
         }
 
@@ -119,7 +121,8 @@ mod capability_consumption_tests {
             issued_at: 1710000000,
             expires_at: 1710000060,
             nonce: 101,
-            cryptographic_proof: "blake3:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef".into(),
+            cryptographic_proof:
+                "blake3:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef".into(),
             single_use: true,
         }
     }

@@ -1,4 +1,4 @@
-﻿use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Serialize};
 use serde_json::json;
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -59,7 +59,10 @@ impl DeterministicPolicyEngine {
 
         if let Some(rule_arr) = rules {
             for rule in rule_arr {
-                let expr = rule.get("condition_expression").and_then(|v| v.as_str()).unwrap_or("");
+                let expr = rule
+                    .get("condition_expression")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("");
                 if expr == "false" || expr.contains("DENY") {
                     has_deny = true;
                 } else if expr == "true" || expr.contains(">=") || expr.contains("ALLOW") {
@@ -126,7 +129,13 @@ mod policy_engine_tests {
     fn tc_pol_eng_001_deterministic_evaluation() {
         let policy = dummy_policy();
         let evidence = dummy_evidence();
-        let res = DeterministicPolicyEngine::evaluate(&policy, &evidence, "sha256:digest_a", "sha256:digest_a", false);
+        let res = DeterministicPolicyEngine::evaluate(
+            &policy,
+            &evidence,
+            "sha256:digest_a",
+            "sha256:digest_a",
+            false,
+        );
         assert_eq!(res.verdict, EvaluationVerdict::Compliant);
         assert!(!res.human_review_required);
     }
@@ -135,7 +144,13 @@ mod policy_engine_tests {
     fn tc_pol_eng_002_evidence_mutation_rejection() {
         let policy = dummy_policy();
         let evidence = dummy_evidence();
-        let res = DeterministicPolicyEngine::evaluate(&policy, &evidence, "sha256:digest_a", "sha256:digest_a", false);
+        let res = DeterministicPolicyEngine::evaluate(
+            &policy,
+            &evidence,
+            "sha256:digest_a",
+            "sha256:digest_a",
+            false,
+        );
         assert_eq!(res.verdict, EvaluationVerdict::Compliant);
     }
 
@@ -143,7 +158,13 @@ mod policy_engine_tests {
     fn tc_pol_eng_003_policy_drift_rejection() {
         let policy = dummy_policy();
         let evidence = dummy_evidence();
-        let res = DeterministicPolicyEngine::evaluate(&policy, &evidence, "sha256:tampered", "sha256:expected", false);
+        let res = DeterministicPolicyEngine::evaluate(
+            &policy,
+            &evidence,
+            "sha256:tampered",
+            "sha256:expected",
+            false,
+        );
         assert_eq!(res.verdict, EvaluationVerdict::ConflictDetected);
         assert!(res.human_review_required);
     }
@@ -152,7 +173,13 @@ mod policy_engine_tests {
     fn tc_pol_eng_004_missing_evidence_fail_closed() {
         let policy = dummy_policy();
         let empty_evidence = vec![];
-        let res = DeterministicPolicyEngine::evaluate(&policy, &empty_evidence, "sha256:digest_a", "sha256:digest_a", false);
+        let res = DeterministicPolicyEngine::evaluate(
+            &policy,
+            &empty_evidence,
+            "sha256:digest_a",
+            "sha256:digest_a",
+            false,
+        );
         assert_eq!(res.verdict, EvaluationVerdict::InsufficientEvidence);
         assert!(res.human_review_required);
     }
@@ -161,7 +188,13 @@ mod policy_engine_tests {
     fn tc_pol_eng_005_authority_injection_attempt_rejected() {
         let policy = dummy_policy();
         let evidence = dummy_evidence();
-        let res = DeterministicPolicyEngine::evaluate(&policy, &evidence, "sha256:digest_a", "sha256:digest_a", false);
+        let res = DeterministicPolicyEngine::evaluate(
+            &policy,
+            &evidence,
+            "sha256:digest_a",
+            "sha256:digest_a",
+            false,
+        );
         let ser = serde_json::to_value(&res).unwrap();
         assert!(ser.get("execute_deployment").is_none());
         assert!(ser.get("grant_capability").is_none());
@@ -178,7 +211,13 @@ mod policy_engine_tests {
             ]
         });
         let evidence = dummy_evidence();
-        let res = DeterministicPolicyEngine::evaluate(&conflicting_policy, &evidence, "sha256:digest_a", "sha256:digest_a", false);
+        let res = DeterministicPolicyEngine::evaluate(
+            &conflicting_policy,
+            &evidence,
+            "sha256:digest_a",
+            "sha256:digest_a",
+            false,
+        );
         assert_eq!(res.verdict, EvaluationVerdict::ConflictDetected);
         assert!(res.human_review_required);
     }
@@ -187,7 +226,13 @@ mod policy_engine_tests {
     fn tc_pol_eng_007_human_boundary_preservation() {
         let policy = dummy_policy();
         let evidence = dummy_evidence();
-        let res = DeterministicPolicyEngine::evaluate(&policy, &evidence, "sha256:digest_a", "sha256:digest_a", true);
+        let res = DeterministicPolicyEngine::evaluate(
+            &policy,
+            &evidence,
+            "sha256:digest_a",
+            "sha256:digest_a",
+            true,
+        );
         assert_eq!(res.verdict, EvaluationVerdict::Compliant);
         assert!(res.human_review_required);
     }

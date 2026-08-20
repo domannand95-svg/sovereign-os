@@ -1,11 +1,13 @@
-﻿use sovereign_agent_runtime::identity::{
-    AgentIdentity, AgentIdentityId, AgentIdentityStatus, AgentClass, Digest, PolicyId, SchemaVersion, ReplayTimestamp, derive_identity_id
+use sovereign_agent_runtime::identity::{
+    derive_identity_id, AgentClass, AgentIdentity, AgentIdentityId, AgentIdentityStatus, Digest,
+    PolicyId, ReplayTimestamp, SchemaVersion,
 };
 
 #[test]
 fn o18_a_001_identity_derivation_is_deterministic() {
     let key = Digest("a1b2c3d4e5f60000000000000000000000000000000000000000000000000000".into());
-    let policy = PolicyId("f6e5d4c3b2a10000000000000000000000000000000000000000000000000000".into());
+    let policy =
+        PolicyId("f6e5d4c3b2a10000000000000000000000000000000000000000000000000000".into());
     let class = AgentClass::LocalModel;
 
     let id1 = derive_identity_id(&key, &class, &policy);
@@ -18,7 +20,8 @@ fn o18_a_001_identity_derivation_is_deterministic() {
 fn o18_a_002_key_substitution_rejected() {
     let key_a = Digest("a1b2c3d4e5f60000000000000000000000000000000000000000000000000000".into());
     let key_b = Digest("b2c3d4e5f6a10000000000000000000000000000000000000000000000000000".into());
-    let policy = PolicyId("f6e5d4c3b2a10000000000000000000000000000000000000000000000000000".into());
+    let policy =
+        PolicyId("f6e5d4c3b2a10000000000000000000000000000000000000000000000000000".into());
     let class = AgentClass::LocalModel;
 
     let id_a = derive_identity_id(&key_a, &class, &policy);
@@ -30,8 +33,10 @@ fn o18_a_002_key_substitution_rejected() {
 #[test]
 fn o18_a_003_policy_substitution_rejected() {
     let key = Digest("a1b2c3d4e5f60000000000000000000000000000000000000000000000000000".into());
-    let policy_a = PolicyId("f6e5d4c3b2a10000000000000000000000000000000000000000000000000000".into());
-    let policy_b = PolicyId("e5d4c3b2a1f60000000000000000000000000000000000000000000000000000".into());
+    let policy_a =
+        PolicyId("f6e5d4c3b2a10000000000000000000000000000000000000000000000000000".into());
+    let policy_b =
+        PolicyId("e5d4c3b2a1f60000000000000000000000000000000000000000000000000000".into());
     let class = AgentClass::LocalModel;
 
     let id_a = derive_identity_id(&key, &class, &policy_a);
@@ -43,7 +48,8 @@ fn o18_a_003_policy_substitution_rejected() {
 #[test]
 fn o18_a_004_lifecycle_separation() {
     let key = Digest("a1b2c3d4e5f60000000000000000000000000000000000000000000000000000".into());
-    let policy = PolicyId("f6e5d4c3b2a10000000000000000000000000000000000000000000000000000".into());
+    let policy =
+        PolicyId("f6e5d4c3b2a10000000000000000000000000000000000000000000000000000".into());
     let class = AgentClass::LocalModel;
 
     let identity_id = derive_identity_id(&key, &class, &policy);

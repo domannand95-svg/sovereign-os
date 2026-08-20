@@ -1,4 +1,4 @@
-﻿use std::path::PathBuf;
+use std::path::PathBuf;
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum NetworkError {
@@ -69,9 +69,11 @@ mod tests {
                 Err(e) => match e {
                     NetworkError::Timeout => Err(NetworkError::Timeout),
                     NetworkError::Rejected(s) => Err(NetworkError::Rejected(s.clone())),
-                    NetworkError::CredentialFailure(s) => Err(NetworkError::CredentialFailure(s.clone())),
+                    NetworkError::CredentialFailure(s) => {
+                        Err(NetworkError::CredentialFailure(s.clone()))
+                    }
                     NetworkError::ProtocolViolation => Err(NetworkError::ProtocolViolation),
-                }
+                },
             }
         }
     }
@@ -86,45 +88,76 @@ mod tests {
     #[test]
     fn tc_remote_001_successful_push() {
         let adapter = RemoteAdapter {
-            network_client: &MockNetwork { expected_result: Ok(()) },
+            network_client: &MockNetwork {
+                expected_result: Ok(()),
+            },
         };
-        let obs = adapter.dispatch_exact(&default_request(), &MockCredentialProvider { secret: Some("token".into()) });
+        let obs = adapter.dispatch_exact(
+            &default_request(),
+            &MockCredentialProvider {
+                secret: Some("token".into()),
+            },
+        );
         assert!(obs.is_ok());
     }
 
     #[test]
     fn tc_remote_002_timeout() {
         let adapter = RemoteAdapter {
-            network_client: &MockNetwork { expected_result: Err(NetworkError::Timeout) },
+            network_client: &MockNetwork {
+                expected_result: Err(NetworkError::Timeout),
+            },
         };
-        let obs = adapter.dispatch_exact(&default_request(), &MockCredentialProvider { secret: Some("token".into()) });
+        let obs = adapter.dispatch_exact(
+            &default_request(),
+            &MockCredentialProvider {
+                secret: Some("token".into()),
+            },
+        );
         assert_eq!(obs, Err(NetworkError::Timeout));
     }
 
     #[test]
     fn tc_remote_003_rejected() {
         let adapter = RemoteAdapter {
-            network_client: &MockNetwork { expected_result: Err(NetworkError::Rejected("protected".into())) },
+            network_client: &MockNetwork {
+                expected_result: Err(NetworkError::Rejected("protected".into())),
+            },
         };
-        let obs = adapter.dispatch_exact(&default_request(), &MockCredentialProvider { secret: Some("token".into()) });
+        let obs = adapter.dispatch_exact(
+            &default_request(),
+            &MockCredentialProvider {
+                secret: Some("token".into()),
+            },
+        );
         assert_eq!(obs, Err(NetworkError::Rejected("protected".into())));
     }
 
     #[test]
     fn tc_remote_004_credential_failure() {
         let adapter = RemoteAdapter {
-            network_client: &MockNetwork { expected_result: Err(NetworkError::CredentialFailure("none".into())) },
+            network_client: &MockNetwork {
+                expected_result: Err(NetworkError::CredentialFailure("none".into())),
+            },
         };
-        let obs = adapter.dispatch_exact(&default_request(), &MockCredentialProvider { secret: None });
+        let obs =
+            adapter.dispatch_exact(&default_request(), &MockCredentialProvider { secret: None });
         assert_eq!(obs, Err(NetworkError::CredentialFailure("none".into())));
     }
 
     #[test]
     fn tc_remote_005_protocol_violation() {
         let adapter = RemoteAdapter {
-            network_client: &MockNetwork { expected_result: Err(NetworkError::ProtocolViolation) },
+            network_client: &MockNetwork {
+                expected_result: Err(NetworkError::ProtocolViolation),
+            },
         };
-        let obs = adapter.dispatch_exact(&default_request(), &MockCredentialProvider { secret: Some("token".into()) });
+        let obs = adapter.dispatch_exact(
+            &default_request(),
+            &MockCredentialProvider {
+                secret: Some("token".into()),
+            },
+        );
         assert_eq!(obs, Err(NetworkError::ProtocolViolation));
     }
 }

@@ -1,4 +1,4 @@
-﻿// ============================================================================
+// ============================================================================
 // AGENT-BETA-015-A: Governed Action Proposal Schema & Contract
 // ============================================================================
 // Authority Expansion Target: ZERO
@@ -47,9 +47,18 @@ pub mod proposal_schema {
 
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub enum ProposedOperation {
-        EmitNotification { target: String, message_hash: String },
-        QuarantineEntity { entity_id: String, reason: String },
-        RequestStateMutation { key: String, new_value_hash: String },
+        EmitNotification {
+            target: String,
+            message_hash: String,
+        },
+        QuarantineEntity {
+            entity_id: String,
+            reason: String,
+        },
+        RequestStateMutation {
+            key: String,
+            new_value_hash: String,
+        },
     }
 
     #[derive(Debug, Clone, PartialEq, Eq)]
