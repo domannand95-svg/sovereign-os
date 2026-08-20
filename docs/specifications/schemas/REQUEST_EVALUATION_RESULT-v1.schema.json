@@ -1,0 +1,76 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "RequestEvaluationResultV1",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "evaluation_id",
+    "request_reference",
+    "evaluation_status",
+    "policy_result",
+    "necessity_assessment",
+    "scope_assessment",
+    "risk_assessment",
+    "evaluation_reasons",
+    "supporting_evidence_references",
+    "timestamp"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "REQUEST_EVALUATION_RESULT-v1"
+    },
+    "evaluation_id": {
+      "type": "string",
+      "pattern": "^eval_[a-zA-Z0-9_-]+$"
+    },
+    "request_reference": {
+      "type": "string",
+      "pattern": "^req_[a-zA-Z0-9_-]+$"
+    },
+    "evaluation_status": {
+      "type": "string",
+      "enum": ["APPROVED_FOR_NEGOTIATION", "REJECTED", "DEFERRED"]
+    },
+    "policy_result": {
+      "type": "string",
+      "enum": ["PASS", "FAIL", "CONDITIONAL"]
+    },
+    "necessity_assessment": {
+      "type": "string",
+      "enum": ["NECESSARY", "UNNECESSARY", "AMBIGUOUS"]
+    },
+    "scope_assessment": {
+      "type": "string",
+      "enum": ["PROPORTIONATE", "REQUIRES_REDUCTION", "EXCESSIVE"]
+    },
+    "risk_assessment": {
+      "type": "string",
+      "enum": ["LOW", "MEDIUM", "HIGH", "CRITICAL"]
+    },
+    "evaluation_reasons": {
+      "type": "array",
+      "items": { "type": "string" },
+      "minItems": 1
+    },
+    "supporting_evidence_references": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^(EVID|TRACE|AUDIT|REQ)-[0-9]+$"
+      }
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "not": {
+    "anyOf": [
+      { "required": ["execution_token"] },
+      { "required": ["permission_grant"] },
+      { "required": ["runtime_credential"] }
+    ]
+  },
+  "additionalProperties": false
+}

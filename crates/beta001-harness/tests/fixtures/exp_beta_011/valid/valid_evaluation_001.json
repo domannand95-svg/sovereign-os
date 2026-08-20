@@ -1,0 +1,13 @@
+{
+  "schema_version": "REQUEST_EVALUATION_RESULT-v1",
+  "evaluation_id": "eval_001",
+  "request_reference": "req_001",
+  "evaluation_status": "APPROVED_FOR_NEGOTIATION",
+  "policy_result": "PASS",
+  "necessity_assessment": "NECESSARY",
+  "scope_assessment": "REQUIRES_REDUCTION",
+  "risk_assessment": "LOW",
+  "evaluation_reasons": ["Request aligns with allowed file operations but scope requires path constraint tightening."],
+  "supporting_evidence_references": ["REQ-001", "EVID-001"],
+  "timestamp": "2026-08-20T10:00:00Z"
+}

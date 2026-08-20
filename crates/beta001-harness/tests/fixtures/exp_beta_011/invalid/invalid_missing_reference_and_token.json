@@ -1,0 +1,7 @@
+{
+  "schema_version": "REQUEST_EVALUATION_RESULT-v1",
+  "evaluation_id": "eval_002",
+  "evaluation_status": "APPROVED_FOR_NEGOTIATION",
+  "policy_result": "PASS",
+  "execution_token": "token_unauthorized_escalation"
+}
