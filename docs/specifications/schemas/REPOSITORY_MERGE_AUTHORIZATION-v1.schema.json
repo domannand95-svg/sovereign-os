@@ -1,0 +1,125 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "RepositoryMergeAuthorizationV1",
+  "description": "Defines bounded permission to execute one immutable merge candidate.",
+  "type": "object",
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "REPOSITORY_MERGE_AUTHORIZATION-v1"
+    },
+    "authorization_id": {
+      "type": "string",
+      "pattern": "^merge_auth_[a-zA-Z0-9_-]+$"
+    },
+    "candidate_binding": {
+      "type": "object",
+      "properties": {
+        "merge_candidate_id": {
+          "type": "string",
+          "pattern": "^merge_cand_[a-zA-Z0-9_-]+$"
+        },
+        "candidate_commit_oid": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{40}$"
+        }
+      },
+      "required": [
+        "merge_candidate_id",
+        "candidate_commit_oid"
+      ],
+      "additionalProperties": false
+    },
+    "authorized_scope": {
+      "type": "object",
+      "properties": {
+        "operation": {
+          "type": "string",
+          "const": "repository.remote.merge_exact"
+        },
+        "bypass_protection": {
+          "type": "boolean",
+          "const": false
+        },
+        "force_merge": {
+          "type": "boolean",
+          "const": false
+        },
+        "deployment_permitted": {
+          "type": "boolean",
+          "const": false
+        },
+        "publication_permitted": {
+          "type": "boolean",
+          "const": false
+        }
+      },
+      "required": [
+        "operation",
+        "bypass_protection",
+        "force_merge",
+        "deployment_permitted",
+        "publication_permitted"
+      ],
+      "additionalProperties": false
+    },
+    "strategy_binding": {
+      "type": "object",
+      "properties": {
+        "strategy": {
+          "type": "string",
+          "enum": [
+            "MERGE_COMMIT",
+            "SQUASH_MERGE",
+            "REBASE_MERGE"
+          ]
+        }
+      },
+      "required": [
+        "strategy"
+      ],
+      "additionalProperties": false
+    },
+    "temporal_bounds": {
+      "type": "object",
+      "properties": {
+        "issued_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "expires_at": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "issued_at",
+        "expires_at"
+      ],
+      "additionalProperties": false
+    },
+    "consumption_policy": {
+      "type": "object",
+      "properties": {
+        "single_use_only": {
+          "type": "boolean",
+          "const": true
+        }
+      },
+      "required": [
+        "single_use_only"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "schema_version",
+    "authorization_id",
+    "candidate_binding",
+    "authorized_scope",
+    "strategy_binding",
+    "temporal_bounds",
+    "consumption_policy"
+  ],
+  "additionalProperties": false
+}
