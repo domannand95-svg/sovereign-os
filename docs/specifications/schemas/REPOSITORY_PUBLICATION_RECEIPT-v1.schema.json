@@ -1,0 +1,105 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "RepositoryPublicationReceiptV1",
+  "description": "Immutable audit record separating execution observations from independent terminal dispositions.",
+  "type": "object",
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "REPOSITORY_PUBLICATION_RECEIPT-v1"
+    },
+    "receipt_id": {
+      "type": "string",
+      "pattern": "^pub_receipt_[a-zA-Z0-9_-]+$"
+    },
+    "provenance_chain": {
+      "type": "object",
+      "properties": {
+        "candidate_id": { "type": "string", "pattern": "^pub_cand_[a-zA-Z0-9_-]+$" },
+        "candidate_digest": { "type": "string", "pattern": "^sha256:[a-f0-9]{64}$" },
+        "authorization_id": { "type": "string", "pattern": "^pub_auth_[a-zA-Z0-9_-]+$" },
+        "authorization_digest": { "type": "string", "pattern": "^sha256:[a-f0-9]{64}$" },
+        "lease_reference": {
+          "anyOf": [
+            { "type": "null" },
+            {
+              "type": "object",
+              "properties": {
+                "lease_id": { "type": "string", "pattern": "^cred_lease_[a-zA-Z0-9_-]+$" },
+                "lease_digest": { "type": "string", "pattern": "^sha256:[a-f0-9]{64}$" }
+              },
+              "required": ["lease_id", "lease_digest"],
+              "additionalProperties": false
+            }
+          ]
+        }
+      },
+      "required": ["candidate_id", "candidate_digest", "authorization_id", "authorization_digest", "lease_reference"],
+      "additionalProperties": false
+    },
+    "execution_observation": {
+      "type": "string",
+      "enum": [
+        "NOT_DISPATCHED",
+        "DISPATCHED",
+        "ADAPTER_REPORTED_SUCCESS",
+        "ADAPTER_REPORTED_FAILURE",
+        "REMOTE_REPORTED_REJECTION",
+        "TRANSPORT_INTERRUPTED",
+        "TRANSPORT_OUTCOME_UNKNOWN"
+      ]
+    },
+    "independent_post_observation": {
+      "type": "object",
+      "properties": {
+        "observation_state": {
+          "type": "string",
+          "enum": ["PRESENT", "ABSENT", "UNKNOWN", "UNREACHABLE"]
+        },
+        "observed_oid": { "type": "string", "pattern": "^[0-9a-f]{40}$" },
+        "observed_ref": { "type": "string" },
+        "observed_at": { "type": "string", "format": "date-time" }
+      },
+      "required": ["observation_state", "observed_ref", "observed_at"],
+      "additionalProperties": false
+    },
+    "terminal_disposition": {
+      "type": "string",
+      "enum": [
+        "DENIED",
+        "CANDIDATE_INVALID",
+        "CREDENTIAL_UNAVAILABLE",
+        "IDENTITY_MISMATCH",
+        "PRECONDITION_FAILED",
+        "VERIFIED_NO_EFFECT",
+        "VERIFIED_SUCCESS",
+        "CONFLICT",
+        "AMBIGUOUS",
+        "ADAPTER_INCONSISTENCY"
+      ]
+    },
+    "disposition_reason_code": {
+      "type": "string"
+    },
+    "authorization_consumption": {
+      "type": "string",
+      "enum": ["NOT_CONSUMED", "CONSUMED"]
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "required": [
+    "schema_version",
+    "receipt_id",
+    "provenance_chain",
+    "execution_observation",
+    "independent_post_observation",
+    "terminal_disposition",
+    "disposition_reason_code",
+    "authorization_consumption",
+    "timestamp"
+  ],
+  "additionalProperties": false
+}
