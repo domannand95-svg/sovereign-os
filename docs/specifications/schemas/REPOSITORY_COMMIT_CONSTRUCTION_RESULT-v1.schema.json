@@ -1,0 +1,80 @@
+{
+  "": "https://json-schema.org/draft/2020-12/schema",
+  "title": "RepositoryCommitConstructionResultV1",
+  "type": "object",
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "REPOSITORY_COMMIT_CONSTRUCTION_RESULT-v1"
+    },
+    "result_id": {
+      "type": "string",
+      "pattern": "^res_commit_[a-zA-Z0-9_-]+$"
+    },
+    "candidate_reference": {
+      "type": "string",
+      "minLength": 1
+    },
+    "repository_reference": {
+      "type": "string",
+      "minLength": 1
+    },
+    "stage_verification_reference": {
+      "type": "string",
+      "minLength": 1
+    },
+    "expected_tree_id": {
+      "type": "string",
+      "pattern": "^sha256:[a-f0-9]{16,64}$"
+    },
+    "observed_tree_id": {
+      "type": "string",
+      "pattern": "^sha256:[a-f0-9]{16,64}$"
+    },
+    "expected_parent_commit": {
+      "type": "string",
+      "minLength": 1
+    },
+    "observed_parent_commit": {
+      "type": "string",
+      "minLength": 1
+    },
+    "expected_commit_id": {
+      "type": "string",
+      "pattern": "^sha256:[a-f0-9]{16,64}$"
+    },
+    "observed_commit_id": {
+      "type": "string",
+      "pattern": "^sha256:[a-f0-9]{16,64}$"
+    },
+    "construction_disposition": {
+      "type": "string",
+      "enum": ["CONSTRUCTED", "DENIED", "FAILED", "MISMATCH"]
+    },
+    "construction_reasons": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "constructed_at": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "required": [
+    "schema_version",
+    "result_id",
+    "candidate_reference",
+    "repository_reference",
+    "stage_verification_reference",
+    "expected_tree_id",
+    "observed_tree_id",
+    "expected_parent_commit",
+    "observed_parent_commit",
+    "expected_commit_id",
+    "observed_commit_id",
+    "construction_disposition",
+    "construction_reasons",
+    "constructed_at"
+  ],
+  "additionalProperties": false
+}
