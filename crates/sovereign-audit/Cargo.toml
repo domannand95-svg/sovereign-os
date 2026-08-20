@@ -11,3 +11,7 @@ sovereign-registry = { version = "0.1.0", path = "../sovereign-registry" }
 [features]
 governance-evidence-chain = []
 
+
+[dependencies]
+serde_json = { version = "1.0" }
+
