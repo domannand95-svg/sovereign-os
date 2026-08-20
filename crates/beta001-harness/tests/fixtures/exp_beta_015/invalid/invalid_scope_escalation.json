@@ -1,0 +1,10 @@
+{
+  "schema_version": "OPERATION_MATCH_REQUEST-v1",
+  "operation_match_id": "opm_002",
+  "grant_reference": "grant_001",
+  "requested_operation": "delete",
+  "requested_resource": "/etc/shadow",
+  "requested_parameters_digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "timestamp": "2026-08-20T10:20:00Z",
+  "scope_escalation": "unauthorized_expand"
+}
