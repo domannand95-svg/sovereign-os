@@ -1,0 +1,89 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "RepositoryMergeCandidateV1",
+  "description": "Defines an immutable proposed merge integration candidate. Does NOT grant merge execution authority.",
+  "type": "object",
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "REPOSITORY_MERGE_CANDIDATE-v1"
+    },
+    "merge_candidate_id": {
+      "type": "string",
+      "pattern": "^mrg_cand_[a-zA-Z0-9_-]+$"
+    },
+    "pull_request_binding": {
+      "type": "object",
+      "properties": {
+        "candidate_id": {
+          "type": "string",
+          "pattern": "^pr_cand_[a-zA-Z0-9_-]+$"
+        },
+        "source_commit_oid": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{40}$"
+        }
+      },
+      "required": [
+        "candidate_id",
+        "source_commit_oid"
+      ],
+      "additionalProperties": false
+    },
+    "target_repository_identity": {
+      "type": "object",
+      "properties": {
+        "provider": {
+          "type": "string",
+          "minLength": 1
+        },
+        "repository_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "owner": {
+          "type": "string",
+          "minLength": 1
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "provider",
+        "repository_id",
+        "owner",
+        "name"
+      ],
+      "additionalProperties": false
+    },
+    "source_ref": {
+      "type": "string",
+      "pattern": "^refs/heads/[a-zA-Z0-9_/-]+$"
+    },
+    "target_ref": {
+      "type": "string",
+      "pattern": "^refs/heads/[a-zA-Z0-9_/-]+$"
+    },
+    "expected_prestate_oid": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{40}$"
+    },
+    "declared_strategy": {
+      "type": "string",
+      "enum": ["MERGE_COMMIT", "SQUASH_MERGE", "REBASE_MERGE"]
+    }
+  },
+  "required": [
+    "schema_version",
+    "merge_candidate_id",
+    "pull_request_binding",
+    "target_repository_identity",
+    "source_ref",
+    "target_ref",
+    "expected_prestate_oid",
+    "declared_strategy"
+  ],
+  "additionalProperties": false
+}
