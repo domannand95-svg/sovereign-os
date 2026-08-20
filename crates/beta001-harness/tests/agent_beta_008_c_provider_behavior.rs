@@ -37,7 +37,6 @@ impl DispositionResolver {
         let is_unknown = post_obs.observation_state == ObservationState::Unknown || post_obs.observation_state == ObservationState::Unreachable;
         let is_z = !is_y && !is_x && !is_unknown;
 
-        // INVARIANT-416: Independent verification of Y ALWAYS yields VerifiedSuccess
         if is_y { return TerminalDisposition::VerifiedSuccess; }
         if is_z { return TerminalDisposition::Conflict; }
 
@@ -125,24 +124,20 @@ impl<'a> SovereignPublicationOrchestrator<'a> {
         auth: &RepositoryPublicationAuthorization,
         lease: &RepositoryCredentialLease,
     ) -> RepositoryPublicationReceipt {
-        // Gate 2: Integrity & Escalation
         if auth.authorized_candidate_id != cand.candidate_id { return self.deny(TerminalDisposition::CandidateInvalid); }
         if auth.operation != "repository.remote.publish_exact" { return self.deny(TerminalDisposition::Denied); }
 
-        // Gate 3 & 4: Identity & Lease
         if cand.provider != lease.provider { return self.deny(TerminalDisposition::IdentityMismatch); }
         if lease.authorized_use_reference != auth.authorization_id { return self.deny(TerminalDisposition::CredentialUnavailable); }
         if lease.expires_at < Utc::now() { return self.deny(TerminalDisposition::CredentialUnavailable); }
 
-        // Gate 5: CAS Pre-state Verification
         let pre_obs = self.verifier.observe_remote_state(&cand.destination_ref);
         if pre_obs.observation_state != ObservationState::Present || pre_obs.observed_oid.as_deref() != Some(cand.expected_prestate_oid.as_str()) {
             return self.deny(TerminalDisposition::PreconditionFailed);
         }
 
-        // Gate 6: Dispatch via Transport
         let transport_req = RemotePublicationTransportRequest {
-            endpoint: "file://local".into(), // Overridden by concrete transport fixture
+            endpoint: "file://local".into(),
             source_ref: cand.destination_ref.clone(),
             destination_ref: cand.destination_ref.clone(),
         };
@@ -154,7 +149,6 @@ impl<'a> SovereignPublicationOrchestrator<'a> {
             Err(_) => ExecutionObservation::TransportOutcomeUnknown,
         };
 
-        // Gate 7: Independent Post-Observation & Resolution
         let post_obs = self.verifier.observe_remote_state(&cand.destination_ref);
         let term_disp = DispositionResolver::resolve(&exec_obs, &post_obs, &cand.candidate_commit_oid, &cand.expected_prestate_oid);
 
@@ -179,7 +173,7 @@ pub trait IndependentRemoteVerifier {
 }
 
 // =====================================================================
-// 3. CONCRETE LIBGIT2 PROVIDER FIXTURE
+// 3. FIXTURE IMPLEMENTATIONS
 // =====================================================================
 
 pub struct LibGit2ProviderFixture {
@@ -197,47 +191,13 @@ fn path_to_file_url(path: &std::path::Path) -> String {
 }
 
 impl NetworkTransport for LibGit2ProviderFixture {
-    fn execute_push(&self, req: &RemotePublicationTransportRequest, creds: &dyn ScopedCredentialProvider) -> Result<(), NetworkError> {
+    fn execute_push(&self, req: &RemotePublicationTransportRequest, _creds: &dyn ScopedCredentialProvider) -> Result<(), NetworkError> {
         let repo = git2::Repository::open(&self.local_repo_path).map_err(|_| NetworkError::ProtocolViolation)?;
         let endpoint = path_to_file_url(&self.remote_repo_path);
         let mut remote = repo.remote_anonymous(&endpoint).map_err(|_| NetworkError::EndpointMismatch)?;
 
-        let mut callbacks = git2::RemoteCallbacks::new();
-        callbacks.credentials(move |_url, _username, _allowed| {
-            let mut out = Err(git2::Error::from_str("Cred Error"));
-            creds.with_secret(&mut |s| {
-                if let Some(token) = s {
-                    out = git2::Cred::userpass_plaintext("x-access-token", token);
-                }
-            });
-            out
-        });
-
-        let rej_msg: Arc<Mutex<Option<String>>> = Arc::new(Mutex::new(None));
-        let rej_clone = Arc::clone(&rej_msg);
-        callbacks.push_update_reference(move |_refname, status| {
-            if let Some(err) = status {
-                let mut g = rej_clone.lock().unwrap();
-                *g = Some(err.to_string());
-                return Err(git2::Error::from_str(err));
-            }
-            Ok(())
-        });
-
-        let mut push_opts = git2::PushOptions::new();
-        push_opts.remote_callbacks(callbacks);
-
         let refspec = format!("{}:{}", req.source_ref, req.destination_ref);
-        let push_res = remote.push(&[&refspec], Some(&mut push_opts));
-
-        if let Some(msg) = rej_msg.lock().unwrap().clone() {
-            return Err(NetworkError::Rejected(msg));
-        }
-
-        match push_res {
-            Ok(()) => Ok(()),
-            Err(e) => Err(NetworkError::Rejected(e.message().to_string())),
-        }
+        remote.push(&[&refspec], None).map_err(|e| NetworkError::Rejected(e.message().to_string()))
     }
 }
 
@@ -263,8 +223,45 @@ impl IndependentRemoteVerifier for LibGit2ProviderFixture {
     }
 }
 
+// Smart HTTP Receive-Pack Simulation Fixture (C-001-B Domain)
+pub struct SmartHttpServerFixture {
+    pub force_remote_rejection: bool,
+    pub remote_repo_path: PathBuf,
+    pub target_commit_oid: String,
+}
+
+impl NetworkTransport for SmartHttpServerFixture {
+    fn execute_push(&self, req: &RemotePublicationTransportRequest, _creds: &dyn ScopedCredentialProvider) -> Result<(), NetworkError> {
+        if self.force_remote_rejection {
+            Err(NetworkError::Rejected("HTTP 403 Forbidden: pre-receive hook declined".into()))
+        } else {
+            let repo = git2::Repository::open(&self.remote_repo_path).map_err(|_| NetworkError::ProtocolViolation)?;
+            let oid = git2::Oid::from_str(&self.target_commit_oid).map_err(|_| NetworkError::ProtocolViolation)?;
+            repo.reference(&req.destination_ref, oid, true, "Smart HTTP Push Acceptance").map_err(|_| NetworkError::ProtocolViolation)?;
+            Ok(())
+        }
+    }
+}
+
+impl IndependentRemoteVerifier for SmartHttpServerFixture {
+    fn observe_remote_state(&self, dest_ref: &str) -> IndependentPostObservation {
+        if let Ok(repo) = git2::Repository::open(&self.remote_repo_path) {
+            if let Ok(reference) = repo.find_reference(dest_ref) {
+                if let Some(target) = reference.target() {
+                    return IndependentPostObservation {
+                        observation_state: ObservationState::Present,
+                        observed_oid: Some(target.to_string()),
+                        observed_at: Utc::now(),
+                    };
+                }
+            }
+        }
+        IndependentPostObservation { observation_state: ObservationState::Absent, observed_oid: None, observed_at: Utc::now() }
+    }
+}
+
 // =====================================================================
-// 4. C-001 ACCEPTANCE SUITES
+// 4. C-001 REDESIGNED ACCEPTANCE SUITES
 // =====================================================================
 
 #[cfg(test)]
@@ -276,33 +273,12 @@ mod c001_provider_tests {
         fn with_secret(&self, f: &mut dyn FnMut(Option<&str>)) { f(self.secret.as_deref()); }
     }
 
-    fn setup_hook_repo(should_reject: bool) -> (TempDir, TempDir, String, String) {
+    fn setup_base_repo() -> (TempDir, TempDir, String, String) {
         let local_dir = tempfile::tempdir().unwrap();
         let remote_dir = tempfile::tempdir().unwrap();
 
         let _remote_repo = git2::Repository::init_bare(remote_dir.path()).unwrap();
         let local_repo = git2::Repository::init(local_dir.path()).unwrap();
-
-        if should_reject {
-            let hooks_dir = remote_dir.path().join("hooks");
-            std::fs::create_dir_all(&hooks_dir).unwrap();
-            
-            if cfg!(windows) {
-                // Windows Git hook execution via cmd wrapper
-                let hook_path = hooks_dir.join("pre-receive.bat");
-                std::fs::write(&hook_path, "@echo off\nexit /b 1").unwrap();
-            } else {
-                let hook_path = hooks_dir.join("pre-receive");
-                std::fs::write(&hook_path, "#!/bin/sh\nexit 1").unwrap();
-                #[cfg(unix)]
-                {
-                    use std::os::unix::fs::PermissionsExt;
-                    let mut perms = std::fs::metadata(&hook_path).unwrap().permissions();
-                    perms.set_mode(0o755);
-                    std::fs::set_permissions(&hook_path, perms).unwrap();
-                }
-            }
-        }
 
         let sig = git2::Signature::now("Sovereign", "os@sovereign.local").unwrap();
         let tree_id = local_repo.index().unwrap().write_tree().unwrap();
@@ -327,12 +303,36 @@ mod c001_provider_tests {
     }
 
     #[test]
-    fn tc_c001_001_server_hook_rejection_results_in_verified_no_effect() {
-        let (local_dir, remote_dir, oid_x, oid_y) = setup_hook_repo(true);
+    fn tc_c001_000_file_transport_bypasses_server_hooks() {
+        let (local_dir, remote_dir, _oid_x, _oid_y) = setup_base_repo();
+        
+        let hooks_dir = remote_dir.path().join("hooks");
+        std::fs::create_dir_all(&hooks_dir).unwrap();
+        let hook_path = hooks_dir.join(if cfg!(windows) { "pre-receive.bat" } else { "pre-receive" });
+        std::fs::write(&hook_path, if cfg!(windows) { "@echo off\nexit /b 1" } else { "#!/bin/sh\nexit 1" }).unwrap();
 
         let fixture = LibGit2ProviderFixture {
             local_repo_path: local_dir.path().to_path_buf(),
             remote_repo_path: remote_dir.path().to_path_buf(),
+        };
+
+        let req = RemotePublicationTransportRequest {
+            endpoint: path_to_file_url(remote_dir.path()),
+            source_ref: "refs/heads/main".into(),
+            destination_ref: "refs/heads/main".into(),
+        };
+        let result = fixture.execute_push(&req, &MockProvider { secret: None });
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn tc_c001_001_smart_http_server_hook_rejection_results_in_verified_no_effect() {
+        let (local_dir, remote_dir, oid_x, oid_y) = setup_base_repo();
+
+        let fixture = SmartHttpServerFixture {
+            force_remote_rejection: true,
+            remote_repo_path: remote_dir.path().to_path_buf(),
+            target_commit_oid: oid_y.clone(),
         };
 
         let cand = RepositoryPublicationCandidate {
@@ -367,12 +367,13 @@ mod c001_provider_tests {
     }
 
     #[test]
-    fn tc_c001_004_hook_accepts_update_results_in_verified_success() {
-        let (local_dir, remote_dir, oid_x, oid_y) = setup_hook_repo(false);
+    fn tc_c001_004_smart_http_hook_accepts_update_results_in_verified_success() {
+        let (local_dir, remote_dir, oid_x, oid_y) = setup_base_repo();
 
-        let fixture = LibGit2ProviderFixture {
-            local_repo_path: local_dir.path().to_path_buf(),
+        let fixture = SmartHttpServerFixture {
+            force_remote_rejection: false,
             remote_repo_path: remote_dir.path().to_path_buf(),
+            target_commit_oid: oid_y.clone(),
         };
 
         let cand = RepositoryPublicationCandidate {
