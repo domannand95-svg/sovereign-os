@@ -1,0 +1,11 @@
+{
+  "schema_version": "CAPABILITY_EXECUTION_AUDIT_EVENT-v1",
+  "execution_audit_id": "aud_001",
+  "execution_reference": "exec_001",
+  "capability_reference": "grant_001",
+  "enforcement_reference": "enf_001",
+  "decision_result": "ALLOW",
+  "decision_timestamp": "2026-08-20T10:15:00Z",
+  "evidence_lineage_reference": ["REQ-001", "EVAL-001", "NEG-001", "ADM-001", "EXEC-001", "ENF-001"],
+  "timestamp": "2026-08-20T10:15:01Z"
+}

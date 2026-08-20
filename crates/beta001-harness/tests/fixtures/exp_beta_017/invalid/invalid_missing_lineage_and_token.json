@@ -1,0 +1,7 @@
+{
+  "schema_version": "CAPABILITY_EXECUTION_AUDIT_EVENT-v1",
+  "execution_audit_id": "aud_002",
+  "execution_reference": "exec_002",
+  "decision_result": "ALLOW",
+  "runtime_credential": "unauthorized_admin_token"
+}
