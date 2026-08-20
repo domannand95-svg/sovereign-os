@@ -1,0 +1,67 @@
+{
+  "": "https://json-schema.org/draft/2020-12/schema",
+  "title": "RepositoryStageResultV1",
+  "type": "object",
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "REPOSITORY_STAGE_RESULT-v1"
+    },
+    "stage_result_id": {
+      "type": "string",
+      "pattern": "^stage_[a-zA-Z0-9_-]+$"
+    },
+    "repository_reference": {
+      "type": "string",
+      "minLength": 1
+    },
+    "mutation_reference": {
+      "type": "string",
+      "minLength": 1
+    },
+    "authorized_paths": {
+      "type": "array",
+      "items": { "type": "string" },
+      "minItems": 1
+    },
+    "observed_staged_paths": {
+      "type": "array",
+      "items": { "type": "string" },
+      "minItems": 1
+    },
+    "expected_index_digest": {
+      "type": "string",
+      "pattern": "^sha256:[a-f0-9]{16,64}$"
+    },
+    "observed_index_digest": {
+      "type": "string",
+      "pattern": "^sha256:[a-f0-9]{16,64}$"
+    },
+    "stage_disposition": {
+      "type": "string",
+      "enum": ["STAGED", "DENIED", "FAILED", "MISMATCH"]
+    },
+    "stage_reasons": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "required": [
+    "schema_version",
+    "stage_result_id",
+    "repository_reference",
+    "mutation_reference",
+    "authorized_paths",
+    "observed_staged_paths",
+    "expected_index_digest",
+    "observed_index_digest",
+    "stage_disposition",
+    "stage_reasons",
+    "timestamp"
+  ],
+  "additionalProperties": false
+}
