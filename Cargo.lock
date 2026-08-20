@@ -791,6 +791,10 @@ name = "sovereign-audit"
 version = "0.1.0"
 dependencies = [
  "blake3",
+ "serde",
+ "serde_json",
+ "sovereign-ledger",
+ "sovereign-policy",
  "sovereign-registry",
 ]
 
