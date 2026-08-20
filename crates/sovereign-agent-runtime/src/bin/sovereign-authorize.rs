@@ -115,17 +115,15 @@ mod tests {
 
     #[test]
     fn target_traversal_is_denied() {
-        assert!(!safe_target(
-            "C:/approved/../escape.json",
-            Path::new("C:/approved")
-        ));
+        let root = env::current_dir().unwrap().join("approved");
+        let target = root.join("../escape.json");
+        assert!(!safe_target(target.to_str().unwrap(), &root));
     }
 
     #[test]
     fn exact_descendant_is_allowed() {
-        assert!(safe_target(
-            "C:/approved/review.json",
-            Path::new("C:/approved")
-        ));
+        let root = env::current_dir().unwrap().join("approved");
+        let target = root.join("review.json");
+        assert!(safe_target(target.to_str().unwrap(), &root));
     }
 }
