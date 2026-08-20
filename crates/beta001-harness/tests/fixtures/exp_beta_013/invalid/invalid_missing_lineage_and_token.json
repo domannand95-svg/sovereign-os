@@ -1,0 +1,6 @@
+{
+  "schema_version": "TEMPORARY_CAPABILITY_GRANT_RESULT-v1",
+  "grant_request_id": "grant_002",
+  "grant_status": "ACTIVE",
+  "execution_token": "unauthorized_bypass_token"
+}

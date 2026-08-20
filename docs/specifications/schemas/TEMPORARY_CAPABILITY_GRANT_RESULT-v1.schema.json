@@ -1,0 +1,89 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "TemporaryCapabilityGrantResultV1",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "grant_request_id",
+    "capability_request_reference",
+    "evaluation_reference",
+    "negotiation_reference",
+    "approved_scope",
+    "approved_duration",
+    "grant_status",
+    "admission_reference",
+    "lifecycle_reference",
+    "supporting_evidence_references",
+    "timestamp"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "TEMPORARY_CAPABILITY_GRANT_RESULT-v1"
+    },
+    "grant_request_id": {
+      "type": "string",
+      "pattern": "^grant_[a-zA-Z0-9_-]+$"
+    },
+    "capability_request_reference": {
+      "type": "string",
+      "pattern": "^req_[a-zA-Z0-9_-]+$"
+    },
+    "evaluation_reference": {
+      "type": "string",
+      "pattern": "^eval_[a-zA-Z0-9_-]+$"
+    },
+    "negotiation_reference": {
+      "type": "string",
+      "pattern": "^neg_[a-zA-Z0-9_-]+$"
+    },
+    "approved_scope": {
+      "type": "object",
+      "required": ["resource", "operations"],
+      "properties": {
+        "resource": { "type": "string", "minLength": 1 },
+        "operations": {
+          "type": "array",
+          "items": { "type": "string" },
+          "minItems": 1
+        }
+      },
+      "additionalProperties": false
+    },
+    "approved_duration": {
+      "type": "string",
+      "pattern": "^[0-9]+[smhd]$"
+    },
+    "grant_status": {
+      "type": "string",
+      "enum": ["PROPOSED", "PENDING_ADMISSION", "ACTIVE", "EXPIRED", "REVOKED", "REJECTED"]
+    },
+    "admission_reference": {
+      "type": "string",
+      "pattern": "^adm_[a-zA-Z0-9_-]+$"
+    },
+    "lifecycle_reference": {
+      "type": "string",
+      "pattern": "^life_[a-zA-Z0-9_-]+$"
+    },
+    "supporting_evidence_references": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^(EVID|TRACE|AUDIT|REQ|EVAL|NEG|ADM)-[0-9]+$"
+      }
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "not": {
+    "anyOf": [
+      { "required": ["execution_token"] },
+      { "required": ["permission_grant"] },
+      { "required": ["runtime_credential"] }
+    ]
+  },
+  "additionalProperties": false
+}
