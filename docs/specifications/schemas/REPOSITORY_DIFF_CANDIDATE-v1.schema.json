@@ -1,0 +1,51 @@
+{
+  "": "https://json-schema.org/draft/2020-12/schema",
+  "title": "RepositoryDiffCandidateV1",
+  "type": "object",
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "REPOSITORY_DIFF_CANDIDATE-v1"
+    },
+    "candidate_id": {
+      "type": "string",
+      "pattern": "^cand_[a-zA-Z0-9_-]+$"
+    },
+    "repository_reference": {
+      "type": "string",
+      "minLength": 1
+    },
+    "baseline_commit": {
+      "type": "string",
+      "minLength": 1
+    },
+    "target_paths": {
+      "type": "array",
+      "items": { "type": "string" },
+      "minItems": 1
+    },
+    "diff_content": {
+      "type": "string",
+      "minLength": 1
+    },
+    "diff_digest": {
+      "type": "string",
+      "pattern": "^sha256:[a-f0-9]{16,64}$"
+    },
+    "generated_at": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "required": [
+    "schema_version",
+    "candidate_id",
+    "repository_reference",
+    "baseline_commit",
+    "target_paths",
+    "diff_content",
+    "diff_digest",
+    "generated_at"
+  ],
+  "additionalProperties": false
+}
