@@ -53,7 +53,7 @@ impl ProposalBindingValidator {
         if state.is_dirty {
             return ValidationResult {
                 disposition: ValidationDisposition::REJECTED,
-                vec!["Unexpected dirty repository worktree/index state encountered".to_string()],
+                reasons: vec!["Unexpected dirty repository worktree/index state encountered".to_string()],
             };
         }
 
@@ -61,7 +61,7 @@ impl ProposalBindingValidator {
         if candidate.repository_reference != state.repository_id {
             return ValidationResult {
                 disposition: ValidationDisposition::REJECTED,
-                vec!["Candidate repository reference does not match current repository identity".to_string()],
+                reasons: vec!["Candidate repository reference does not match current repository identity".to_string()],
             };
         }
 
@@ -69,7 +69,7 @@ impl ProposalBindingValidator {
         if candidate.baseline_commit != state.head_commit {
             return ValidationResult {
                 disposition: ValidationDisposition::STALE,
-                vec![format!(
+                reasons: vec![format!(
                     "Candidate baseline commit ({}) does not match observed repository HEAD ({})",
                     candidate.baseline_commit, state.head_commit
                 )],
@@ -83,7 +83,7 @@ impl ProposalBindingValidator {
         if computed != candidate.diff_digest {
             return ValidationResult {
                 disposition: ValidationDisposition::REJECTED,
-                vec!["Candidate content digest does not match bound diff digest".to_string()],
+                reasons: vec!["Candidate content digest does not match bound diff digest".to_string()],
             };
         }
 
@@ -97,7 +97,7 @@ impl ProposalBindingValidator {
             if !normalized.starts_with(&base_normalized) {
                 return ValidationResult {
                     disposition: ValidationDisposition::REJECTED,
-                    vec![format!("Target path '{}' escapes granted repository scope", path)],
+                    reasons: vec![format!("Target path '{}' escapes granted repository scope", path)],
                 };
             }
         }
@@ -159,8 +159,6 @@ fn test_agent_003_c01_candidate_matched_against_exact_state() {
 
 #[test]
 fn test_agent_003_c02_baseline_advancement_marked_stale() {
-    // AGENT-003-C-BASELINE-ADVANCEMENT:
-    // When repository HEAD advances from A to B, validation of candidate against A yields STALE.
     let validator = ProposalBindingValidator::new(".");
     let original_state = AuthoritativeRepositoryState {
         repository_id: "repo_sovereign_01".to_string(),
@@ -178,25 +176,21 @@ fn test_agent_003_c02_baseline_advancement_marked_stale() {
         diff_digest: compute_digest(content),
     };
 
-    // First validate at commit A -> MATCHED
     let res1 = validator.validate_proposal(&original_state, &candidate, "crates/beta001-harness");
     assert_eq!(res1.disposition, ValidationDisposition::MATCHED);
 
-    // Advance repository state to commit B
     let advanced_state = AuthoritativeRepositoryState {
         repository_id: "repo_sovereign_01".to_string(),
-        head_commit: "commit_B".to_string(), // Advanced HEAD
+        head_commit: "commit_B".to_string(),
         is_dirty: false,
     };
 
-    // Re-validate same candidate against commit B -> STALE
     let res2 = validator.validate_proposal(&advanced_state, &candidate, "crates/beta001-harness");
     assert_eq!(res2.disposition, ValidationDisposition::STALE);
 }
 
 #[test]
 fn test_agent_003_c14_validation_record_grants_zero_mutation_authority() {
-    // Tests INVARIANT-160: MATCHED validation result cannot be converted into mutation authority
     let validator = ProposalBindingValidator::new(".");
     let state = AuthoritativeRepositoryState {
         repository_id: "repo_sovereign_01".to_string(),
@@ -217,7 +211,6 @@ fn test_agent_003_c14_validation_record_grants_zero_mutation_authority() {
     let validation = validator.validate_proposal(&state, &candidate, "crates/beta001-harness");
     assert_eq!(validation.disposition, ValidationDisposition::MATCHED);
 
-    // Attempting to execute mutation using validation record alone without separate repository.mutate grant
-    let has_mutation_authority = false; // Validation record does not embed mutation tokens
+    let has_mutation_authority = false;
     assert!(!has_mutation_authority, "Validation result conferred unauthorized repository mutation authority!");
 }
