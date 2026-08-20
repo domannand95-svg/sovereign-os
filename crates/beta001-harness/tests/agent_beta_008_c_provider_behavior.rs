@@ -1,6 +1,5 @@
 use chrono::{DateTime, Duration, Utc};
 use std::path::PathBuf;
-use std::sync::{Arc, Mutex};
 use tempfile::TempDir;
 
 // =====================================================================
@@ -223,7 +222,7 @@ impl IndependentRemoteVerifier for LibGit2ProviderFixture {
     }
 }
 
-// Smart HTTP Receive-Pack Simulation Fixture (C-001-B Domain)
+// Smart HTTP Server Simulation Fixture (C-001-B Domain)
 pub struct SmartHttpServerFixture {
     pub force_remote_rejection: bool,
     pub remote_repo_path: PathBuf,
@@ -261,7 +260,7 @@ impl IndependentRemoteVerifier for SmartHttpServerFixture {
 }
 
 // =====================================================================
-// 4. C-001 REDESIGNED ACCEPTANCE SUITES
+// 4. C-001 ACCEPTANCE SUITES
 // =====================================================================
 
 #[cfg(test)]
@@ -304,7 +303,7 @@ mod c001_provider_tests {
 
     #[test]
     fn tc_c001_000_file_transport_bypasses_server_hooks() {
-        let (local_dir, remote_dir, _oid_x, _oid_y) = setup_base_repo();
+        let (_local_dir, remote_dir, _oid_x, _oid_y) = setup_base_repo();
         
         let hooks_dir = remote_dir.path().join("hooks");
         std::fs::create_dir_all(&hooks_dir).unwrap();
@@ -312,7 +311,7 @@ mod c001_provider_tests {
         std::fs::write(&hook_path, if cfg!(windows) { "@echo off\nexit /b 1" } else { "#!/bin/sh\nexit 1" }).unwrap();
 
         let fixture = LibGit2ProviderFixture {
-            local_repo_path: local_dir.path().to_path_buf(),
+            local_repo_path: _local_dir.path().to_path_buf(),
             remote_repo_path: remote_dir.path().to_path_buf(),
         };
 
@@ -327,7 +326,7 @@ mod c001_provider_tests {
 
     #[test]
     fn tc_c001_001_smart_http_server_hook_rejection_results_in_verified_no_effect() {
-        let (local_dir, remote_dir, oid_x, oid_y) = setup_base_repo();
+        let (_local_dir, remote_dir, oid_x, oid_y) = setup_base_repo();
 
         let fixture = SmartHttpServerFixture {
             force_remote_rejection: true,
@@ -368,7 +367,7 @@ mod c001_provider_tests {
 
     #[test]
     fn tc_c001_004_smart_http_hook_accepts_update_results_in_verified_success() {
-        let (local_dir, remote_dir, oid_x, oid_y) = setup_base_repo();
+        let (_local_dir, remote_dir, oid_x, oid_y) = setup_base_repo();
 
         let fixture = SmartHttpServerFixture {
             force_remote_rejection: false,
