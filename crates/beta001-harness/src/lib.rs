@@ -9,3 +9,4 @@ pub mod raw_output_adapter;
 pub mod runtime_profile;
 pub mod schema;
 pub mod telemetry;
+pub mod agent;
