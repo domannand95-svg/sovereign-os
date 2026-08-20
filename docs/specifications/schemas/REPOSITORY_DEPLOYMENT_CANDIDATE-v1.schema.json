@@ -1,0 +1,72 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "RepositoryDeploymentCandidateV1",
+  "description": "Defines an immutable proposed deployment candidate. Does NOT grant execution or deployment authority.",
+  "type": "object",
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "REPOSITORY_DEPLOYMENT_CANDIDATE-v1"
+    },
+    "deployment_candidate_id": {
+      "type": "string",
+      "pattern": "^dep_cand_[a-zA-Z0-9_-]+$"
+    },
+    "source_artifact_digest": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "repository_identity": {
+      "type": "object",
+      "properties": {
+        "provider": { "type": "string", "minLength": 1 },
+        "repository_id": { "type": "string", "minLength": 1 },
+        "owner": { "type": "string", "minLength": 1 },
+        "name": { "type": "string", "minLength": 1 }
+      },
+      "required": ["provider", "repository_id", "owner", "name"],
+      "additionalProperties": false
+    },
+    "source_commit_oid": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{40}$"
+    },
+    "target_runtime_identity": {
+      "type": "object",
+      "properties": {
+        "provider": { "type": "string", "minLength": 1 },
+        "runtime_id": { "type": "string", "minLength": 1 },
+        "environment": {
+          "type": "string",
+          "enum": ["development", "staging", "production"]
+        }
+      },
+      "required": ["provider", "runtime_id", "environment"],
+      "additionalProperties": false
+    },
+    "deployment_strategy": {
+      "type": "string",
+      "enum": ["ROLLING", "BLUE_GREEN", "RECREATE"]
+    },
+    "expected_runtime_state": {
+      "type": "string",
+      "minLength": 1
+    },
+    "proposed_runtime_state": {
+      "type": "string",
+      "minLength": 1
+    }
+  },
+  "required": [
+    "schema_version",
+    "deployment_candidate_id",
+    "source_artifact_digest",
+    "repository_identity",
+    "source_commit_oid",
+    "target_runtime_identity",
+    "deployment_strategy",
+    "expected_runtime_state",
+    "proposed_runtime_state"
+  ],
+  "additionalProperties": false
+}
