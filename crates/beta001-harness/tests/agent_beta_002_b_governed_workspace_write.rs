@@ -1,5 +1,6 @@
 use std::path::{Path, PathBuf, Component};
-use sha2::{Digest, Sha256};
+use std::collections::hash_map::DefaultHasher;
+use std::hash::{Hash, Hasher};
 
 pub struct WorkspaceWriteAdapter {
     sandbox_root: PathBuf,
@@ -16,7 +17,7 @@ impl WorkspaceWriteAdapter {
         &self,
         granted_scope: &str,
         requested_path: &str,
-        candidate_bytes: &[byte],
+        candidate_bytes: &[u8],
         bound_payload_digest: &str,
         is_grant_active: bool,
         is_revoked: bool,
@@ -33,9 +34,9 @@ impl WorkspaceWriteAdapter {
         }
 
         // Enforce INVARIANT-104: Cryptographic payload digest binding
-        let mut hasher = Sha256::new();
-        hasher.update(candidate_bytes);
-        let computed_digest = format!("sha256:{:x}", hasher.finalize());
+        let mut hasher = DefaultHasher::new();
+        candidate_bytes.hash(&mut hasher);
+        let computed_digest = format!("sha256:{:x}", hasher.finish());
         if computed_digest != bound_payload_digest {
             return Err(WriteError::PayloadMismatch("Executed payload digest does not match enforcement binding".to_string()));
         }
@@ -82,11 +83,17 @@ pub enum WriteError {
     PayloadMismatch(String),
 }
 
+fn compute_digest(bytes: &[u8]) -> String {
+    let mut hasher = DefaultHasher::new();
+    bytes.hash(&mut hasher);
+    format!("sha256:{:x}", hasher.finish())
+}
+
 #[test]
 fn test_agent_002_b01_create_exact_authorized_output_succeeds() {
     let adapter = WorkspaceWriteAdapter::new(".");
     let payload = b"Report Summary Data";
-    let digest = "sha256:" + &format!("{:x}", Sha256::digest(payload));
+    let digest = compute_digest(payload);
 
     let res = adapter.execute_write(
         "sandbox/session-001/output",
@@ -104,7 +111,7 @@ fn test_agent_002_b01_create_exact_authorized_output_succeeds() {
 fn test_agent_002_b04_traversal_write_denied() {
     let adapter = WorkspaceWriteAdapter::new(".");
     let payload = b"Malicious payload";
-    let digest = "sha256:" + &format!("{:x}", Sha256::digest(payload));
+    let digest = compute_digest(payload);
 
     let res = adapter.execute_write(
         "sandbox/session-001/output",
@@ -123,7 +130,7 @@ fn test_agent_002_b11_payload_digest_mismatch_denied() {
     // Tests INVARIANT-104: Payload binding integrity
     let adapter = WorkspaceWriteAdapter::new(".");
     let payload = b"Content B";
-    let fake_digest = "sha256:0000000000000000000000000000000000000000000000000000000000000000";
+    let fake_digest = "sha256:00000000000000000000000000000000";
 
     let res = adapter.execute_write(
         "sandbox/session-001/output",
@@ -142,7 +149,7 @@ fn test_agent_002_b10_existing_destination_create_only_rejected() {
     // Tests INVARIANT-105: Create-only semantics fail closed on pre-existing files
     let adapter = WorkspaceWriteAdapter::new(".");
     let payload = b"Content";
-    let digest = "sha256:" + &format!("{:x}", Sha256::digest(payload));
+    let digest = compute_digest(payload);
 
     let res = adapter.execute_write(
         "sandbox/session-001/output",
