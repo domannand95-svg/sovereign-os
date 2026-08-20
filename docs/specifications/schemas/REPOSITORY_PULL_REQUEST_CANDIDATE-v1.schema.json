@@ -1,0 +1,121 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "RepositoryPullRequestCandidateV1",
+  "description": "Defines an immutable proposed pull request collaboration object. Does NOT grant creation, review, approval, or merge authority.",
+  "type": "object",
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "REPOSITORY_PULL_REQUEST_CANDIDATE-v1"
+    },
+    "candidate_id": {
+      "type": "string",
+      "pattern": "^pr_cand_[a-zA-Z0-9_-]+$"
+    },
+    "source_publication_reference": {
+      "type": "object",
+      "description": "Links the proposed PR to an already governed publication event.",
+      "properties": {
+        "publication_receipt_id": {
+          "type": "string",
+          "pattern": "^pub_receipt_[a-zA-Z0-9_-]+$"
+        },
+        "source_commit_oid": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{40}$"
+        }
+      },
+      "required": [
+        "publication_receipt_id",
+        "source_commit_oid"
+      ],
+      "additionalProperties": false
+    },
+    "source_repository_identity": {
+      "type": "object",
+      "properties": {
+        "provider": {
+          "type": "string",
+          "minLength": 1
+        },
+        "repository_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "owner": {
+          "type": "string",
+          "minLength": 1
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "provider",
+        "repository_id",
+        "owner",
+        "name"
+      ],
+      "additionalProperties": false
+    },
+    "source_ref": {
+      "type": "string",
+      "pattern": "^refs/heads/[a-zA-Z0-9_/-]+$"
+    },
+    "target_repository_identity": {
+      "type": "object",
+      "properties": {
+        "provider": {
+          "type": "string",
+          "minLength": 1
+        },
+        "repository_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "owner": {
+          "type": "string",
+          "minLength": 1
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "provider",
+        "repository_id",
+        "owner",
+        "name"
+      ],
+      "additionalProperties": false
+    },
+    "target_ref": {
+      "type": "string",
+      "pattern": "^refs/heads/[a-zA-Z0-9_/-]+$"
+    },
+    "title": {
+      "type": "string",
+      "minLength": 1
+    },
+    "description": {
+      "type": "string"
+    },
+    "risk_classification": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "schema_version",
+    "candidate_id",
+    "source_publication_reference",
+    "source_repository_identity",
+    "source_ref",
+    "target_repository_identity",
+    "target_ref",
+    "title",
+    "risk_classification"
+  ],
+  "additionalProperties": false
+}
