@@ -112,7 +112,11 @@ impl ComposedGovernanceOrchestrationHarness {
         transitions.push("AWAITING_EXTERNAL_AUTHORITY -> READY_FOR_NEXT_DOMAIN".into());
         transitions.push("READY_FOR_NEXT_DOMAIN -> COMPLETED".into());
 
-        let execution_digest = format!("sha256:orch_exec_canonic_{}_{}", workflow_id, graph_nodes.len());
+        let execution_digest = format!(
+            "sha256:orch_exec_canonic_{}_{}",
+            workflow_id,
+            graph_nodes.len()
+        );
 
         ComposedWorkflowExecution {
             workflow_id: workflow_id.into(),
@@ -137,7 +141,11 @@ mod orchestration_composition_tests {
 
     #[test]
     fn tc_orch_comp_001_full_governance_workflow_replay() {
-        let nodes = vec!["evid_pub_01".into(), "evid_pr_02".into(), "evid_dep_03".into()];
+        let nodes = vec![
+            "evid_pub_01".into(),
+            "evid_pr_02".into(),
+            "evid_dep_03".into(),
+        ];
         let scope = nodes.clone();
 
         let exec = ComposedGovernanceOrchestrationHarness::execute_workflow(
@@ -151,7 +159,10 @@ mod orchestration_composition_tests {
             true,
         );
 
-        assert_eq!(exec.terminal_result, OrchestrationTerminalResult::CompletedCoordinationState);
+        assert_eq!(
+            exec.terminal_result,
+            OrchestrationTerminalResult::CompletedCoordinationState
+        );
         let serialized = serde_json::to_value(&exec).unwrap_or_default();
         assert!(serialized.get("deployment_executed").is_none());
         assert!(serialized.get("merge_performed").is_none());
@@ -185,7 +196,10 @@ mod orchestration_composition_tests {
             false, // Invalid graph
         );
 
-        assert_eq!(exec.terminal_result, OrchestrationTerminalResult::InvalidGraph);
+        assert_eq!(
+            exec.terminal_result,
+            OrchestrationTerminalResult::InvalidGraph
+        );
     }
 
     #[test]
@@ -205,7 +219,9 @@ mod orchestration_composition_tests {
         );
 
         // Transition log must include explicit routing through AWAITING_EXTERNAL_AUTHORITY
-        assert!(exec.transitions.contains(&"POLICY_EVALUATED -> AWAITING_EXTERNAL_AUTHORITY".to_string()));
+        assert!(exec
+            .transitions
+            .contains(&"POLICY_EVALUATED -> AWAITING_EXTERNAL_AUTHORITY".to_string()));
     }
 
     #[test]
@@ -214,15 +230,32 @@ mod orchestration_composition_tests {
         let scope = nodes.clone();
 
         let exec_a = ComposedGovernanceOrchestrationHarness::execute_workflow(
-            "wf_005", "sha256:cand", "sha256:auth", &nodes, &scope, true, false, true
+            "wf_005",
+            "sha256:cand",
+            "sha256:auth",
+            &nodes,
+            &scope,
+            true,
+            false,
+            true,
         );
         let exec_b = ComposedGovernanceOrchestrationHarness::execute_workflow(
-            "wf_005", "sha256:cand", "sha256:auth", &nodes, &scope, true, false, true
+            "wf_005",
+            "sha256:cand",
+            "sha256:auth",
+            &nodes,
+            &scope,
+            true,
+            false,
+            true,
         );
 
         assert_eq!(exec_a.transitions, exec_b.transitions);
         assert_eq!(exec_a.terminal_result, exec_b.terminal_result);
-        assert_eq!(exec_a.workflow_execution_digest, exec_b.workflow_execution_digest);
+        assert_eq!(
+            exec_a.workflow_execution_digest,
+            exec_b.workflow_execution_digest
+        );
     }
 
     #[test]
@@ -241,8 +274,13 @@ mod orchestration_composition_tests {
             true,
         );
 
-        assert_eq!(exec.terminal_result, OrchestrationTerminalResult::AwaitingHumanReview);
-        assert!(!exec.transitions.contains(&"READY_FOR_NEXT_DOMAIN -> COMPLETED".to_string()));
+        assert_eq!(
+            exec.terminal_result,
+            OrchestrationTerminalResult::AwaitingHumanReview
+        );
+        assert!(!exec
+            .transitions
+            .contains(&"READY_FOR_NEXT_DOMAIN -> COMPLETED".to_string()));
     }
 
     #[test]
@@ -256,8 +294,20 @@ mod orchestration_composition_tests {
         });
 
         // Verify structural detection of unauthorized keys
-        let allowed = ["schema_version", "workflow_candidate_id", "participating_domains", "policy_references", "required_human_checkpoints", "coordination_intent", "created_at"];
-        let has_injection = val.as_object().unwrap().keys().any(|k| !allowed.contains(&k.as_str()));
+        let allowed = [
+            "schema_version",
+            "workflow_candidate_id",
+            "participating_domains",
+            "policy_references",
+            "required_human_checkpoints",
+            "coordination_intent",
+            "created_at",
+        ];
+        let has_injection = val
+            .as_object()
+            .unwrap()
+            .keys()
+            .any(|k| !allowed.contains(&k.as_str()));
         assert!(has_injection);
     }
 
@@ -277,7 +327,10 @@ mod orchestration_composition_tests {
             true,
         );
 
-        assert_eq!(exec.terminal_result, OrchestrationTerminalResult::ScopeDenied);
+        assert_eq!(
+            exec.terminal_result,
+            OrchestrationTerminalResult::ScopeDenied
+        );
     }
 
     #[test]
@@ -296,8 +349,14 @@ mod orchestration_composition_tests {
             true,
         );
 
-        assert_eq!(exec.terminal_result, OrchestrationTerminalResult::InsufficientEvidence);
-        assert_ne!(exec.terminal_result, OrchestrationTerminalResult::CompletedCoordinationState);
+        assert_eq!(
+            exec.terminal_result,
+            OrchestrationTerminalResult::InsufficientEvidence
+        );
+        assert_ne!(
+            exec.terminal_result,
+            OrchestrationTerminalResult::CompletedCoordinationState
+        );
     }
 
     #[test]

@@ -1,0 +1,9 @@
+{
+  "schema_version": "CAPABILITY-v1",
+  "proposal_reference": "sha256:proposal008",
+  "evaluation_context_reference": "sha256:context008",
+  "decision": "rejected",
+  "decision_reason_class": "POLICY_DENIED",
+  "evaluation_basis": [],
+  "capability_candidate_reference": null
+}

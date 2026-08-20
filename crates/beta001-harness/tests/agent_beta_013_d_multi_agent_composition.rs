@@ -147,7 +147,10 @@ mod multi_agent_composition_tests {
             1,     // normal depth
         );
 
-        assert_eq!(res.disposition, MultiAgentCompositionDisposition::ValidComposition);
+        assert_eq!(
+            res.disposition,
+            MultiAgentCompositionDisposition::ValidComposition
+        );
     }
 
     #[test]
@@ -167,7 +170,10 @@ mod multi_agent_composition_tests {
             1,
         );
 
-        assert_eq!(res.disposition, MultiAgentCompositionDisposition::DeniedCapabilityAggregation);
+        assert_eq!(
+            res.disposition,
+            MultiAgentCompositionDisposition::DeniedCapabilityAggregation
+        );
     }
 
     #[test]
@@ -182,12 +188,15 @@ mod multi_agent_composition_tests {
             &requested,
             true,
             true,
-            true,  // is_consensus_used_as_auth = true
+            true, // is_consensus_used_as_auth = true
             false,
             1,
         );
 
-        assert_eq!(res.disposition, MultiAgentCompositionDisposition::ConsensusIsEvidenceOnly);
+        assert_eq!(
+            res.disposition,
+            MultiAgentCompositionDisposition::ConsensusIsEvidenceOnly
+        );
     }
 
     #[test]
@@ -207,7 +216,10 @@ mod multi_agent_composition_tests {
             1,
         );
 
-        assert_eq!(res.disposition, MultiAgentCompositionDisposition::CommunicationRejected);
+        assert_eq!(
+            res.disposition,
+            MultiAgentCompositionDisposition::CommunicationRejected
+        );
     }
 
     #[test]
@@ -227,14 +239,20 @@ mod multi_agent_composition_tests {
             5, // delegation_depth = 5 (exceeds max 3)
         );
 
-        assert_eq!(res.disposition, MultiAgentCompositionDisposition::DelegationDepthRejected);
+        assert_eq!(
+            res.disposition,
+            MultiAgentCompositionDisposition::DelegationDepthRejected
+        );
     }
 
     #[test]
     fn tc_agent_comp_006_memory_based_trust_escalation_denied() {
         // Structural validation: Historical success or memory state contains zero fields for automatic privilege increase.
         let memory_record = json!({"agent_id": "agent_alpha", "successful_tasks": 100});
-        let has_privilege_field = memory_record.as_object().unwrap().contains_key("grant_privilege");
+        let has_privilege_field = memory_record
+            .as_object()
+            .unwrap()
+            .contains_key("grant_privilege");
         assert!(!has_privilege_field);
     }
 
@@ -256,7 +274,10 @@ mod multi_agent_composition_tests {
             1,
         );
 
-        assert_eq!(res.disposition, MultiAgentCompositionDisposition::CommunicationRejected);
+        assert_eq!(
+            res.disposition,
+            MultiAgentCompositionDisposition::CommunicationRejected
+        );
     }
 
     #[test]
@@ -276,7 +297,10 @@ mod multi_agent_composition_tests {
             1,
         );
 
-        assert_eq!(res.disposition, MultiAgentCompositionDisposition::ConflictDetected);
+        assert_eq!(
+            res.disposition,
+            MultiAgentCompositionDisposition::ConflictDetected
+        );
     }
 
     #[test]
@@ -296,7 +320,10 @@ mod multi_agent_composition_tests {
             1,
         );
 
-        assert_eq!(res.disposition, MultiAgentCompositionDisposition::AuthorizationRequired);
+        assert_eq!(
+            res.disposition,
+            MultiAgentCompositionDisposition::AuthorizationRequired
+        );
     }
 
     #[test]
@@ -304,8 +331,28 @@ mod multi_agent_composition_tests {
         let parent = vec!["REPOSITORY_READ".into()];
         let requested = vec!["REPOSITORY_READ".into()];
 
-        let res_a = MultiAgentCompositionHarness::execute_replay("rep_010", "Deterministic", &parent, &requested, true, true, false, false, 1);
-        let res_b = MultiAgentCompositionHarness::execute_replay("rep_010", "Deterministic", &parent, &requested, true, true, false, false, 1);
+        let res_a = MultiAgentCompositionHarness::execute_replay(
+            "rep_010",
+            "Deterministic",
+            &parent,
+            &requested,
+            true,
+            true,
+            false,
+            false,
+            1,
+        );
+        let res_b = MultiAgentCompositionHarness::execute_replay(
+            "rep_010",
+            "Deterministic",
+            &parent,
+            &requested,
+            true,
+            true,
+            false,
+            false,
+            1,
+        );
 
         assert_eq!(res_a.disposition, res_b.disposition);
         assert_eq!(res_a.composition_digest, res_b.composition_digest);

@@ -101,7 +101,8 @@ impl MergeDispositionResolver {
         verification: &MergeVerificationObservation,
         expected_resulting_oid: &str,
     ) -> MergeTerminalDisposition {
-        let is_verified_target = verification.observation_state == MergeObservationState::VerifiedTargetState
+        let is_verified_target = verification.observation_state
+            == MergeObservationState::VerifiedTargetState
             && verification.observed_target_oid.as_deref() == Some(expected_resulting_oid);
 
         // INVARIANT-514: Independent verification overrides or confirms adapter claims
@@ -128,7 +129,8 @@ impl MergeDispositionResolver {
                     MergeTerminalDisposition::Denied
                 }
             }
-            MergeExecutionObservation::TransportInterrupted | MergeExecutionObservation::TransportOutcomeUnknown => {
+            MergeExecutionObservation::TransportInterrupted
+            | MergeExecutionObservation::TransportOutcomeUnknown => {
                 MergeTerminalDisposition::Ambiguous
             }
             _ => MergeTerminalDisposition::Ambiguous,
@@ -214,12 +216,16 @@ mod merge_adapter_tests {
             merge_strategy: MergeStrategy::SquashMerge,
         };
 
-        let adapter = MockMergeProviderAdapter { observation: MergeExecutionObservation::ProviderReportedMerged };
+        let adapter = MockMergeProviderAdapter {
+            observation: MergeExecutionObservation::ProviderReportedMerged,
+        };
         let verifier = MockMergeVerifier {
             observation_state: MergeObservationState::VerifiedTargetState,
             observed_oid: Some("resulting_oid_222".into()),
         };
-        let creds = MockCredentialProvider { secret: Some("token".into()) };
+        let creds = MockCredentialProvider {
+            secret: Some("token".into()),
+        };
 
         let exec_obs = adapter.execute_merge(&req, &creds);
         let verification = verifier.verify_merge(&identity, &req.target_ref, "resulting_oid_222");
@@ -240,12 +246,16 @@ mod merge_adapter_tests {
         };
 
         // Adapter claims success, but verifier reports target unchanged (prestate)
-        let adapter = MockMergeProviderAdapter { observation: MergeExecutionObservation::ProviderReportedMerged };
+        let adapter = MockMergeProviderAdapter {
+            observation: MergeExecutionObservation::ProviderReportedMerged,
+        };
         let verifier = MockMergeVerifier {
             observation_state: MergeObservationState::VerifiedTargetState,
             observed_oid: Some("prestate_oid_111".into()), // Unchanged!
         };
-        let creds = MockCredentialProvider { secret: Some("token".into()) };
+        let creds = MockCredentialProvider {
+            secret: Some("token".into()),
+        };
 
         let exec_obs = adapter.execute_merge(&req, &creds);
         let verification = verifier.verify_merge(&identity, &req.target_ref, "resulting_oid_222");
@@ -266,12 +276,16 @@ mod merge_adapter_tests {
         };
 
         // Adapter claims network error, but independent verifier observes correct resulting state (e.g. timeout post-commit)
-        let adapter = MockMergeProviderAdapter { observation: MergeExecutionObservation::TransportInterrupted };
+        let adapter = MockMergeProviderAdapter {
+            observation: MergeExecutionObservation::TransportInterrupted,
+        };
         let verifier = MockMergeVerifier {
             observation_state: MergeObservationState::VerifiedTargetState,
             observed_oid: Some("resulting_oid_222".into()),
         };
-        let creds = MockCredentialProvider { secret: Some("token".into()) };
+        let creds = MockCredentialProvider {
+            secret: Some("token".into()),
+        };
 
         let exec_obs = adapter.execute_merge(&req, &creds);
         let verification = verifier.verify_merge(&identity, &req.target_ref, "resulting_oid_222");
@@ -291,12 +305,18 @@ mod merge_adapter_tests {
             merge_strategy: MergeStrategy::RebaseMerge,
         };
 
-        let adapter = MockMergeProviderAdapter { observation: MergeExecutionObservation::ProviderReportedConflict("merge conflict".into()) };
+        let adapter = MockMergeProviderAdapter {
+            observation: MergeExecutionObservation::ProviderReportedConflict(
+                "merge conflict".into(),
+            ),
+        };
         let verifier = MockMergeVerifier {
             observation_state: MergeObservationState::ConflictState,
             observed_oid: None,
         };
-        let creds = MockCredentialProvider { secret: Some("token".into()) };
+        let creds = MockCredentialProvider {
+            secret: Some("token".into()),
+        };
 
         let exec_obs = adapter.execute_merge(&req, &creds);
         let verification = verifier.verify_merge(&identity, &req.target_ref, "resulting_oid_222");
@@ -316,12 +336,16 @@ mod merge_adapter_tests {
             merge_strategy: MergeStrategy::SquashMerge,
         };
 
-        let adapter = MockMergeProviderAdapter { observation: MergeExecutionObservation::TransportInterrupted };
+        let adapter = MockMergeProviderAdapter {
+            observation: MergeExecutionObservation::TransportInterrupted,
+        };
         let verifier = MockMergeVerifier {
             observation_state: MergeObservationState::Unknown,
             observed_oid: None,
         };
-        let creds = MockCredentialProvider { secret: Some("token".into()) };
+        let creds = MockCredentialProvider {
+            secret: Some("token".into()),
+        };
 
         let exec_obs = adapter.execute_merge(&req, &creds);
         let verification = verifier.verify_merge(&identity, &req.target_ref, "resulting_oid_222");

@@ -12,14 +12,20 @@ pub struct PolicyEvaluationResultValidator;
 impl PolicyEvaluationResultValidator {
     pub fn validate(value: &serde_json::Value) -> PolicyEvaluationResultValidationResult {
         // Enforce strict schema version
-        if value.get("schema_version").and_then(|v| v.as_str()) != Some("REPOSITORY_POLICY_EVALUATION_RESULT-v1") {
-            return PolicyEvaluationResultValidationResult::Invalid("Invalid or missing schema_version".into());
+        if value.get("schema_version").and_then(|v| v.as_str())
+            != Some("REPOSITORY_POLICY_EVALUATION_RESULT-v1")
+        {
+            return PolicyEvaluationResultValidationResult::Invalid(
+                "Invalid or missing schema_version".into(),
+            );
         }
 
         // Validate evaluation_id pattern
         if let Some(id) = value.get("evaluation_id").and_then(|v| v.as_str()) {
             if !id.starts_with("eval_") {
-                return PolicyEvaluationResultValidationResult::Invalid("Invalid evaluation_id format".into());
+                return PolicyEvaluationResultValidationResult::Invalid(
+                    "Invalid evaluation_id format".into(),
+                );
             }
         } else {
             return PolicyEvaluationResultValidationResult::Invalid("Missing evaluation_id".into());
@@ -29,32 +35,53 @@ impl PolicyEvaluationResultValidator {
         if let Some(pol_ref) = value.get("policy_reference") {
             if let Some(ver) = pol_ref.get("policy_version").and_then(|v| v.as_str()) {
                 if !ver.starts_with('v') || !ver.contains('.') {
-                    return PolicyEvaluationResultValidationResult::Invalid("Invalid policy_version in policy_reference".into());
+                    return PolicyEvaluationResultValidationResult::Invalid(
+                        "Invalid policy_version in policy_reference".into(),
+                    );
                 }
             } else {
-                return PolicyEvaluationResultValidationResult::Invalid("Missing policy_version in policy_reference".into());
+                return PolicyEvaluationResultValidationResult::Invalid(
+                    "Missing policy_version in policy_reference".into(),
+                );
             }
         } else {
-            return PolicyEvaluationResultValidationResult::Invalid("Missing policy_reference binding".into());
+            return PolicyEvaluationResultValidationResult::Invalid(
+                "Missing policy_reference binding".into(),
+            );
         }
 
         // Validate evidence_references presence
-        if value.get("evidence_references").and_then(|v| v.as_array()).map_or(true, |arr| arr.is_empty()) {
-            return PolicyEvaluationResultValidationResult::Invalid("Missing or empty evidence_references provenance".into());
+        if value
+            .get("evidence_references")
+            .and_then(|v| v.as_array())
+            .map_or(true, |arr| arr.is_empty())
+        {
+            return PolicyEvaluationResultValidationResult::Invalid(
+                "Missing or empty evidence_references provenance".into(),
+            );
         }
 
         // AUTHORITY LEAKAGE & HUMAN BOUNDARY BYPASS CHECK:
         // Ensure no authorization grants, lease issuances, or human overrides exist.
         let allowed_keys = [
-            "schema_version", "evaluation_id", "policy_reference", "evidence_references",
-            "governance_classification", "human_review_required", "evaluation_summary",
-            "evaluation_digest", "evaluated_at"
+            "schema_version",
+            "evaluation_id",
+            "policy_reference",
+            "evidence_references",
+            "governance_classification",
+            "human_review_required",
+            "evaluation_summary",
+            "evaluation_digest",
+            "evaluated_at",
         ];
 
         if let Some(obj) = value.as_object() {
             for key in obj.keys() {
                 if !allowed_keys.contains(&key.as_str()) {
-                    return PolicyEvaluationResultValidationResult::Invalid(format!("Authority leakage or unauthorized field detected: {}", key));
+                    return PolicyEvaluationResultValidationResult::Invalid(format!(
+                        "Authority leakage or unauthorized field detected: {}",
+                        key
+                    ));
                 }
             }
         }
@@ -62,8 +89,13 @@ impl PolicyEvaluationResultValidator {
         // Check for forbidden authority terms in summary or flags
         if let Some(summary) = value.get("evaluation_summary").and_then(|v| v.as_str()) {
             let lower = summary.to_lowercase();
-            if lower.contains("override") || lower.contains("bypass") || lower.contains("grant permission") {
-                return PolicyEvaluationResultValidationResult::Invalid("Forbidden authority override rationale in summary".into());
+            if lower.contains("override")
+                || lower.contains("bypass")
+                || lower.contains("grant permission")
+            {
+                return PolicyEvaluationResultValidationResult::Invalid(
+                    "Forbidden authority override rationale in summary".into(),
+                );
             }
         }
 
@@ -114,42 +146,65 @@ mod policy_evaluation_result_schema_tests {
     #[test]
     fn tc_pol_eval_001_valid_evaluation_result_accepted() {
         let eval = get_valid_evaluation_result();
-        assert_eq!(PolicyEvaluationResultValidator::validate(&eval), PolicyEvaluationResultValidationResult::Valid);
+        assert_eq!(
+            PolicyEvaluationResultValidator::validate(&eval),
+            PolicyEvaluationResultValidationResult::Valid
+        );
     }
 
     #[test]
     fn tc_pol_eval_002_missing_evidence_rejected() {
         let mut eval = get_valid_evaluation_result();
         eval["evidence_references"] = json!([]);
-        assert!(matches!(PolicyEvaluationResultValidator::validate(&eval), PolicyEvaluationResultValidationResult::Invalid(_)));
+        assert!(matches!(
+            PolicyEvaluationResultValidator::validate(&eval),
+            PolicyEvaluationResultValidationResult::Invalid(_)
+        ));
     }
 
     #[test]
     fn tc_pol_eval_003_policy_drift_detection() {
         let mut eval = get_valid_evaluation_result();
         eval["policy_reference"]["policy_version"] = json!("latest");
-        assert!(matches!(PolicyEvaluationResultValidator::validate(&eval), PolicyEvaluationResultValidationResult::Invalid(_)));
+        assert!(matches!(
+            PolicyEvaluationResultValidator::validate(&eval),
+            PolicyEvaluationResultValidationResult::Invalid(_)
+        ));
     }
 
     #[test]
     fn tc_pol_eval_004_authority_leakage_rejected() {
         let mut eval = get_valid_evaluation_result();
-        eval.as_object_mut().unwrap().insert("deployment_permitted".to_string(), json!(true));
-        assert!(matches!(PolicyEvaluationResultValidator::validate(&eval), PolicyEvaluationResultValidationResult::Invalid(_)));
+        eval.as_object_mut()
+            .unwrap()
+            .insert("deployment_permitted".to_string(), json!(true));
+        assert!(matches!(
+            PolicyEvaluationResultValidator::validate(&eval),
+            PolicyEvaluationResultValidationResult::Invalid(_)
+        ));
     }
 
     #[test]
     fn tc_pol_eval_005_evidence_mutation_detection() {
         let mut eval = get_valid_evaluation_result();
-        eval["evidence_references"][0]["digest"] = json!("sha256:0000000000000000000000000000000000000000000000000000000000000000");
-        assert_eq!(PolicyEvaluationResultValidator::validate(&eval), PolicyEvaluationResultValidationResult::Valid);
+        eval["evidence_references"][0]["digest"] =
+            json!("sha256:0000000000000000000000000000000000000000000000000000000000000000");
+        assert_eq!(
+            PolicyEvaluationResultValidator::validate(&eval),
+            PolicyEvaluationResultValidationResult::Valid
+        );
     }
 
     #[test]
     fn tc_pol_eval_006_human_boundary_preservation() {
         let mut eval = get_valid_evaluation_result();
-        eval.as_object_mut().unwrap().insert("human_override_granted".to_string(), json!(true));
-        assert!(matches!(PolicyEvaluationResultValidator::validate(&eval), PolicyEvaluationResultValidationResult::Invalid(_)));
+        eval.as_object_mut()
+            .unwrap()
+            .insert("human_override_granted".to_string(), json!(true));
+        assert!(matches!(
+            PolicyEvaluationResultValidator::validate(&eval),
+            PolicyEvaluationResultValidationResult::Invalid(_)
+        ));
     }
 
     #[test]

@@ -1,0 +1,8 @@
+{
+  "schema_version": "EFFECT_EVALUATION_RESULT-v1",
+  "proposal_reference": "sha256:proposal011",
+  "decision": "accepted",
+  "decision_reason_class": "HOST_APPROVED",
+  "evaluation_basis": [],
+  "capability_candidate_reference": null
+}

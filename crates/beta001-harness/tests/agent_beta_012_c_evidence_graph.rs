@@ -55,7 +55,9 @@ pub struct EvidenceGraphValidator;
 impl EvidenceGraphValidator {
     pub fn validate(value: &serde_json::Value) -> Result<(), String> {
         // Enforce strict schema version
-        if value.get("schema_version").and_then(|v| v.as_str()) != Some("REPOSITORY_GOVERNANCE_EVIDENCE_GRAPH-v1") {
+        if value.get("schema_version").and_then(|v| v.as_str())
+            != Some("REPOSITORY_GOVERNANCE_EVIDENCE_GRAPH-v1")
+        {
             return Err("Invalid or missing schema_version".into());
         }
 
@@ -69,7 +71,11 @@ impl EvidenceGraphValidator {
         }
 
         // Validate nodes presence
-        if value.get("nodes").and_then(|v| v.as_array()).map_or(true, |arr| arr.is_empty()) {
+        if value
+            .get("nodes")
+            .and_then(|v| v.as_array())
+            .map_or(true, |arr| arr.is_empty())
+        {
             return Err("Missing or empty evidence graph nodes".into());
         }
 
@@ -78,15 +84,26 @@ impl EvidenceGraphValidator {
         if let Some(edges) = value.get("edges").and_then(|v| v.as_array()) {
             for edge in edges {
                 if let Some(rel) = edge.get("relationship_type").and_then(|v| v.as_str()) {
-                    if rel.contains("GRANTS") || rel.contains("AUTHORIZES") || rel.contains("EXECUTES") {
-                        return Err(format!("Forbidden authority relationship edge detected: {}", rel));
+                    if rel.contains("GRANTS")
+                        || rel.contains("AUTHORIZES")
+                        || rel.contains("EXECUTES")
+                    {
+                        return Err(format!(
+                            "Forbidden authority relationship edge detected: {}",
+                            rel
+                        ));
                     }
                 }
             }
         }
 
         let allowed_keys = [
-            "schema_version", "evidence_graph_id", "nodes", "edges", "graph_digest", "created_at"
+            "schema_version",
+            "evidence_graph_id",
+            "nodes",
+            "edges",
+            "graph_digest",
+            "created_at",
         ];
         if let Some(obj) = value.as_object() {
             for key in obj.keys() {
@@ -109,7 +126,10 @@ impl EvidenceGraphValidator {
 pub struct ReadOnlyEvidenceGraphTraversal;
 
 impl ReadOnlyEvidenceGraphTraversal {
-    pub fn traverse_scope(graph: &GovernanceEvidenceGraph, authorized_node_ids: &[String]) -> Result<Vec<EvidenceNode>, String> {
+    pub fn traverse_scope(
+        graph: &GovernanceEvidenceGraph,
+        authorized_node_ids: &[String],
+    ) -> Result<Vec<EvidenceNode>, String> {
         // TC-GRAPH-004: Bounded Traversal Scope Enforcement
         let mut resolved = vec![];
         for node in &graph.nodes {
@@ -139,24 +159,27 @@ mod evidence_graph_tests {
                 EvidenceNode {
                     evidence_id: "evid_pub_01".into(),
                     domain: EvidenceDomain::Publication,
-                    content_digest: "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855".into(),
+                    content_digest:
+                        "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+                            .into(),
                     schema_version: "REPOSITORY_PUBLICATION_CANDIDATE-v1".into(),
                 },
                 EvidenceNode {
                     evidence_id: "evid_dep_05".into(),
                     domain: EvidenceDomain::Deployment,
-                    content_digest: "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855".into(),
+                    content_digest:
+                        "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+                            .into(),
                     schema_version: "REPOSITORY_DEPLOYMENT_CANDIDATE-v1".into(),
-                }
+                },
             ],
-            edges: vec![
-                EvidenceEdge {
-                    source: "evid_pub_01".into(),
-                    target: "evid_dep_05".into(),
-                    relationship_type: RelationshipType::AssociatedWith,
-                }
-            ],
-            graph_digest: "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855".into(),
+            edges: vec![EvidenceEdge {
+                source: "evid_pub_01".into(),
+                target: "evid_dep_05".into(),
+                relationship_type: RelationshipType::AssociatedWith,
+            }],
+            graph_digest: "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+                .into(),
             created_at: Utc::now().to_rfc3339(),
         }
     }

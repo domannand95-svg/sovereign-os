@@ -82,5 +82,8 @@ fn test_agent_007_c04_error_after_success_full_effect_unverified() {
     };
 
     let disposition = verifier.verify_transition(&context, "commit_C", false, false);
-    assert_eq!(disposition, RefVerificationDisposition::FULL_EFFECT_UNVERIFIED);
+    assert_eq!(
+        disposition,
+        RefVerificationDisposition::FULL_EFFECT_UNVERIFIED
+    );
 }

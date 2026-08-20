@@ -1,6 +1,6 @@
-use std::path::{Path, PathBuf, Component};
 use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
+use std::path::{Component, Path, PathBuf};
 
 pub struct WorkspaceWriteAdapter {
     sandbox_root: PathBuf,
@@ -25,12 +25,16 @@ impl WorkspaceWriteAdapter {
     ) -> Result<String, WriteError> {
         // Enforce INVARIANT-062, 069, 107: Fail closed on inactive or revoked state
         if !is_grant_active || is_revoked {
-            return Err(WriteError::AuthorityDenied("Write grant is inactive, expired, or revoked".to_string()));
+            return Err(WriteError::AuthorityDenied(
+                "Write grant is inactive, expired, or revoked".to_string(),
+            ));
         }
 
         // Enforce INVARIANT-105: Create-only semantics reject existing targets
         if destination_exists {
-            return Err(WriteError::ConflictError("Create-only write operation rejects pre-existing destination".to_string()));
+            return Err(WriteError::ConflictError(
+                "Create-only write operation rejects pre-existing destination".to_string(),
+            ));
         }
 
         // Enforce INVARIANT-104: Cryptographic payload digest binding
@@ -38,7 +42,9 @@ impl WorkspaceWriteAdapter {
         candidate_bytes.hash(&mut hasher);
         let computed_digest = format!("sha256:{:x}", hasher.finish());
         if computed_digest != bound_payload_digest {
-            return Err(WriteError::PayloadMismatch("Executed payload digest does not match enforcement binding".to_string()));
+            return Err(WriteError::PayloadMismatch(
+                "Executed payload digest does not match enforcement binding".to_string(),
+            ));
         }
 
         // Enforce INVARIANT-101 & 102: Strict target confinement & reparse-point resistance
@@ -49,10 +55,15 @@ impl WorkspaceWriteAdapter {
         let normalized_base = Self::normalize_path(&base_dir);
 
         if !normalized.starts_with(&normalized_base) {
-            return Err(WriteError::ScopeViolation("Write target escapes granted sandbox scope".to_string()));
+            return Err(WriteError::ScopeViolation(
+                "Write target escapes granted sandbox scope".to_string(),
+            ));
         }
 
-        Ok(format!("SUCCESS: Written {} bytes to verified scope target.", candidate_bytes.len()))
+        Ok(format!(
+            "SUCCESS: Written {} bytes to verified scope target.",
+            candidate_bytes.len()
+        ))
     }
 
     fn normalize_path(path: &Path) -> PathBuf {
@@ -122,7 +133,12 @@ fn test_agent_002_b04_traversal_write_denied() {
         false,
         false,
     );
-    assert_eq!(res, Err(WriteError::ScopeViolation("Write target escapes granted sandbox scope".to_string())));
+    assert_eq!(
+        res,
+        Err(WriteError::ScopeViolation(
+            "Write target escapes granted sandbox scope".to_string()
+        ))
+    );
 }
 
 #[test]
@@ -141,7 +157,12 @@ fn test_agent_002_b11_payload_digest_mismatch_denied() {
         false,
         false,
     );
-    assert_eq!(res, Err(WriteError::PayloadMismatch("Executed payload digest does not match enforcement binding".to_string())));
+    assert_eq!(
+        res,
+        Err(WriteError::PayloadMismatch(
+            "Executed payload digest does not match enforcement binding".to_string()
+        ))
+    );
 }
 
 #[test]
@@ -160,5 +181,10 @@ fn test_agent_002_b10_existing_destination_create_only_rejected() {
         false,
         true, // destination_exists = true
     );
-    assert_eq!(res, Err(WriteError::ConflictError("Create-only write operation rejects pre-existing destination".to_string())));
+    assert_eq!(
+        res,
+        Err(WriteError::ConflictError(
+            "Create-only write operation rejects pre-existing destination".to_string()
+        ))
+    );
 }

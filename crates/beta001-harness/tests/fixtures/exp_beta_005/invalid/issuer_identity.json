@@ -1,0 +1,10 @@
+{
+  "schema_version": "EFFECT_EVALUATION_RESULT-v1",
+  "proposal_reference": "sha256:proposal003",
+  "evaluation_context_reference": "sha256:context003",
+  "decision": "rejected",
+  "decision_reason_class": "POLICY_DENIED",
+  "evaluation_basis": [],
+  "capability_candidate_reference": null,
+  "issuer_identity": "model-agent"
+}

@@ -83,7 +83,11 @@ fn test_agent_006_a01_exact_commit_candidate_binding_succeeds() {
     };
 
     let digest_res = canonicalizer.bind_and_canonicalize(&context, &proposed);
-    assert!(digest_res.is_ok(), "Exact commit candidate binding failed: {:?}", digest_res);
+    assert!(
+        digest_res.is_ok(),
+        "Exact commit candidate binding failed: {:?}",
+        digest_res
+    );
 }
 
 #[test]
@@ -120,12 +124,19 @@ fn test_agent_006_a09_identity_non_self_binding_enforced() {
         message: "feat: task".to_string(),
     };
 
-    let digest1 = canonicalizer.bind_and_canonicalize(&context, &proposed1).unwrap();
-    let digest2 = canonicalizer.bind_and_canonicalize(&context, &proposed2).unwrap();
+    let digest1 = canonicalizer
+        .bind_and_canonicalize(&context, &proposed1)
+        .unwrap();
+    let digest2 = canonicalizer
+        .bind_and_canonicalize(&context, &proposed2)
+        .unwrap();
 
-    // Since host policy binds the author/committer identically regardless of agent input, 
+    // Since host policy binds the author/committer identically regardless of agent input,
     // both candidates must canonicalize to the exact same deterministic digest.
-    assert_eq!(digest1, digest2, "Agent-supplied identity claims altered host-bound commit canonicalization!");
+    assert_eq!(
+        digest1, digest2,
+        "Agent-supplied identity claims altered host-bound commit canonicalization!"
+    );
 }
 
 #[test]
@@ -152,5 +163,8 @@ fn test_agent_006_a05_tree_mismatch_rejected() {
     };
 
     let res = canonicalizer.bind_and_canonicalize(&context, &proposed);
-    assert_eq!(res, Err("Tree reference mismatch against host verified index".to_string()));
+    assert_eq!(
+        res,
+        Err("Tree reference mismatch against host verified index".to_string())
+    );
 }

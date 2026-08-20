@@ -81,7 +81,10 @@ fn test_agent_005_d_bounded_staging_injection_resisted() {
     unrelated.insert(user_file.to_string(), "original user work".to_string());
 
     let agent_path = "src/lib.rs";
-    worktree.insert(agent_path.to_string(), "pub fn agent_work() {} ".to_string());
+    worktree.insert(
+        agent_path.to_string(),
+        "pub fn agent_work() {} ".to_string(),
+    );
     worktree.insert("Cargo.toml".to_string(), "[package]".to_string());
 
     let context = AdversarialStagingContext {
@@ -103,7 +106,10 @@ fn test_agent_005_d_bounded_staging_injection_resisted() {
     );
 
     assert_eq!(disposition, AdversarialStageDisposition::Denied);
-    assert_eq!(index.get(user_file), Some(&"original user work".to_string()));
+    assert_eq!(
+        index.get(user_file),
+        Some(&"original user work".to_string())
+    );
     assert_eq!(index.get("Cargo.toml"), None);
 }
 
@@ -122,7 +128,8 @@ fn test_agent_005_d_stale_stage_authority_replay_denied() {
         revoked: false,
     };
 
-    let drifted_pre_state = HashMap::from([("some_other_file.txt".to_string(), "drift".to_string())]);
+    let drifted_pre_state =
+        HashMap::from([("some_other_file.txt".to_string(), "drift".to_string())]);
 
     let disposition = orchestrator.execute_adversarial_staging(
         &context,

@@ -1,0 +1,7 @@
+{
+  "schema_version": "EFFECT_PROPOSAL-v1",
+  "proposed_effect_type": "network_communication",
+  "target_resource": "endpoint:example",
+  "parameters": {},
+  "signature": "deadbeef"
+}

@@ -1,0 +1,10 @@
+{
+  "schema_version": "CAPABILITY_COMPILATION_RESULT-v1",
+  "evaluation_reference": "sha256:eval004",
+  "proposal_reference": "sha256:prop004",
+  "compilation_status": "FAILED",
+  "compilation_timestamp": "2026-08-20T10:15:00Z",
+  "candidate_payload_reference": "sha256:smuggled_candidate",
+  "failure_reason_class": "INVALID_PARAMETER_MAPPING",
+  "compiler_identity": "host-compiler-v1"
+}

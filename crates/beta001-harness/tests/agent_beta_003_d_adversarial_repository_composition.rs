@@ -1,6 +1,6 @@
-use std::path::{Path, PathBuf, Component};
 use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
+use std::path::{Component, Path, PathBuf};
 
 pub struct AdversarialRepositoryOrchestrator {
     repo_root: PathBuf,
@@ -151,7 +151,11 @@ fn test_agent_003_d_stale_proposal_replay_detected() {
         "crates/beta001-harness",
     );
 
-    assert_eq!(disposition, Disposition::STALE, "Stale proposal replay successfully bypassed host baseline validation!");
+    assert_eq!(
+        disposition,
+        Disposition::STALE,
+        "Stale proposal replay successfully bypassed host baseline validation!"
+    );
 }
 
 #[test]
@@ -193,7 +197,11 @@ fn test_agent_003_d_candidate_substitution_rejected() {
         "crates/beta001-harness",
     );
 
-    assert_eq!(disposition, Disposition::REJECTED, "Candidate substitution successfully smuggled unvalidated modifications!");
+    assert_eq!(
+        disposition,
+        Disposition::REJECTED,
+        "Candidate substitution successfully smuggled unvalidated modifications!"
+    );
 }
 
 #[test]
@@ -226,9 +234,12 @@ fn test_agent_003_d_repository_prompt_injection_inert() {
         "crates/beta001-harness",
     );
 
-    // Even if schema-valid, validation yields MATCHED for the *inert candidate representation*, 
+    // Even if schema-valid, validation yields MATCHED for the *inert candidate representation*,
     // but confers ZERO execution or mutation authority (INVARIANT-160 & 164).
     assert_eq!(disposition, Disposition::MATCHED);
     let has_mutation_authority = false;
-    assert!(!has_mutation_authority, "Repository prompt injection conferred actual mutation execution authority!");
+    assert!(
+        !has_mutation_authority,
+        "Repository prompt injection conferred actual mutation execution authority!"
+    );
 }

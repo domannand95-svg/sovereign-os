@@ -105,10 +105,10 @@ pub trait IndependentRemoteVerifier {
 
 pub trait PublicationOrchestrator {
     /// The sole component authorized to intersect boundaries.
-    /// 
+    ///
     /// MUST validate:
     /// Effective Authority = Candidate Scope ∩ Authorization Scope ∩ Credential Capability ∩ Active Lease
-    /// 
+    ///
     /// ENFORCES T008-051 (Gate 5 Pre-Dispatch CAS Check):
     /// 1. Verifier observes X.
     /// 2. If remote != expected_prestate_oid, DENY (PRECONDITION_FAILED).
@@ -151,15 +151,15 @@ impl DispositionResolver {
         expected_y: &str,
         expected_x: &str,
     ) -> TerminalDisposition {
-        let is_y = post_obs.observation_state == ObservationState::Present 
+        let is_y = post_obs.observation_state == ObservationState::Present
             && post_obs.observed_oid.as_deref() == Some(expected_y);
-        
-        let is_x = post_obs.observation_state == ObservationState::Present 
+
+        let is_x = post_obs.observation_state == ObservationState::Present
             && post_obs.observed_oid.as_deref() == Some(expected_x);
-            
-        let is_unknown = post_obs.observation_state == ObservationState::Unknown 
+
+        let is_unknown = post_obs.observation_state == ObservationState::Unknown
             || post_obs.observation_state == ObservationState::Unreachable;
-            
+
         // If it's present or absent but matches neither X nor Y, it diverged.
         let is_z = !is_y && !is_x && !is_unknown;
 
@@ -215,7 +215,8 @@ mod tests {
         let disp = DispositionResolver::resolve(
             &ExecutionObservation::AdapterReportedSuccess,
             &create_obs(ObservationState::Present, Some("YYY")),
-            "YYY", "XXX"
+            "YYY",
+            "XXX",
         );
         assert_eq!(disp, TerminalDisposition::VerifiedSuccess);
     }
@@ -225,7 +226,8 @@ mod tests {
         let disp = DispositionResolver::resolve(
             &ExecutionObservation::AdapterReportedSuccess,
             &create_obs(ObservationState::Present, Some("XXX")),
-            "YYY", "XXX"
+            "YYY",
+            "XXX",
         );
         assert_eq!(disp, TerminalDisposition::AdapterInconsistency);
     }
@@ -235,7 +237,8 @@ mod tests {
         let disp = DispositionResolver::resolve(
             &ExecutionObservation::AdapterReportedFailure,
             &create_obs(ObservationState::Present, Some("YYY")),
-            "YYY", "XXX"
+            "YYY",
+            "XXX",
         );
         assert_eq!(disp, TerminalDisposition::VerifiedSuccess);
     }
@@ -245,7 +248,8 @@ mod tests {
         let disp = DispositionResolver::resolve(
             &ExecutionObservation::TransportInterrupted,
             &create_obs(ObservationState::Present, Some("XXX")),
-            "YYY", "XXX"
+            "YYY",
+            "XXX",
         );
         assert_eq!(disp, TerminalDisposition::VerifiedNoEffect);
     }
@@ -255,7 +259,8 @@ mod tests {
         let disp = DispositionResolver::resolve(
             &ExecutionObservation::TransportInterrupted,
             &create_obs(ObservationState::Unknown, None),
-            "YYY", "XXX"
+            "YYY",
+            "XXX",
         );
         assert_eq!(disp, TerminalDisposition::Ambiguous);
     }
@@ -265,7 +270,8 @@ mod tests {
         let disp = DispositionResolver::resolve(
             &ExecutionObservation::RemoteReportedRejection("rejected".into()),
             &create_obs(ObservationState::Present, Some("ZZZ")),
-            "YYY", "XXX"
+            "YYY",
+            "XXX",
         );
         assert_eq!(disp, TerminalDisposition::Conflict);
     }

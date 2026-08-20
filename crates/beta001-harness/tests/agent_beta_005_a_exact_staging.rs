@@ -113,6 +113,12 @@ fn test_agent_005_a10_unrelated_index_preservation() {
     assert_eq!(disposition, StageDisposition::STAGED);
 
     // Verify both user notes and agent path are correctly present in final index
-    assert_eq!(index.get(user_path), Some(&"User staging content".to_string()));
-    assert_eq!(index.get(agent_path), Some(&"Agent mutated content".to_string()));
+    assert_eq!(
+        index.get(user_path),
+        Some(&"User staging content".to_string())
+    );
+    assert_eq!(
+        index.get(agent_path),
+        Some(&"Agent mutated content".to_string())
+    );
 }

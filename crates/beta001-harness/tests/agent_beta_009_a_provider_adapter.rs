@@ -97,7 +97,8 @@ impl PullRequestDispositionResolver {
         expected_source: &str,
         expected_target: &str,
     ) -> PullRequestTerminalDisposition {
-        let is_verified_match = verification.verification_state == PullRequestVerificationState::Present
+        let is_verified_match = verification.verification_state
+            == PullRequestVerificationState::Present
             && verification.observed_source_ref.as_deref() == Some(expected_source)
             && verification.observed_target_ref.as_deref() == Some(expected_target);
 
@@ -219,16 +220,34 @@ mod pr_adapter_tests {
             description: "Description".into(),
         };
 
-        let adapter = MockProviderAdapter { force_rejection: None, fake_success_without_creation: false };
-        let verifier = MockVerifier { pr_exists: true, actual_source: "refs/heads/feature".into(), actual_target: "refs/heads/develop".into() };
-        let creds = MockCredentialProvider { secret: Some("token".into()) };
+        let adapter = MockProviderAdapter {
+            force_rejection: None,
+            fake_success_without_creation: false,
+        };
+        let verifier = MockVerifier {
+            pr_exists: true,
+            actual_source: "refs/heads/feature".into(),
+            actual_target: "refs/heads/develop".into(),
+        };
+        let creds = MockCredentialProvider {
+            secret: Some("token".into()),
+        };
 
         let exec_obs = adapter.create_pull_request(&req, &creds);
-        assert_eq!(exec_obs, ProviderExecutionObservation::ProviderReportedCreated);
+        assert_eq!(
+            exec_obs,
+            ProviderExecutionObservation::ProviderReportedCreated
+        );
 
-        let verification = verifier.verify_pull_request(&identity, &req.source_ref, &req.target_ref);
-        let disposition = PullRequestDispositionResolver::resolve(&exec_obs, &verification, &req.source_ref, &req.target_ref);
-        
+        let verification =
+            verifier.verify_pull_request(&identity, &req.source_ref, &req.target_ref);
+        let disposition = PullRequestDispositionResolver::resolve(
+            &exec_obs,
+            &verification,
+            &req.source_ref,
+            &req.target_ref,
+        );
+
         assert_eq!(disposition, PullRequestTerminalDisposition::VerifiedCreated);
     }
 
@@ -243,11 +262,19 @@ mod pr_adapter_tests {
             description: "".into(),
         };
 
-        let adapter = MockProviderAdapter { force_rejection: Some("403 branch policy denied".into()), fake_success_without_creation: false };
-        let creds = MockCredentialProvider { secret: Some("token".into()) };
+        let adapter = MockProviderAdapter {
+            force_rejection: Some("403 branch policy denied".into()),
+            fake_success_without_creation: false,
+        };
+        let creds = MockCredentialProvider {
+            secret: Some("token".into()),
+        };
 
         let exec_obs = adapter.create_pull_request(&req, &creds);
-        assert!(matches!(exec_obs, ProviderExecutionObservation::ProviderReportedRejected(_)));
+        assert!(matches!(
+            exec_obs,
+            ProviderExecutionObservation::ProviderReportedRejected(_)
+        ));
     }
 
     #[test]
@@ -297,16 +324,34 @@ mod pr_adapter_tests {
             description: "".into(),
         };
 
-        let adapter = MockProviderAdapter { force_rejection: None, fake_success_without_creation: true };
-        let verifier = MockVerifier { pr_exists: false, actual_source: "".into(), actual_target: "".into() };
-        let creds = MockCredentialProvider { secret: Some("token".into()) };
+        let adapter = MockProviderAdapter {
+            force_rejection: None,
+            fake_success_without_creation: true,
+        };
+        let verifier = MockVerifier {
+            pr_exists: false,
+            actual_source: "".into(),
+            actual_target: "".into(),
+        };
+        let creds = MockCredentialProvider {
+            secret: Some("token".into()),
+        };
 
         let exec_obs = adapter.create_pull_request(&req, &creds);
-        let verification = verifier.verify_pull_request(&identity, &req.source_ref, &req.target_ref);
-        let disposition = PullRequestDispositionResolver::resolve(&exec_obs, &verification, &req.source_ref, &req.target_ref);
+        let verification =
+            verifier.verify_pull_request(&identity, &req.source_ref, &req.target_ref);
+        let disposition = PullRequestDispositionResolver::resolve(
+            &exec_obs,
+            &verification,
+            &req.source_ref,
+            &req.target_ref,
+        );
 
         // Independent verifier catches the adapter lie
-        assert_eq!(disposition, PullRequestTerminalDisposition::AdapterInconsistency);
+        assert_eq!(
+            disposition,
+            PullRequestTerminalDisposition::AdapterInconsistency
+        );
     }
 
     #[test]
@@ -321,7 +366,8 @@ mod pr_adapter_tests {
         };
 
         // Enforce guard condition before dispatch
-        let identity_matches = candidate_identity.immutable_repository_id == adapter_identity.immutable_repository_id;
+        let identity_matches =
+            candidate_identity.immutable_repository_id == adapter_identity.immutable_repository_id;
         assert!(!identity_matches);
     }
 }

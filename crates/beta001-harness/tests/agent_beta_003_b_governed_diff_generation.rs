@@ -1,6 +1,6 @@
-use std::path::{Path, PathBuf, Component};
 use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
+use std::path::{Component, Path, PathBuf};
 
 pub struct DiffGenerationAdapter {
     repo_root: PathBuf,
@@ -39,15 +39,21 @@ impl DiffGenerationAdapter {
     ) -> Result<String, DiffError> {
         // Enforce INVARIANT-062, 069: Fail closed on inactive or revoked state
         if !is_grant_active || is_revoked {
-            return Err(DiffError::AuthorityDenied("Diff generation grant is inactive, expired, or revoked".to_string()));
+            return Err(DiffError::AuthorityDenied(
+                "Diff generation grant is inactive, expired, or revoked".to_string(),
+            ));
         }
 
         // Enforce INVARIANT-144 & 145: Absolute baseline and repository reference binding
         if candidate.repository_reference != context.repository_id {
-            return Err(DiffError::RepositoryMismatch("Candidate repository reference does not match host snapshot".to_string()));
+            return Err(DiffError::RepositoryMismatch(
+                "Candidate repository reference does not match host snapshot".to_string(),
+            ));
         }
         if candidate.baseline_commit != context.head_commit {
-            return Err(DiffError::BaselineMismatch("Candidate baseline commit does not match host snapshot".to_string()));
+            return Err(DiffError::BaselineMismatch(
+                "Candidate baseline commit does not match host snapshot".to_string(),
+            ));
         }
 
         // Enforce INVARIANT-104 & 144: Deterministic content digest binding
@@ -55,7 +61,9 @@ impl DiffGenerationAdapter {
         candidate.diff_content.hash(&mut hasher);
         let computed = format!("sha256:{:x}", hasher.finish());
         if computed != candidate.diff_digest {
-            return Err(DiffError::DigestMismatch("Diff digest does not match content hash".to_string()));
+            return Err(DiffError::DigestMismatch(
+                "Diff digest does not match content hash".to_string(),
+            ));
         }
 
         // Enforce INVARIANT-146: Target path confinement within governed scope
@@ -66,7 +74,9 @@ impl DiffGenerationAdapter {
             let target = base_dir.join(path);
             let normalized = Self::normalize_path(&target);
             if !normalized.starts_with(&base_normalized) {
-                return Err(DiffError::ScopeViolation("Candidate target path escapes granted repository scope".to_string()));
+                return Err(DiffError::ScopeViolation(
+                    "Candidate target path escapes granted repository scope".to_string(),
+                ));
             }
         }
 
@@ -129,7 +139,11 @@ fn test_agent_003_b01_generate_candidate_diff_succeeds() {
     };
 
     let res = adapter.generate_candidate(&ctx, "crates/beta001-harness", &candidate, true, false);
-    assert!(res.is_ok(), "Authorized candidate diff generation failed: {:?}", res);
+    assert!(
+        res.is_ok(),
+        "Authorized candidate diff generation failed: {:?}",
+        res
+    );
 }
 
 #[test]
@@ -153,7 +167,12 @@ fn test_agent_003_b02_out_of_scope_candidate_denied() {
     };
 
     let res = adapter.generate_candidate(&ctx, "crates/beta001-harness", &candidate, true, false);
-    assert_eq!(res, Err(DiffError::ScopeViolation("Candidate target path escapes granted repository scope".to_string())));
+    assert_eq!(
+        res,
+        Err(DiffError::ScopeViolation(
+            "Candidate target path escapes granted repository scope".to_string()
+        ))
+    );
 }
 
 #[test]
@@ -178,5 +197,10 @@ fn test_agent_003_b11_baseline_mismatch_rejected() {
     };
 
     let res = adapter.generate_candidate(&ctx, "crates/beta001-harness", &candidate, true, false);
-    assert_eq!(res, Err(DiffError::BaselineMismatch("Candidate baseline commit does not match host snapshot".to_string())));
+    assert_eq!(
+        res,
+        Err(DiffError::BaselineMismatch(
+            "Candidate baseline commit does not match host snapshot".to_string()
+        ))
+    );
 }

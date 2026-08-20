@@ -21,12 +21,17 @@ pub struct WorkflowAuthorizationValidator;
 impl WorkflowAuthorizationValidator {
     pub fn validate(value: &serde_json::Value) -> Result<(), String> {
         // Enforce strict schema version
-        if value.get("schema_version").and_then(|v| v.as_str()) != Some("REPOSITORY_GOVERNANCE_WORKFLOW_AUTHORIZATION-v1") {
+        if value.get("schema_version").and_then(|v| v.as_str())
+            != Some("REPOSITORY_GOVERNANCE_WORKFLOW_AUTHORIZATION-v1")
+        {
             return Err("Invalid or missing schema_version".into());
         }
 
         // Validate workflow_authorization_id pattern
-        if let Some(id) = value.get("workflow_authorization_id").and_then(|v| v.as_str()) {
+        if let Some(id) = value
+            .get("workflow_authorization_id")
+            .and_then(|v| v.as_str())
+        {
             if !id.starts_with("wf_auth_") {
                 return Err("Invalid workflow_authorization_id format".into());
             }
@@ -64,8 +69,12 @@ impl WorkflowAuthorizationValidator {
 
         // General key check
         let allowed_keys = [
-            "schema_version", "workflow_authorization_id", "workflow_candidate_ref",
-            "authorized_scope", "temporal_bounds", "consumption_policy"
+            "schema_version",
+            "workflow_authorization_id",
+            "workflow_candidate_ref",
+            "authorized_scope",
+            "temporal_bounds",
+            "consumption_policy",
         ];
         if let Some(obj) = value.as_object() {
             for key in obj.keys() {
@@ -100,7 +109,8 @@ impl GovernanceCoordinator for StandardGovernanceCoordinator {
         }
 
         // Verify candidate digest binding
-        let auth_digest = authorization.get("workflow_candidate_ref")
+        let auth_digest = authorization
+            .get("workflow_candidate_ref")
             .and_then(|r| r.get("candidate_digest"))
             .and_then(|v| v.as_str())
             .unwrap_or("");
@@ -161,7 +171,9 @@ mod workflow_authorization_tests {
     #[test]
     fn tc_workflow_auth_002_missing_candidate_binding_rejected() {
         let mut auth = get_valid_workflow_authorization();
-        auth.as_object_mut().unwrap().remove("workflow_candidate_ref");
+        auth.as_object_mut()
+            .unwrap()
+            .remove("workflow_candidate_ref");
         assert!(WorkflowAuthorizationValidator::validate(&auth).is_err());
     }
 
@@ -182,7 +194,9 @@ mod workflow_authorization_tests {
     #[test]
     fn tc_workflow_auth_005_credential_injection_rejected() {
         let mut auth = get_valid_workflow_authorization();
-        auth.as_object_mut().unwrap().insert("token".to_string(), json!("secret_key_123"));
+        auth.as_object_mut()
+            .unwrap()
+            .insert("token".to_string(), json!("secret_key_123"));
         assert!(WorkflowAuthorizationValidator::validate(&auth).is_err());
     }
 
@@ -190,7 +204,8 @@ mod workflow_authorization_tests {
     fn tc_workflow_auth_006_workflow_scope_mismatch() {
         let coordinator = StandardGovernanceCoordinator;
         let auth = get_valid_workflow_authorization();
-        let wrong_digest = "sha256:0000000000000000000000000000000000000000000000000000000000000000";
+        let wrong_digest =
+            "sha256:0000000000000000000000000000000000000000000000000000000000000000";
 
         let transition = coordinator.advance_workflow(wrong_digest, &auth);
         assert_eq!(transition, WorkflowStateTransition::ScopeMismatch);

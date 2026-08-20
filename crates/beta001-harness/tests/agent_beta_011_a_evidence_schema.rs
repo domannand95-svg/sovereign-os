@@ -12,14 +12,20 @@ pub struct GovernanceEvidenceValidator;
 impl GovernanceEvidenceValidator {
     pub fn validate(value: &serde_json::Value) -> GovernanceEvidenceValidationResult {
         // Enforce strict schema version
-        if value.get("schema_version").and_then(|v| v.as_str()) != Some("REPOSITORY_GOVERNANCE_EVIDENCE-v1") {
-            return GovernanceEvidenceValidationResult::Invalid("Invalid or missing schema_version".into());
+        if value.get("schema_version").and_then(|v| v.as_str())
+            != Some("REPOSITORY_GOVERNANCE_EVIDENCE-v1")
+        {
+            return GovernanceEvidenceValidationResult::Invalid(
+                "Invalid or missing schema_version".into(),
+            );
         }
 
         // Validate evidence_id pattern
         if let Some(id) = value.get("evidence_id").and_then(|v| v.as_str()) {
             if !id.starts_with("evid_") {
-                return GovernanceEvidenceValidationResult::Invalid("Invalid evidence_id format".into());
+                return GovernanceEvidenceValidationResult::Invalid(
+                    "Invalid evidence_id format".into(),
+                );
             }
         } else {
             return GovernanceEvidenceValidationResult::Invalid("Missing evidence_id".into());
@@ -28,7 +34,9 @@ impl GovernanceEvidenceValidator {
         // Validate evidence_digest format (must be sha256 hex)
         if let Some(digest) = value.get("evidence_digest").and_then(|v| v.as_str()) {
             if !digest.starts_with("sha256:") || digest.len() != 71 {
-                return GovernanceEvidenceValidationResult::Invalid("Invalid evidence_digest reference".into());
+                return GovernanceEvidenceValidationResult::Invalid(
+                    "Invalid evidence_digest reference".into(),
+                );
             }
         } else {
             return GovernanceEvidenceValidationResult::Invalid("Missing evidence_digest".into());
@@ -36,20 +44,31 @@ impl GovernanceEvidenceValidator {
 
         // Validate source_reference presence
         if value.get("source_reference").is_none() {
-            return GovernanceEvidenceValidationResult::Invalid("Missing source_reference provenance binding".into());
+            return GovernanceEvidenceValidationResult::Invalid(
+                "Missing source_reference provenance binding".into(),
+            );
         }
 
         // AUTHORITY INJECTION & EVALUATION LEAKAGE PREVENTION CHECK:
         // Ensure no policy results, risk scores, authorization decisions, or capability grants exist.
         let allowed_keys = [
-            "schema_version", "evidence_id", "evidence_type", "source_domain",
-            "source_reference", "evidence_digest", "observed_at", "verification_status"
+            "schema_version",
+            "evidence_id",
+            "evidence_type",
+            "source_domain",
+            "source_reference",
+            "evidence_digest",
+            "observed_at",
+            "verification_status",
         ];
-        
+
         if let Some(obj) = value.as_object() {
             for key in obj.keys() {
                 if !allowed_keys.contains(&key.as_str()) {
-                    return GovernanceEvidenceValidationResult::Invalid(format!("Authority injection or evaluation leakage detected: {}", key));
+                    return GovernanceEvidenceValidationResult::Invalid(format!(
+                        "Authority injection or evaluation leakage detected: {}",
+                        key
+                    ));
                 }
             }
         }
@@ -65,7 +84,12 @@ impl GovernanceEvidenceValidator {
             // In a full implementation we ensure ordered keys; here we use deterministic JSON stringify
             let _ = obj;
         }
-        format!("sha256:canonical_{}", serde_json::to_string(&sorted_json).unwrap_or_default().len())
+        format!(
+            "sha256:canonical_{}",
+            serde_json::to_string(&sorted_json)
+                .unwrap_or_default()
+                .len()
+        )
     }
 }
 
@@ -93,14 +117,20 @@ mod governance_evidence_schema_tests {
     #[test]
     fn tc_gov_evid_001_valid_evidence_receipt_accepted() {
         let evid = get_valid_evidence();
-        assert_eq!(GovernanceEvidenceValidator::validate(&evid), GovernanceEvidenceValidationResult::Valid);
+        assert_eq!(
+            GovernanceEvidenceValidator::validate(&evid),
+            GovernanceEvidenceValidationResult::Valid
+        );
     }
 
     #[test]
     fn tc_gov_evid_002_missing_provenance_rejected() {
         let mut evid = get_valid_evidence();
         evid.as_object_mut().unwrap().remove("source_reference");
-        assert!(matches!(GovernanceEvidenceValidator::validate(&evid), GovernanceEvidenceValidationResult::Invalid(_)));
+        assert!(matches!(
+            GovernanceEvidenceValidator::validate(&evid),
+            GovernanceEvidenceValidationResult::Invalid(_)
+        ));
     }
 
     #[test]
@@ -108,30 +138,50 @@ mod governance_evidence_schema_tests {
         let mut evid = get_valid_evidence();
         // Deployment evidence must reference deployment artifacts
         evid["source_reference"]["origin_schema"] = json!("REPOSITORY_DEPLOYMENT_CANDIDATE-v1");
-        assert_eq!(GovernanceEvidenceValidator::validate(&evid), GovernanceEvidenceValidationResult::Valid);
+        assert_eq!(
+            GovernanceEvidenceValidator::validate(&evid),
+            GovernanceEvidenceValidationResult::Valid
+        );
     }
 
     #[test]
     fn tc_gov_evid_004_authority_injection_rejected() {
         let mut evid = get_valid_evidence();
-        evid.as_object_mut().unwrap().insert("merge_permitted".to_string(), json!(true));
-        assert!(matches!(GovernanceEvidenceValidator::validate(&evid), GovernanceEvidenceValidationResult::Invalid(_)));
+        evid.as_object_mut()
+            .unwrap()
+            .insert("merge_permitted".to_string(), json!(true));
+        assert!(matches!(
+            GovernanceEvidenceValidator::validate(&evid),
+            GovernanceEvidenceValidationResult::Invalid(_)
+        ));
     }
 
     #[test]
     fn tc_gov_evid_005_mutable_evidence_detection() {
         let mut evid = get_valid_evidence();
         evid["evidence_digest"] = json!("latest");
-        assert!(matches!(GovernanceEvidenceValidator::validate(&evid), GovernanceEvidenceValidationResult::Invalid(_)));
+        assert!(matches!(
+            GovernanceEvidenceValidator::validate(&evid),
+            GovernanceEvidenceValidationResult::Invalid(_)
+        ));
     }
 
     #[test]
     fn tc_gov_evid_006_evaluation_leakage_prevention() {
         let mut evid = get_valid_evidence();
-        evid.as_object_mut().unwrap().insert("policy_result".to_string(), json!("COMPLIANT"));
-        evid.as_object_mut().unwrap().insert("risk_class".to_string(), json!("LOW"));
-        evid.as_object_mut().unwrap().insert("authorization_decision".to_string(), json!(true));
-        assert!(matches!(GovernanceEvidenceValidator::validate(&evid), GovernanceEvidenceValidationResult::Invalid(_)));
+        evid.as_object_mut()
+            .unwrap()
+            .insert("policy_result".to_string(), json!("COMPLIANT"));
+        evid.as_object_mut()
+            .unwrap()
+            .insert("risk_class".to_string(), json!("LOW"));
+        evid.as_object_mut()
+            .unwrap()
+            .insert("authorization_decision".to_string(), json!(true));
+        assert!(matches!(
+            GovernanceEvidenceValidator::validate(&evid),
+            GovernanceEvidenceValidationResult::Invalid(_)
+        ));
     }
 
     #[test]

@@ -84,8 +84,15 @@ impl CanonicalIdentityResolver {
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum TerminalDisposition {
-    Denied, CandidateInvalid, CredentialUnavailable, IdentityMismatch,
-    PreconditionFailed, VerifiedNoEffect, VerifiedSuccess, Conflict, Ambiguous
+    Denied,
+    CandidateInvalid,
+    CredentialUnavailable,
+    IdentityMismatch,
+    PreconditionFailed,
+    VerifiedNoEffect,
+    VerifiedSuccess,
+    Conflict,
+    Ambiguous,
 }
 
 pub struct IdentityBoundPublicationOrchestrator<'a> {
@@ -126,7 +133,7 @@ mod c002_identity_tests {
     #[test]
     fn tc_c002_001_origin_alias_substitution_yields_identity_mismatch() {
         let expected = get_base_canonical_identity();
-        
+
         // Attack: Local alias 'origin' points to attacker repo (T008-001, T008-003)
         let observed = RemoteIdentityObservation {
             provider: "github.com".into(),
@@ -216,7 +223,9 @@ mod c002_identity_tests {
     #[test]
     fn tc_c002_006_environment_and_config_injection_intercepted() {
         let expected = get_base_canonical_identity();
-        let orchestrator = IdentityBoundPublicationOrchestrator { canonical_identity: &expected };
+        let orchestrator = IdentityBoundPublicationOrchestrator {
+            canonical_identity: &expected,
+        };
 
         // Attack: git config url.*.insteadOf manipulation injecting foreign endpoint (T008-040, T008-041)
         let observed = RemoteIdentityObservation {

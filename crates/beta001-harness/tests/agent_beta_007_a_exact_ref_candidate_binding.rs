@@ -45,7 +45,9 @@ impl RefTransitionCandidateValidator {
         if candidate.expected_old_commit != context.live_old_commit
             || candidate.expected_old_commit != context.verified_new_commit_parent
         {
-            return Err("Expected old commit does not match live reference or commit parent".to_string());
+            return Err(
+                "Expected old commit does not match live reference or commit parent".to_string(),
+            );
         }
 
         // Enforce INVARIANT-346: Current index tree must equal verified commit tree
@@ -57,7 +59,10 @@ impl RefTransitionCandidateValidator {
 
         // Enforce P007-02: Commit-delta authority correlation
         if !context.commit_delta_authorized {
-            return Err("Commit delta contains unauthorized or unadmitted changes (P007-02 violation)".to_string());
+            return Err(
+                "Commit delta contains unauthorized or unadmitted changes (P007-02 violation)"
+                    .to_string(),
+            );
         }
 
         // Compute deterministic candidate digest
@@ -95,7 +100,11 @@ fn test_agent_007_a01_exact_ref_transition_candidate_succeeds() {
     };
 
     let res = validator.validate_and_bind(&context, &candidate);
-    assert!(res.is_ok(), "Exact ref transition candidate binding failed: {:?}", res);
+    assert!(
+        res.is_ok(),
+        "Exact ref transition candidate binding failed: {:?}",
+        res
+    );
 }
 
 #[test]
@@ -122,7 +131,13 @@ fn test_agent_007_p007_02_commit_delta_correlation_enforced() {
     };
 
     let res = validator.validate_and_bind(&context, &candidate);
-    assert_eq!(res, Err("Commit delta contains unauthorized or unadmitted changes (P007-02 violation)".to_string()));
+    assert_eq!(
+        res,
+        Err(
+            "Commit delta contains unauthorized or unadmitted changes (P007-02 violation)"
+                .to_string()
+        )
+    );
 }
 
 #[test]
@@ -149,5 +164,8 @@ fn test_agent_007_a08_non_heads_namespace_rejected() {
     };
 
     let res = validator.validate_and_bind(&context, &candidate);
-    assert_eq!(res, Err("Reference target must be within refs/heads/* namespace".to_string()));
+    assert_eq!(
+        res,
+        Err("Reference target must be within refs/heads/* namespace".to_string())
+    );
 }

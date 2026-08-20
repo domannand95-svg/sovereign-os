@@ -66,7 +66,8 @@ impl GovernanceCompositionValidator {
                 evidence_chain_digest: chain.chain_digest.clone(),
                 classification: ComposedGovernanceClassification::InsufficientEvidence,
                 human_review_required: true,
-                evaluation_summary: "Evidence integrity failure: Tampered or invalid evidence chain digest.".into(),
+                evaluation_summary:
+                    "Evidence integrity failure: Tampered or invalid evidence chain digest.".into(),
             };
         }
 
@@ -77,7 +78,8 @@ impl GovernanceCompositionValidator {
             evidence_chain_digest: chain.chain_digest.clone(),
             classification: ComposedGovernanceClassification::Compliant,
             human_review_required: false,
-            evaluation_summary: "Full lifecycle evidence chain verified compliant against policy v1.0.0.".into(),
+            evaluation_summary:
+                "Full lifecycle evidence chain verified compliant against policy v1.0.0.".into(),
         }
     }
 }
@@ -98,7 +100,8 @@ mod governance_composition_tests {
             merge_evidence_id: "evid_mrg_04".into(),
             deployment_evidence_id: "evid_dep_05".into(),
             runtime_evidence_id: "evid_run_06".into(),
-            chain_digest: "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855".into(),
+            chain_digest: "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+                .into(),
         }
     }
 
@@ -107,7 +110,10 @@ mod governance_composition_tests {
         let chain = get_valid_evidence_chain();
         let res = GovernanceCompositionValidator::evaluate_composition(&chain, "v1.0.0", false);
 
-        assert_eq!(res.classification, ComposedGovernanceClassification::Compliant);
+        assert_eq!(
+            res.classification,
+            ComposedGovernanceClassification::Compliant
+        );
         assert!(!res.human_review_required);
         // Verify no auto-deploy or auto-merge capabilities are granted
         let serialized = serde_json::to_value(&res).unwrap_or_default();
@@ -119,11 +125,17 @@ mod governance_composition_tests {
     fn tc_gov_comp_002_compliant_result_authority_injection() {
         let chain = get_valid_evidence_chain();
         let mut res = GovernanceCompositionValidator::evaluate_composition(&chain, "v1.0.0", false);
-        
+
         // Attempt to inject authority fields into evaluation result object
         let mut serialized = serde_json::to_value(&res).unwrap_or_default();
-        serialized.as_object_mut().unwrap().insert("deployment_permitted".into(), json!(true));
-        serialized.as_object_mut().unwrap().insert("merge_permitted".into(), json!(true));
+        serialized
+            .as_object_mut()
+            .unwrap()
+            .insert("deployment_permitted".into(), json!(true));
+        serialized
+            .as_object_mut()
+            .unwrap()
+            .insert("merge_permitted".into(), json!(true));
 
         assert!(serialized.get("deployment_permitted").is_some());
         // Core structural constraint: ComposedEvaluationResult struct itself contains zero permission fields.
@@ -149,7 +161,10 @@ mod governance_composition_tests {
         let chain = get_valid_evidence_chain();
         let res = GovernanceCompositionValidator::evaluate_composition(&chain, "v1.0.1", false);
 
-        assert_eq!(res.classification, ComposedGovernanceClassification::NonCompliant);
+        assert_eq!(
+            res.classification,
+            ComposedGovernanceClassification::NonCompliant
+        );
         assert!(res.human_review_required);
     }
 
@@ -158,7 +173,10 @@ mod governance_composition_tests {
         let chain = get_valid_evidence_chain();
         let res = GovernanceCompositionValidator::evaluate_composition(&chain, "v1.0.0", true);
 
-        assert_eq!(res.classification, ComposedGovernanceClassification::InsufficientEvidence);
+        assert_eq!(
+            res.classification,
+            ComposedGovernanceClassification::InsufficientEvidence
+        );
         assert!(res.human_review_required);
     }
 
@@ -193,15 +211,25 @@ mod governance_composition_tests {
         };
 
         let res = GovernanceCompositionValidator::evaluate_composition(&chain, "v1.0.0", false);
-        assert_eq!(res.classification, ComposedGovernanceClassification::InsufficientEvidence);
-        assert_ne!(res.classification, ComposedGovernanceClassification::Compliant);
+        assert_eq!(
+            res.classification,
+            ComposedGovernanceClassification::InsufficientEvidence
+        );
+        assert_ne!(
+            res.classification,
+            ComposedGovernanceClassification::Compliant
+        );
     }
 
     #[test]
     fn tc_gov_comp_010_complete_authority_graph_replay() {
         // Enforce unidirectional governance flow: Intent -> Permission -> Capability -> Execution -> Observation -> Evidence -> Evaluation
         // Verify zero reverse edges exist in structural types.
-        let eval_result = GovernanceCompositionValidator::evaluate_composition(&get_valid_evidence_chain(), "v1.0.0", false);
+        let eval_result = GovernanceCompositionValidator::evaluate_composition(
+            &get_valid_evidence_chain(),
+            "v1.0.0",
+            false,
+        );
         let serialized = serde_json::to_value(&eval_result).unwrap_or_default();
 
         assert!(serialized.get("grants_capability").is_none());

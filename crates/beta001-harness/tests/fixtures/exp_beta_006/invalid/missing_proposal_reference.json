@@ -1,0 +1,9 @@
+{
+  "schema_version": "CAPABILITY_COMPILATION_RESULT-v1",
+  "evaluation_reference": "sha256:eval011",
+  "compilation_status": "COMPILED",
+  "compilation_timestamp": "2026-08-20T10:50:00Z",
+  "candidate_payload_reference": "sha256:candidate011",
+  "failure_reason_class": null,
+  "compiler_identity": "host-compiler-v1"
+}

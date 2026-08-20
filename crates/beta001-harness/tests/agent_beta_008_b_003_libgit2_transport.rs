@@ -61,7 +61,6 @@ impl NetworkTransport for LibGit2NetworkTransport {
         request: &GitPushRequest,
         credentials: &dyn ScopedCredentialProvider,
     ) -> Result<(), NetworkError> {
-        
         // 1. REFSPEC SCOPE RESTRICTION (INVARIANT-412, INVARIANT-421)
         if request.destination_ref.contains('*') || request.source_ref.contains('*') {
             return Err(NetworkError::ProtocolViolation);
@@ -76,15 +75,15 @@ impl NetworkTransport for LibGit2NetworkTransport {
         let repo = git2::Repository::open(&self.local_repo_path)
             .map_err(|_| NetworkError::ProtocolViolation)?;
 
-        let mut remote = repo.remote_anonymous(&request.endpoint)
+        let mut remote = repo
+            .remote_anonymous(&request.endpoint)
             .map_err(|_| NetworkError::EndpointMismatch)?;
 
         let mut callbacks = git2::RemoteCallbacks::new();
 
         // 2. CREDENTIAL CALLBACK BOUNDARY
-        callbacks.credentials(move |_url, _username, _allowed| {
-            invoke_credential_callback(credentials)
-        });
+        callbacks
+            .credentials(move |_url, _username, _allowed| invoke_credential_callback(credentials));
 
         // 3. REMOTE REJECTION CALLBACK
         let rejection_msg: Arc<Mutex<Option<String>>> = Arc::new(Mutex::new(None));
@@ -104,7 +103,7 @@ impl NetworkTransport for LibGit2NetworkTransport {
 
         // 4. DISPATCH
         let refspec = format!("{}:{}", request.source_ref, request.destination_ref);
-        
+
         let push_result = remote.push(&[&refspec], Some(&mut push_opts));
 
         let current_rejection = {
@@ -120,7 +119,10 @@ impl NetworkTransport for LibGit2NetworkTransport {
             Ok(_) => Ok(()),
             Err(e) => {
                 let err_string = e.message().to_lowercase();
-                if err_string.contains("non-fast-forward") || err_string.contains("rejected") || err_string.contains("locked") {
+                if err_string.contains("non-fast-forward")
+                    || err_string.contains("rejected")
+                    || err_string.contains("locked")
+                {
                     return Err(NetworkError::Rejected(e.message().to_string()));
                 }
 
@@ -136,15 +138,17 @@ impl NetworkTransport for LibGit2NetworkTransport {
     }
 }
 
-pub fn invoke_credential_callback(provider: &dyn ScopedCredentialProvider) -> Result<git2::Cred, git2::Error> {
+pub fn invoke_credential_callback(
+    provider: &dyn ScopedCredentialProvider,
+) -> Result<git2::Cred, git2::Error> {
     let mut cred_out = Err(git2::Error::from_str("Credential Unavailable"));
-    
+
     provider.with_secret(&mut |secret_opt| {
         if let Some(secret) = secret_opt {
             cred_out = git2::Cred::userpass_plaintext("x-access-token", secret);
         }
     });
-    
+
     cred_out
 }
 
@@ -157,9 +161,13 @@ mod b003_tests {
     use super::*;
     use tempfile::TempDir;
 
-    struct MockProvider { secret: Option<String> }
+    struct MockProvider {
+        secret: Option<String>,
+    }
     impl ScopedCredentialProvider for MockProvider {
-        fn with_secret(&self, f: &mut dyn FnMut(Option<&str>)) { f(self.secret.as_deref()); }
+        fn with_secret(&self, f: &mut dyn FnMut(Option<&str>)) {
+            f(self.secret.as_deref());
+        }
     }
 
     fn setup_physical_repos() -> (TempDir, TempDir, git2::Repository) {
@@ -176,7 +184,16 @@ mod b003_tests {
         };
         {
             let tree = local_repo.find_tree(tree_id).unwrap();
-            local_repo.commit(Some("refs/heads/feature/example"), &sig, &sig, "Initial", &tree, &[]).unwrap();
+            local_repo
+                .commit(
+                    Some("refs/heads/feature/example"),
+                    &sig,
+                    &sig,
+                    "Initial",
+                    &tree,
+                    &[],
+                )
+                .unwrap();
         }
 
         (local_dir, remote_dir, local_repo)
@@ -195,8 +212,10 @@ mod b003_tests {
     #[test]
     fn test_tc_libgit2_001_successful_push() {
         let (local_dir, remote_dir, _local_repo) = setup_physical_repos();
-        
-        let transport = LibGit2NetworkTransport { local_repo_path: local_dir.path().to_path_buf() };
+
+        let transport = LibGit2NetworkTransport {
+            local_repo_path: local_dir.path().to_path_buf(),
+        };
         let req = GitPushRequest {
             endpoint: path_to_file_url(remote_dir.path()),
             source_ref: "refs/heads/feature/example".into(),
@@ -205,11 +224,13 @@ mod b003_tests {
             new: "YYY".into(),
         };
 
-        let creds = MockProvider { secret: Some("token".into()) };
+        let creds = MockProvider {
+            secret: Some("token".into()),
+        };
         let result = transport.execute_push(&req, &creds);
-        
+
         assert!(result.is_ok(), "Physical libgit2 push failed: {:?}", result);
-        
+
         let remote_repo = git2::Repository::open(remote_dir.path()).unwrap();
         let remote_ref = remote_repo.find_reference("refs/heads/feature/example");
         assert!(remote_ref.is_ok());
@@ -225,9 +246,11 @@ mod b003_tests {
             new: "YYY".into(),
         };
 
-        let transport = LibGit2NetworkTransport { local_repo_path: PathBuf::from(".") };
+        let transport = LibGit2NetworkTransport {
+            local_repo_path: PathBuf::from("."),
+        };
         let result = transport.execute_push(&req, &MockProvider { secret: None });
-        
+
         assert_eq!(result, Err(NetworkError::ProtocolViolation));
     }
 
@@ -235,7 +258,7 @@ mod b003_tests {
     fn test_tc_libgit2_003_missing_credential() {
         let provider = MockProvider { secret: None };
         let result = invoke_credential_callback(&provider);
-        
+
         match result {
             Err(e) => assert_eq!(e.message(), "Credential Unavailable"),
             Ok(_) => panic!("Expected credential failure"),
@@ -245,28 +268,43 @@ mod b003_tests {
     #[test]
     fn test_tc_libgit2_004_remote_rejection() {
         let (local_dir, remote_dir, local_repo) = setup_physical_repos();
-        
-        let transport = LibGit2NetworkTransport { local_repo_path: local_dir.path().to_path_buf() };
+
+        let transport = LibGit2NetworkTransport {
+            local_repo_path: local_dir.path().to_path_buf(),
+        };
         let req_initial = GitPushRequest {
             endpoint: path_to_file_url(remote_dir.path()),
             source_ref: "refs/heads/feature/example".into(),
             destination_ref: "refs/heads/feature/example".into(),
-            expected_old: "".into(), new: "".into(),
+            expected_old: "".into(),
+            new: "".into(),
         };
-        transport.execute_push(&req_initial, &MockProvider { secret: None }).unwrap();
+        transport
+            .execute_push(&req_initial, &MockProvider { secret: None })
+            .unwrap();
 
         let sig = git2::Signature::now("Test", "test@example.com").unwrap();
         let tree_id = local_repo.index().unwrap().write_tree().unwrap();
         {
             let tree = local_repo.find_tree(tree_id).unwrap();
-            local_repo.commit(Some("refs/heads/conflict"), &sig, &sig, "Conflict", &tree, &[]).unwrap();
+            local_repo
+                .commit(
+                    Some("refs/heads/conflict"),
+                    &sig,
+                    &sig,
+                    "Conflict",
+                    &tree,
+                    &[],
+                )
+                .unwrap();
         }
 
         let req_conflict = GitPushRequest {
             endpoint: path_to_file_url(remote_dir.path()),
             source_ref: "refs/heads/conflict".into(),
             destination_ref: "refs/heads/feature/example".into(),
-            expected_old: "".into(), new: "".into(),
+            expected_old: "".into(),
+            new: "".into(),
         };
 
         let result = transport.execute_push(&req_conflict, &MockProvider { secret: None });
@@ -275,9 +313,11 @@ mod b003_tests {
 
     #[test]
     fn test_tc_libgit2_005_credential_retention_check() {
-        let transport = LibGit2NetworkTransport { local_repo_path: PathBuf::from("/tmp/repo") };
+        let transport = LibGit2NetworkTransport {
+            local_repo_path: PathBuf::from("/tmp/repo"),
+        };
         let debug_out = format!("{:?}", transport);
-        
+
         assert!(!debug_out.to_lowercase().contains("secret"));
         assert!(!debug_out.to_lowercase().contains("token"));
         assert!(!debug_out.to_lowercase().contains("cred"));
@@ -293,9 +333,11 @@ mod b003_tests {
             new: "YYY".into(),
         };
 
-        let transport = LibGit2NetworkTransport { local_repo_path: PathBuf::from(".") };
+        let transport = LibGit2NetworkTransport {
+            local_repo_path: PathBuf::from("."),
+        };
         let result = transport.execute_push(&req, &MockProvider { secret: None });
-        
+
         assert_eq!(result, Err(NetworkError::ProtocolViolation));
     }
 }

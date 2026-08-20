@@ -6,18 +6,36 @@ use chrono::{DateTime, Duration, Utc};
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum TerminalDisposition {
-    Denied, CandidateInvalid, CredentialUnavailable, IdentityMismatch,
-    PreconditionFailed, VerifiedNoEffect, VerifiedSuccess, Conflict, Ambiguous, AdapterInconsistency
+    Denied,
+    CandidateInvalid,
+    CredentialUnavailable,
+    IdentityMismatch,
+    PreconditionFailed,
+    VerifiedNoEffect,
+    VerifiedSuccess,
+    Conflict,
+    Ambiguous,
+    AdapterInconsistency,
 }
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum ExecutionObservation {
-    NotDispatched, Dispatched, AdapterReportedSuccess, AdapterReportedFailure,
-    RemoteReportedRejection(String), TransportInterrupted, TransportOutcomeUnknown
+    NotDispatched,
+    Dispatched,
+    AdapterReportedSuccess,
+    AdapterReportedFailure,
+    RemoteReportedRejection(String),
+    TransportInterrupted,
+    TransportOutcomeUnknown,
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub enum ObservationState { Present, Absent, Unknown, Unreachable }
+pub enum ObservationState {
+    Present,
+    Absent,
+    Unknown,
+    Unreachable,
+}
 
 #[derive(Debug, Clone)]
 pub struct IndependentPostObservation {
@@ -54,34 +72,37 @@ impl T008ReplayEngine {
 
         // Extract numeric threat suffix for robust classification
         let parts: Vec<&str> = threat_id.split('-').collect();
-        let threat_num = parts.get(1).and_then(|s| s.parse::<u32>().ok()).unwrap_or(0);
+        let threat_num = parts
+            .get(1)
+            .and_then(|s| s.parse::<u32>().ok())
+            .unwrap_or(0);
 
         match threat_num {
             // Suite A: Identity x Credential Boundary (T008-001..004, 015, 027)
             1..=4 | 15 | 27 => {
                 disposition = TerminalDisposition::IdentityMismatch;
                 exec_obs = ExecutionObservation::NotDispatched;
-            },
+            }
             // Suite B: CAS x Network Ambiguity (T008-008..010, 017..023, 051)
             8..=10 | 17..=23 | 51 => {
                 disposition = TerminalDisposition::PreconditionFailed;
                 exec_obs = ExecutionObservation::TransportOutcomeUnknown;
-            },
+            }
             // Suite C: Publication Authority Escalation (T008-024..033)
             24..=33 => {
                 disposition = TerminalDisposition::Denied;
                 exec_obs = ExecutionObservation::NotDispatched;
-            },
+            }
             // Suite D: Publication-Induced Authority (T008-034..038)
             34..=38 => {
                 disposition = TerminalDisposition::Denied;
                 exec_obs = ExecutionObservation::NotDispatched;
-            },
+            }
             // Suite E: Environment & Adapter Boundary (T008-039..050)
             39..=50 => {
                 disposition = TerminalDisposition::IdentityMismatch;
                 exec_obs = ExecutionObservation::NotDispatched;
-            },
+            }
             _ => {
                 disposition = TerminalDisposition::Denied;
                 exec_obs = ExecutionObservation::NotDispatched;
@@ -117,32 +138,57 @@ mod c004_replay_tests {
 
     #[test]
     fn tc_c004_suite_a_identity_credential_isolation() {
-        let threats = vec!["T008-001", "T008-002", "T008-003", "T008-004", "T008-015", "T008-027"];
+        let threats = vec![
+            "T008-001", "T008-002", "T008-003", "T008-004", "T008-015", "T008-027",
+        ];
         for t in threats {
-            let evidence = T008ReplayEngine::execute_replay(t, "Endpoint and credential domain mismatch");
-            assert_eq!(evidence.terminal_disposition, TerminalDisposition::IdentityMismatch);
-            assert_eq!(evidence.execution_observation, ExecutionObservation::NotDispatched);
+            let evidence =
+                T008ReplayEngine::execute_replay(t, "Endpoint and credential domain mismatch");
+            assert_eq!(
+                evidence.terminal_disposition,
+                TerminalDisposition::IdentityMismatch
+            );
+            assert_eq!(
+                evidence.execution_observation,
+                ExecutionObservation::NotDispatched
+            );
             assert!(evidence.prohibited_effects_observed.is_empty());
         }
     }
 
     #[test]
     fn tc_c004_suite_b_cas_network_ambiguity() {
-        let threats = vec!["T008-008", "T008-009", "T008-010", "T008-017", "T008-018", "T008-019", "T008-020", "T008-021", "T008-022", "T008-023", "T008-051"];
+        let threats = vec![
+            "T008-008", "T008-009", "T008-010", "T008-017", "T008-018", "T008-019", "T008-020",
+            "T008-021", "T008-022", "T008-023", "T008-051",
+        ];
         for t in threats {
-            let evidence = T008ReplayEngine::execute_replay(t, "CAS pre-state mismatch or transport timeout");
-            assert_eq!(evidence.terminal_disposition, TerminalDisposition::PreconditionFailed);
+            let evidence =
+                T008ReplayEngine::execute_replay(t, "CAS pre-state mismatch or transport timeout");
+            assert_eq!(
+                evidence.terminal_disposition,
+                TerminalDisposition::PreconditionFailed
+            );
             assert!(evidence.prohibited_effects_observed.is_empty());
         }
     }
 
     #[test]
     fn tc_c004_suite_c_authority_escalation_prevention() {
-        let threats = vec!["T008-024", "T008-025", "T008-026", "T008-028", "T008-029", "T008-030", "T008-031", "T008-032", "T008-033"];
+        let threats = vec![
+            "T008-024", "T008-025", "T008-026", "T008-028", "T008-029", "T008-030", "T008-031",
+            "T008-032", "T008-033",
+        ];
         for t in threats {
-            let evidence = T008ReplayEngine::execute_replay(t, "Unauthorized force push or credential escalation attempt");
+            let evidence = T008ReplayEngine::execute_replay(
+                t,
+                "Unauthorized force push or credential escalation attempt",
+            );
             assert_eq!(evidence.terminal_disposition, TerminalDisposition::Denied);
-            assert_eq!(evidence.execution_observation, ExecutionObservation::NotDispatched);
+            assert_eq!(
+                evidence.execution_observation,
+                ExecutionObservation::NotDispatched
+            );
             assert!(evidence.prohibited_effects_observed.is_empty());
         }
     }
@@ -151,7 +197,10 @@ mod c004_replay_tests {
     fn tc_c004_suite_d_publication_induced_authority() {
         let threats = vec!["T008-034", "T008-035", "T008-036", "T008-037", "T008-038"];
         for t in threats {
-            let evidence = T008ReplayEngine::execute_replay(t, "Sensitive CI/CD or deployment manifest modification");
+            let evidence = T008ReplayEngine::execute_replay(
+                t,
+                "Sensitive CI/CD or deployment manifest modification",
+            );
             assert_eq!(evidence.terminal_disposition, TerminalDisposition::Denied);
             assert!(evidence.prohibited_effects_observed.is_empty());
         }
@@ -159,10 +208,19 @@ mod c004_replay_tests {
 
     #[test]
     fn tc_c004_suite_e_environment_adapter_boundary() {
-        let threats = vec!["T008-039", "T008-040", "T008-041", "T008-042", "T008-043", "T008-044", "T008-045", "T008-046", "T008-047", "T008-050"];
+        let threats = vec![
+            "T008-039", "T008-040", "T008-041", "T008-042", "T008-043", "T008-044", "T008-045",
+            "T008-046", "T008-047", "T008-050",
+        ];
         for t in threats {
-            let evidence = T008ReplayEngine::execute_replay(t, "Environment config injection or TLS/SSH proxy attack");
-            assert_eq!(evidence.terminal_disposition, TerminalDisposition::IdentityMismatch);
+            let evidence = T008ReplayEngine::execute_replay(
+                t,
+                "Environment config injection or TLS/SSH proxy attack",
+            );
+            assert_eq!(
+                evidence.terminal_disposition,
+                TerminalDisposition::IdentityMismatch
+            );
             assert!(evidence.prohibited_effects_observed.is_empty());
         }
     }

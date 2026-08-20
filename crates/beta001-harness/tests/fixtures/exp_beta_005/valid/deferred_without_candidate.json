@@ -1,0 +1,9 @@
+{
+  "schema_version": "EFFECT_EVALUATION_RESULT-v1",
+  "proposal_reference": "sha256:proposal002",
+  "evaluation_context_reference": "sha256:context002",
+  "decision": "deferred",
+  "decision_reason_class": "INSUFFICIENT_CONTEXT",
+  "evaluation_basis": [],
+  "capability_candidate_reference": null
+}

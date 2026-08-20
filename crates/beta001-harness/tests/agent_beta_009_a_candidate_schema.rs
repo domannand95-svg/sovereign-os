@@ -11,7 +11,9 @@ pub struct PullRequestCandidateValidator;
 impl PullRequestCandidateValidator {
     pub fn validate(value: &serde_json::Value) -> CandidateValidationResult {
         // Enforce strict schema version
-        if value.get("schema_version").and_then(|v| v.as_str()) != Some("REPOSITORY_PULL_REQUEST_CANDIDATE-v1") {
+        if value.get("schema_version").and_then(|v| v.as_str())
+            != Some("REPOSITORY_PULL_REQUEST_CANDIDATE-v1")
+        {
             return CandidateValidationResult::Invalid("Invalid or missing schema_version".into());
         }
 
@@ -26,17 +28,25 @@ impl PullRequestCandidateValidator {
 
         // Validate source_publication_reference presence and format
         if let Some(pub_ref) = value.get("source_publication_reference") {
-            let receipt_id = pub_ref.get("publication_receipt_id").and_then(|v| v.as_str());
+            let receipt_id = pub_ref
+                .get("publication_receipt_id")
+                .and_then(|v| v.as_str());
             let commit_oid = pub_ref.get("source_commit_oid").and_then(|v| v.as_str());
-            
+
             if receipt_id.is_none() || !receipt_id.unwrap().starts_with("pub_receipt_") {
-                return CandidateValidationResult::Invalid("Missing or invalid source_publication_reference.publication_receipt_id".into());
+                return CandidateValidationResult::Invalid(
+                    "Missing or invalid source_publication_reference.publication_receipt_id".into(),
+                );
             }
             if commit_oid.is_none() || commit_oid.unwrap().len() != 40 {
-                return CandidateValidationResult::Invalid("Missing or invalid source_publication_reference.source_commit_oid".into());
+                return CandidateValidationResult::Invalid(
+                    "Missing or invalid source_publication_reference.source_commit_oid".into(),
+                );
             }
         } else {
-            return CandidateValidationResult::Invalid("Missing source_publication_reference".into());
+            return CandidateValidationResult::Invalid(
+                "Missing source_publication_reference".into(),
+            );
         }
 
         // Validate source_ref pattern
@@ -59,14 +69,24 @@ impl PullRequestCandidateValidator {
 
         // Injected Authority Check: Ensure additional unauthorized escalation fields are rejected
         let allowed_keys = [
-            "schema_version", "candidate_id", "source_publication_reference",
-            "source_repository_identity", "source_ref", "target_repository_identity",
-            "target_ref", "title", "description", "risk_classification"
+            "schema_version",
+            "candidate_id",
+            "source_publication_reference",
+            "source_repository_identity",
+            "source_ref",
+            "target_repository_identity",
+            "target_ref",
+            "title",
+            "description",
+            "risk_classification",
         ];
         if let Some(obj) = value.as_object() {
             for key in obj.keys() {
                 if !allowed_keys.contains(&key.as_str()) {
-                    return CandidateValidationResult::Invalid(format!("Injected unauthorized authority field detected: {}", key));
+                    return CandidateValidationResult::Invalid(format!(
+                        "Injected unauthorized authority field detected: {}",
+                        key
+                    ));
                 }
             }
         }
@@ -110,48 +130,78 @@ mod pr_candidate_schema_tests {
     #[test]
     fn tc_pr_cand_001_valid_candidate_accepted() {
         let candidate = get_valid_candidate();
-        assert_eq!(PullRequestCandidateValidator::validate(&candidate), CandidateValidationResult::Valid);
+        assert_eq!(
+            PullRequestCandidateValidator::validate(&candidate),
+            CandidateValidationResult::Valid
+        );
     }
 
     #[test]
     fn tc_pr_cand_002_missing_publication_receipt_rejected() {
         let mut candidate = get_valid_candidate();
-        candidate.as_object_mut().unwrap().remove("source_publication_reference");
-        assert!(matches!(PullRequestCandidateValidator::validate(&candidate), CandidateValidationResult::Invalid(_)));
+        candidate
+            .as_object_mut()
+            .unwrap()
+            .remove("source_publication_reference");
+        assert!(matches!(
+            PullRequestCandidateValidator::validate(&candidate),
+            CandidateValidationResult::Invalid(_)
+        ));
     }
 
     #[test]
     fn tc_pr_cand_003_invalid_source_ref_rejected() {
         let mut candidate = get_valid_candidate();
         candidate["source_ref"] = json!("refs/tags/v1.0");
-        assert!(matches!(PullRequestCandidateValidator::validate(&candidate), CandidateValidationResult::Invalid(_)));
+        assert!(matches!(
+            PullRequestCandidateValidator::validate(&candidate),
+            CandidateValidationResult::Invalid(_)
+        ));
     }
 
     #[test]
     fn tc_pr_cand_004_invalid_target_ref_rejected() {
         let mut candidate = get_valid_candidate();
         candidate["target_ref"] = json!("malicious_ref");
-        assert!(matches!(PullRequestCandidateValidator::validate(&candidate), CandidateValidationResult::Invalid(_)));
+        assert!(matches!(
+            PullRequestCandidateValidator::validate(&candidate),
+            CandidateValidationResult::Invalid(_)
+        ));
     }
 
     #[test]
     fn tc_pr_cand_005_injected_merge_authority_field_rejected() {
         let mut candidate = get_valid_candidate();
-        candidate.as_object_mut().unwrap().insert("auto_merge_enabled".to_string(), json!(true));
-        assert!(matches!(PullRequestCandidateValidator::validate(&candidate), CandidateValidationResult::Invalid(_)));
+        candidate
+            .as_object_mut()
+            .unwrap()
+            .insert("auto_merge_enabled".to_string(), json!(true));
+        assert!(matches!(
+            PullRequestCandidateValidator::validate(&candidate),
+            CandidateValidationResult::Invalid(_)
+        ));
     }
 
     #[test]
     fn tc_pr_cand_006_injected_reviewer_approval_field_rejected() {
         let mut candidate = get_valid_candidate();
-        candidate.as_object_mut().unwrap().insert("bypass_required_reviews".to_string(), json!(true));
-        assert!(matches!(PullRequestCandidateValidator::validate(&candidate), CandidateValidationResult::Invalid(_)));
+        candidate
+            .as_object_mut()
+            .unwrap()
+            .insert("bypass_required_reviews".to_string(), json!(true));
+        assert!(matches!(
+            PullRequestCandidateValidator::validate(&candidate),
+            CandidateValidationResult::Invalid(_)
+        ));
     }
 
     #[test]
     fn tc_pr_cand_007_repository_identity_mismatch_handled() {
         let candidate = get_valid_candidate();
         // Schema requires source and target structures to be present and well-formed
-        assert_eq!(PullRequestCandidateValidator::validate(&candidate), CandidateValidationResult::Valid);
+        assert_eq!(
+            PullRequestCandidateValidator::validate(&candidate),
+            CandidateValidationResult::Valid
+        );
     }
 }

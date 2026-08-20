@@ -43,14 +43,26 @@ impl LifecycleCompositionValidator {
         runtime_digest: &str,
     ) -> SovereignLifecycleReceipt {
         // 1. Validate Schema Versions across the stack
-        let is_pub_valid = pub_cand.get("schema_version").and_then(|v| v.as_str()) == Some("REPOSITORY_PUBLICATION_CANDIDATE-v1");
-        let is_pr_valid = pr_cand.get("schema_version").and_then(|v| v.as_str()) == Some("REPOSITORY_PR_CANDIDATE-v1");
-        let is_rev_valid = review_obs.get("schema_version").and_then(|v| v.as_str()) == Some("REPOSITORY_REVIEW_OBSERVATION-v1");
-        let is_merge_valid = merge_auth.get("schema_version").and_then(|v| v.as_str()) == Some("REPOSITORY_MERGE_AUTHORIZATION-v1");
-        let is_dep_cand_valid = dep_cand.get("schema_version").and_then(|v| v.as_str()) == Some("REPOSITORY_DEPLOYMENT_CANDIDATE-v1");
-        let is_dep_auth_valid = dep_auth.get("schema_version").and_then(|v| v.as_str()) == Some("REPOSITORY_DEPLOYMENT_AUTHORIZATION-v1");
+        let is_pub_valid = pub_cand.get("schema_version").and_then(|v| v.as_str())
+            == Some("REPOSITORY_PUBLICATION_CANDIDATE-v1");
+        let is_pr_valid = pr_cand.get("schema_version").and_then(|v| v.as_str())
+            == Some("REPOSITORY_PR_CANDIDATE-v1");
+        let is_rev_valid = review_obs.get("schema_version").and_then(|v| v.as_str())
+            == Some("REPOSITORY_REVIEW_OBSERVATION-v1");
+        let is_merge_valid = merge_auth.get("schema_version").and_then(|v| v.as_str())
+            == Some("REPOSITORY_MERGE_AUTHORIZATION-v1");
+        let is_dep_cand_valid = dep_cand.get("schema_version").and_then(|v| v.as_str())
+            == Some("REPOSITORY_DEPLOYMENT_CANDIDATE-v1");
+        let is_dep_auth_valid = dep_auth.get("schema_version").and_then(|v| v.as_str())
+            == Some("REPOSITORY_DEPLOYMENT_AUTHORIZATION-v1");
 
-        if !is_pub_valid || !is_pr_valid || !is_rev_valid || !is_merge_valid || !is_dep_cand_valid || !is_dep_auth_valid {
+        if !is_pub_valid
+            || !is_pr_valid
+            || !is_rev_valid
+            || !is_merge_valid
+            || !is_dep_cand_valid
+            || !is_dep_auth_valid
+        {
             return SovereignLifecycleReceipt {
                 publication_id: "unknown".into(),
                 pr_candidate_id: "unknown".into(),
@@ -70,12 +82,27 @@ impl LifecycleCompositionValidator {
                 if let Ok(e_dt) = DateTime::parse_from_rfc3339(exp) {
                     if e_dt < Utc::now() {
                         return SovereignLifecycleReceipt {
-                            publication_id: pub_cand["publication_id"].as_str().unwrap_or("").into(),
+                            publication_id: pub_cand["publication_id"]
+                                .as_str()
+                                .unwrap_or("")
+                                .into(),
                             pr_candidate_id: pr_cand["candidate_id"].as_str().unwrap_or("").into(),
-                            review_observation_id: review_obs["observation_id"].as_str().unwrap_or("").into(),
-                            merge_authorization_id: merge_auth["authorization_id"].as_str().unwrap_or("").into(),
-                            deployment_candidate_id: dep_cand["deployment_candidate_id"].as_str().unwrap_or("").into(),
-                            deployment_authorization_id: dep_auth["deployment_authorization_id"].as_str().unwrap_or("").into(),
+                            review_observation_id: review_obs["observation_id"]
+                                .as_str()
+                                .unwrap_or("")
+                                .into(),
+                            merge_authorization_id: merge_auth["authorization_id"]
+                                .as_str()
+                                .unwrap_or("")
+                                .into(),
+                            deployment_candidate_id: dep_cand["deployment_candidate_id"]
+                                .as_str()
+                                .unwrap_or("")
+                                .into(),
+                            deployment_authorization_id: dep_auth["deployment_authorization_id"]
+                                .as_str()
+                                .unwrap_or("")
+                                .into(),
                             runtime_verification_digest: runtime_digest.into(),
                             terminal_disposition: LifecycleTerminalDisposition::Denied,
                         };
@@ -85,17 +112,33 @@ impl LifecycleCompositionValidator {
         }
 
         // 3. Validate Artifact Binding between Deployment Candidate and Deployment Authorization
-        let cand_digest = dep_cand.get("source_artifact_digest").and_then(|v| v.as_str()).unwrap_or("");
-        let auth_digest = dep_auth.get("deployment_candidate_ref").and_then(|v| v.get("artifact_digest")).and_then(|v| v.as_str()).unwrap_or("");
+        let cand_digest = dep_cand
+            .get("source_artifact_digest")
+            .and_then(|v| v.as_str())
+            .unwrap_or("");
+        let auth_digest = dep_auth
+            .get("deployment_candidate_ref")
+            .and_then(|v| v.get("artifact_digest"))
+            .and_then(|v| v.as_str())
+            .unwrap_or("");
 
         if cand_digest != auth_digest {
             return SovereignLifecycleReceipt {
                 publication_id: pub_cand["publication_id"].as_str().unwrap_or("").into(),
                 pr_candidate_id: pr_cand["candidate_id"].as_str().unwrap_or("").into(),
                 review_observation_id: review_obs["observation_id"].as_str().unwrap_or("").into(),
-                merge_authorization_id: merge_auth["authorization_id"].as_str().unwrap_or("").into(),
-                deployment_candidate_id: dep_cand["deployment_candidate_id"].as_str().unwrap_or("").into(),
-                deployment_authorization_id: dep_auth["deployment_authorization_id"].as_str().unwrap_or("").into(),
+                merge_authorization_id: merge_auth["authorization_id"]
+                    .as_str()
+                    .unwrap_or("")
+                    .into(),
+                deployment_candidate_id: dep_cand["deployment_candidate_id"]
+                    .as_str()
+                    .unwrap_or("")
+                    .into(),
+                deployment_authorization_id: dep_auth["deployment_authorization_id"]
+                    .as_str()
+                    .unwrap_or("")
+                    .into(),
                 runtime_verification_digest: runtime_digest.into(),
                 terminal_disposition: LifecycleTerminalDisposition::Denied,
             };
@@ -107,21 +150,45 @@ impl LifecycleCompositionValidator {
                 publication_id: pub_cand["publication_id"].as_str().unwrap_or("").into(),
                 pr_candidate_id: pr_cand["candidate_id"].as_str().unwrap_or("").into(),
                 review_observation_id: review_obs["observation_id"].as_str().unwrap_or("").into(),
-                merge_authorization_id: merge_auth["authorization_id"].as_str().unwrap_or("").into(),
-                deployment_candidate_id: dep_cand["deployment_candidate_id"].as_str().unwrap_or("").into(),
-                deployment_authorization_id: dep_auth["deployment_authorization_id"].as_str().unwrap_or("").into(),
+                merge_authorization_id: merge_auth["authorization_id"]
+                    .as_str()
+                    .unwrap_or("")
+                    .into(),
+                deployment_candidate_id: dep_cand["deployment_candidate_id"]
+                    .as_str()
+                    .unwrap_or("")
+                    .into(),
+                deployment_authorization_id: dep_auth["deployment_authorization_id"]
+                    .as_str()
+                    .unwrap_or("")
+                    .into(),
                 runtime_verification_digest: runtime_digest.into(),
                 terminal_disposition: LifecycleTerminalDisposition::RuntimeMismatch,
             };
         }
 
         SovereignLifecycleReceipt {
-            publication_id: pub_cand["publication_id"].as_str().unwrap_or("pub_123").into(),
+            publication_id: pub_cand["publication_id"]
+                .as_str()
+                .unwrap_or("pub_123")
+                .into(),
             pr_candidate_id: pr_cand["candidate_id"].as_str().unwrap_or("pr_123").into(),
-            review_observation_id: review_obs["observation_id"].as_str().unwrap_or("rev_123").into(),
-            merge_authorization_id: merge_auth["authorization_id"].as_str().unwrap_or("merge_auth_123").into(),
-            deployment_candidate_id: dep_cand["deployment_candidate_id"].as_str().unwrap_or("dep_cand_123").into(),
-            deployment_authorization_id: dep_auth["deployment_authorization_id"].as_str().unwrap_or("dep_auth_123").into(),
+            review_observation_id: review_obs["observation_id"]
+                .as_str()
+                .unwrap_or("rev_123")
+                .into(),
+            merge_authorization_id: merge_auth["authorization_id"]
+                .as_str()
+                .unwrap_or("merge_auth_123")
+                .into(),
+            deployment_candidate_id: dep_cand["deployment_candidate_id"]
+                .as_str()
+                .unwrap_or("dep_cand_123")
+                .into(),
+            deployment_authorization_id: dep_auth["deployment_authorization_id"]
+                .as_str()
+                .unwrap_or("dep_auth_123")
+                .into(),
             runtime_verification_digest: runtime_digest.into(),
             terminal_disposition: LifecycleTerminalDisposition::VerifiedSuccess,
         }
@@ -240,13 +307,23 @@ mod lifecycle_composition_tests {
         let merge_auth = get_valid_merge_authorization();
         let dep_cand = get_valid_deployment_candidate();
         let dep_auth = get_valid_deployment_authorization();
-        let valid_digest = "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855";
+        let valid_digest =
+            "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855";
 
         let receipt = LifecycleCompositionValidator::evaluate_composition(
-            &pub_cand, &pr_cand, &review_obs, &merge_auth, &dep_cand, &dep_auth, valid_digest
+            &pub_cand,
+            &pr_cand,
+            &review_obs,
+            &merge_auth,
+            &dep_cand,
+            &dep_auth,
+            valid_digest,
         );
 
-        assert_eq!(receipt.terminal_disposition, LifecycleTerminalDisposition::VerifiedSuccess);
+        assert_eq!(
+            receipt.terminal_disposition,
+            LifecycleTerminalDisposition::VerifiedSuccess
+        );
     }
 
     #[test]
@@ -260,7 +337,10 @@ mod lifecycle_composition_tests {
     fn tc_lifecycle_003_merge_success_cannot_become_deployment_authority() {
         // Structural validation: merge authorization contains no deployment permission.
         let merge_auth = get_valid_merge_authorization();
-        assert_eq!(merge_auth["authorized_scope"]["deployment_permitted"], json!(false));
+        assert_eq!(
+            merge_auth["authorized_scope"]["deployment_permitted"],
+            json!(false)
+        );
     }
 
     #[test]
@@ -277,13 +357,23 @@ mod lifecycle_composition_tests {
         dep_auth["temporal_bounds"]["issued_at"] = json!(past_iss);
         dep_auth["temporal_bounds"]["expires_at"] = json!(past_exp);
 
-        let valid_digest = "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855";
+        let valid_digest =
+            "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855";
 
         let receipt = LifecycleCompositionValidator::evaluate_composition(
-            &pub_cand, &pr_cand, &review_obs, &merge_auth, &dep_cand, &dep_auth, valid_digest
+            &pub_cand,
+            &pr_cand,
+            &review_obs,
+            &merge_auth,
+            &dep_cand,
+            &dep_auth,
+            valid_digest,
         );
 
-        assert_eq!(receipt.terminal_disposition, LifecycleTerminalDisposition::Denied);
+        assert_eq!(
+            receipt.terminal_disposition,
+            LifecycleTerminalDisposition::Denied
+        );
     }
 
     #[test]
@@ -295,13 +385,23 @@ mod lifecycle_composition_tests {
         let dep_cand = get_valid_deployment_candidate();
         let dep_auth = get_valid_deployment_authorization();
 
-        let drifted_digest = "sha256:0000000000000000000000000000000000000000000000000000000000000000";
+        let drifted_digest =
+            "sha256:0000000000000000000000000000000000000000000000000000000000000000";
 
         let receipt = LifecycleCompositionValidator::evaluate_composition(
-            &pub_cand, &pr_cand, &review_obs, &merge_auth, &dep_cand, &dep_auth, drifted_digest
+            &pub_cand,
+            &pr_cand,
+            &review_obs,
+            &merge_auth,
+            &dep_cand,
+            &dep_auth,
+            drifted_digest,
         );
 
-        assert_eq!(receipt.terminal_disposition, LifecycleTerminalDisposition::RuntimeMismatch);
+        assert_eq!(
+            receipt.terminal_disposition,
+            LifecycleTerminalDisposition::RuntimeMismatch
+        );
     }
 
     #[test]
@@ -311,14 +411,24 @@ mod lifecycle_composition_tests {
         let review_obs = get_valid_review_observation();
         let mut merge_auth = get_valid_merge_authorization();
         // Inject illegal capability
-        merge_auth.as_object_mut().unwrap().insert("deployment_permitted".to_string(), json!(true));
+        merge_auth
+            .as_object_mut()
+            .unwrap()
+            .insert("deployment_permitted".to_string(), json!(true));
 
         let dep_cand = get_valid_deployment_candidate();
         let dep_auth = get_valid_deployment_authorization();
-        let valid_digest = "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855";
+        let valid_digest =
+            "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855";
 
         let receipt = LifecycleCompositionValidator::evaluate_composition(
-            &pub_cand, &pr_cand, &review_obs, &merge_auth, &dep_cand, &dep_auth, valid_digest
+            &pub_cand,
+            &pr_cand,
+            &review_obs,
+            &merge_auth,
+            &dep_cand,
+            &dep_auth,
+            valid_digest,
         );
 
         // Merge schema version or strict additional properties validation failure -> SchemaRejection
@@ -326,10 +436,19 @@ mod lifecycle_composition_tests {
         bad_merge["schema_version"] = json!("INVALID_VERSION");
 
         let receipt_bad = LifecycleCompositionValidator::evaluate_composition(
-            &pub_cand, &pr_cand, &review_obs, &bad_merge, &dep_cand, &dep_auth, valid_digest
+            &pub_cand,
+            &pr_cand,
+            &review_obs,
+            &bad_merge,
+            &dep_cand,
+            &dep_auth,
+            valid_digest,
         );
 
-        assert_eq!(receipt_bad.terminal_disposition, LifecycleTerminalDisposition::SchemaRejection);
+        assert_eq!(
+            receipt_bad.terminal_disposition,
+            LifecycleTerminalDisposition::SchemaRejection
+        );
     }
 
     #[test]
@@ -346,6 +465,9 @@ mod lifecycle_composition_tests {
             terminal_disposition: LifecycleTerminalDisposition::Ambiguous,
         };
 
-        assert_eq!(receipt.terminal_disposition, LifecycleTerminalDisposition::Ambiguous);
+        assert_eq!(
+            receipt.terminal_disposition,
+            LifecycleTerminalDisposition::Ambiguous
+        );
     }
 }

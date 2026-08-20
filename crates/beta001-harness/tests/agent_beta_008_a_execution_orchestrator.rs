@@ -3,18 +3,36 @@ use chrono::{DateTime, Utc};
 // --- Dependencies from A-001 (Simplified for Orchestrator Isolation) ---
 #[derive(Debug, Clone, PartialEq)]
 pub enum TerminalDisposition {
-    Denied, CandidateInvalid, CredentialUnavailable, IdentityMismatch,
-    PreconditionFailed, VerifiedNoEffect, VerifiedSuccess, Conflict, Ambiguous, AdapterInconsistency
+    Denied,
+    CandidateInvalid,
+    CredentialUnavailable,
+    IdentityMismatch,
+    PreconditionFailed,
+    VerifiedNoEffect,
+    VerifiedSuccess,
+    Conflict,
+    Ambiguous,
+    AdapterInconsistency,
 }
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum ExecutionObservation {
-    NotDispatched, Dispatched, AdapterReportedSuccess, AdapterReportedFailure,
-    RemoteReportedRejection(String), TransportInterrupted, TransportOutcomeUnknown
+    NotDispatched,
+    Dispatched,
+    AdapterReportedSuccess,
+    AdapterReportedFailure,
+    RemoteReportedRejection(String),
+    TransportInterrupted,
+    TransportOutcomeUnknown,
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub enum ObservationState { Present, Absent, Unknown, Unreachable }
+pub enum ObservationState {
+    Present,
+    Absent,
+    Unknown,
+    Unreachable,
+}
 
 #[derive(Debug, Clone)]
 pub struct IndependentPostObservation {
@@ -34,7 +52,11 @@ pub trait CredentialBroker {
 }
 
 pub trait RemotePublicationAdapter {
-    fn dispatch_exact(&self, req: &RemotePublicationTransportRequest, broker: &dyn CredentialBroker) -> ExecutionObservation;
+    fn dispatch_exact(
+        &self,
+        req: &RemotePublicationTransportRequest,
+        broker: &dyn CredentialBroker,
+    ) -> ExecutionObservation;
 }
 
 pub trait IndependentRemoteVerifier {
@@ -43,14 +65,27 @@ pub trait IndependentRemoteVerifier {
 
 pub struct DispositionResolver;
 impl DispositionResolver {
-    pub fn resolve(exec_obs: &ExecutionObservation, post_obs: &IndependentPostObservation, expected_y: &str, expected_x: &str) -> TerminalDisposition {
+    pub fn resolve(
+        exec_obs: &ExecutionObservation,
+        post_obs: &IndependentPostObservation,
+        expected_y: &str,
+        expected_x: &str,
+    ) -> TerminalDisposition {
         // Simplified mapping for orchestrator tests
-        let is_y = post_obs.observation_state == ObservationState::Present && post_obs.observed_oid.as_deref() == Some(expected_y);
-        let is_x = post_obs.observation_state == ObservationState::Present && post_obs.observed_oid.as_deref() == Some(expected_x);
-        
-        if is_y { return TerminalDisposition::VerifiedSuccess; }
-        if exec_obs == &ExecutionObservation::NotDispatched { return TerminalDisposition::PreconditionFailed; }
-        if is_x { return TerminalDisposition::VerifiedNoEffect; }
+        let is_y = post_obs.observation_state == ObservationState::Present
+            && post_obs.observed_oid.as_deref() == Some(expected_y);
+        let is_x = post_obs.observation_state == ObservationState::Present
+            && post_obs.observed_oid.as_deref() == Some(expected_x);
+
+        if is_y {
+            return TerminalDisposition::VerifiedSuccess;
+        }
+        if exec_obs == &ExecutionObservation::NotDispatched {
+            return TerminalDisposition::PreconditionFailed;
+        }
+        if is_x {
+            return TerminalDisposition::VerifiedNoEffect;
+        }
         TerminalDisposition::Ambiguous
     }
 }
@@ -103,7 +138,6 @@ impl<'a> SovereignPublicationOrchestrator<'a> {
         auth: &RepositoryPublicationAuthorization,
         lease: &RepositoryCredentialLease,
     ) -> RepositoryPublicationReceipt {
-        
         // GATE 1: Local Authority (Implied passed if orchestrator is invoked in Sovereign OS)
 
         // GATE 2: Candidate Integrity & Auth Binding
@@ -141,54 +175,105 @@ impl<'a> SovereignPublicationOrchestrator<'a> {
         let exec_obs = self.adapter.dispatch_exact(&transport_req, self.broker);
 
         // GATE 7: Terminal Epistemic Verification
-        let post_obs = self.verifier.observe_remote_state(&candidate.destination_ref);
+        let post_obs = self
+            .verifier
+            .observe_remote_state(&candidate.destination_ref);
         let terminal_disp = DispositionResolver::resolve(
-            &exec_obs, 
-            &post_obs, 
-            &candidate.candidate_commit_oid, 
-            &candidate.expected_prestate_oid
+            &exec_obs,
+            &post_obs,
+            &candidate.candidate_commit_oid,
+            &candidate.expected_prestate_oid,
         );
 
         self.generate_receipt(candidate, auth, exec_obs, terminal_disp, auth_consumption)
     }
 
     // --- Private Gate Functions ---
-    fn gate_2_candidate_integrity(&self, cand: &RepositoryPublicationCandidate, auth: &RepositoryPublicationAuthorization) -> Result<(), TerminalDisposition> {
-        if auth.authorized_candidate_id != cand.candidate_id { return Err(TerminalDisposition::CandidateInvalid); }
-        if cand.candidate_commit_oid != cand.proposed_to_oid { return Err(TerminalDisposition::CandidateInvalid); }
-        if auth.operation != "repository.remote.publish_exact" { return Err(TerminalDisposition::Denied); }
+    fn gate_2_candidate_integrity(
+        &self,
+        cand: &RepositoryPublicationCandidate,
+        auth: &RepositoryPublicationAuthorization,
+    ) -> Result<(), TerminalDisposition> {
+        if auth.authorized_candidate_id != cand.candidate_id {
+            return Err(TerminalDisposition::CandidateInvalid);
+        }
+        if cand.candidate_commit_oid != cand.proposed_to_oid {
+            return Err(TerminalDisposition::CandidateInvalid);
+        }
+        if auth.operation != "repository.remote.publish_exact" {
+            return Err(TerminalDisposition::Denied);
+        }
         Ok(())
     }
 
-    fn gate_3_canonical_identity(&self, cand: &RepositoryPublicationCandidate, lease: &RepositoryCredentialLease) -> Result<(), TerminalDisposition> {
-        if cand.provider != lease.provider { return Err(TerminalDisposition::IdentityMismatch); }
+    fn gate_3_canonical_identity(
+        &self,
+        cand: &RepositoryPublicationCandidate,
+        lease: &RepositoryCredentialLease,
+    ) -> Result<(), TerminalDisposition> {
+        if cand.provider != lease.provider {
+            return Err(TerminalDisposition::IdentityMismatch);
+        }
         Ok(())
     }
 
-    fn gate_4_credential_lease(&self, auth: &RepositoryPublicationAuthorization, lease: &RepositoryCredentialLease) -> Result<(), TerminalDisposition> {
-        if lease.authorized_use_reference != auth.authorization_id { return Err(TerminalDisposition::CredentialUnavailable); }
+    fn gate_4_credential_lease(
+        &self,
+        auth: &RepositoryPublicationAuthorization,
+        lease: &RepositoryCredentialLease,
+    ) -> Result<(), TerminalDisposition> {
+        if lease.authorized_use_reference != auth.authorization_id {
+            return Err(TerminalDisposition::CredentialUnavailable);
+        }
         Ok(())
     }
 
-    fn gate_5_remote_prestate(&self, cand: &RepositoryPublicationCandidate) -> Result<(), TerminalDisposition> {
+    fn gate_5_remote_prestate(
+        &self,
+        cand: &RepositoryPublicationCandidate,
+    ) -> Result<(), TerminalDisposition> {
         let pre_obs = self.verifier.observe_remote_state(&cand.destination_ref);
-        
+
         // Remote must be present and match expected X
-        if pre_obs.observation_state != ObservationState::Present { return Err(TerminalDisposition::PreconditionFailed); }
-        if pre_obs.observed_oid.as_deref() != Some(cand.expected_prestate_oid.as_str()) { return Err(TerminalDisposition::PreconditionFailed); }
-        
+        if pre_obs.observation_state != ObservationState::Present {
+            return Err(TerminalDisposition::PreconditionFailed);
+        }
+        if pre_obs.observed_oid.as_deref() != Some(cand.expected_prestate_oid.as_str()) {
+            return Err(TerminalDisposition::PreconditionFailed);
+        }
+
         // Transition equation must hold
-        if cand.proposed_from_oid != cand.expected_prestate_oid { return Err(TerminalDisposition::PreconditionFailed); }
+        if cand.proposed_from_oid != cand.expected_prestate_oid {
+            return Err(TerminalDisposition::PreconditionFailed);
+        }
 
         Ok(())
     }
 
     // --- Receipt Generators ---
-    fn generate_denied_receipt(&self, cand: &RepositoryPublicationCandidate, auth: &RepositoryPublicationAuthorization, disp: TerminalDisposition) -> RepositoryPublicationReceipt {
-        self.generate_receipt(cand, auth, ExecutionObservation::NotDispatched, disp, "NOT_CONSUMED".to_string())
+    fn generate_denied_receipt(
+        &self,
+        cand: &RepositoryPublicationCandidate,
+        auth: &RepositoryPublicationAuthorization,
+        disp: TerminalDisposition,
+    ) -> RepositoryPublicationReceipt {
+        self.generate_receipt(
+            cand,
+            auth,
+            ExecutionObservation::NotDispatched,
+            disp,
+            "NOT_CONSUMED".to_string(),
+        )
     }
 
-    fn generate_receipt(&self, cand: &RepositoryPublicationCandidate, auth: &RepositoryPublicationAuthorization, exec_obs: ExecutionObservation, disp: TerminalDisposition, consumption: String) -> RepositoryPublicationReceipt {
+    fn generate_receipt(
+        &self,
+        cand: &RepositoryPublicationCandidate,
+        auth: &RepositoryPublicationAuthorization,
+        exec_obs: ExecutionObservation,
+        disp: TerminalDisposition,
+        consumption: String,
+    ) -> RepositoryPublicationReceipt {
         RepositoryPublicationReceipt {
             candidate_id: cand.candidate_id.clone(),
             authorization_id: auth.authorization_id.clone(),
@@ -199,7 +284,7 @@ impl<'a> SovereignPublicationOrchestrator<'a> {
                 "force_update_attempted=false".into(),
                 "pr_created=false".into(),
                 "merge_attempted=false".into(),
-                "credential_fallback_used=false".into()
+                "credential_fallback_used=false".into(),
             ],
         }
     }
@@ -212,12 +297,23 @@ impl<'a> SovereignPublicationOrchestrator<'a> {
 mod tests {
     use super::*;
 
-    struct MockAdapter { response: ExecutionObservation }
+    struct MockAdapter {
+        response: ExecutionObservation,
+    }
     impl RemotePublicationAdapter for MockAdapter {
-        fn dispatch_exact(&self, _req: &RemotePublicationTransportRequest, _broker: &dyn CredentialBroker) -> ExecutionObservation { self.response.clone() }
+        fn dispatch_exact(
+            &self,
+            _req: &RemotePublicationTransportRequest,
+            _broker: &dyn CredentialBroker,
+        ) -> ExecutionObservation {
+            self.response.clone()
+        }
     }
 
-    struct MockVerifier { response_oid: String, observation_state: ObservationState }
+    struct MockVerifier {
+        response_oid: String,
+        observation_state: ObservationState,
+    }
     impl IndependentRemoteVerifier for MockVerifier {
         fn observe_remote_state(&self, _ref: &str) -> IndependentPostObservation {
             IndependentPostObservation {
@@ -230,10 +326,16 @@ mod tests {
 
     struct MockBroker;
     impl CredentialBroker for MockBroker {
-        fn retrieve_secret(&self, _ref: &str) -> Option<String> { Some("secret".into()) }
+        fn retrieve_secret(&self, _ref: &str) -> Option<String> {
+            Some("secret".into())
+        }
     }
 
-    fn default_fixtures() -> (RepositoryPublicationCandidate, RepositoryPublicationAuthorization, RepositoryCredentialLease) {
+    fn default_fixtures() -> (
+        RepositoryPublicationCandidate,
+        RepositoryPublicationAuthorization,
+        RepositoryCredentialLease,
+    ) {
         (
             RepositoryPublicationCandidate {
                 candidate_id: "cand_1".into(),
@@ -254,75 +356,130 @@ mod tests {
                 authorized_use_reference: "auth_1".into(),
                 provider: "github.com".into(),
                 broker_reference: "broker_1".into(),
-            }
+            },
         )
     }
 
     #[test]
     fn test_orchestrator_success_path() {
         let (cand, auth, lease) = default_fixtures();
-        let adapter = MockAdapter { response: ExecutionObservation::AdapterReportedSuccess };
-        let verifier = MockVerifier { response_oid: "Y".into(), observation_state: ObservationState::Present }; // Pre-state check happens, but we mock it returning Y in post for success. (In reality, pre needs X, post needs Y. For this simple mock, we assume pre/post return same, which breaks Gate 5 if we enforce X -> Y strictly in mocks. Let's fix verifier mock to handle state transitions).
-        
+        let adapter = MockAdapter {
+            response: ExecutionObservation::AdapterReportedSuccess,
+        };
+        let verifier = MockVerifier {
+            response_oid: "Y".into(),
+            observation_state: ObservationState::Present,
+        }; // Pre-state check happens, but we mock it returning Y in post for success. (In reality, pre needs X, post needs Y. For this simple mock, we assume pre/post return same, which breaks Gate 5 if we enforce X -> Y strictly in mocks. Let's fix verifier mock to handle state transitions).
+
         // Advanced Verifier Mock for State Changes
-        struct StateVerifier { pre_state: String, post_state: String, calls: std::cell::Cell<usize> }
+        struct StateVerifier {
+            pre_state: String,
+            post_state: String,
+            calls: std::cell::Cell<usize>,
+        }
         impl IndependentRemoteVerifier for StateVerifier {
             fn observe_remote_state(&self, _ref: &str) -> IndependentPostObservation {
                 let count = self.calls.get();
                 self.calls.set(count + 1);
-                let oid = if count == 0 { &self.pre_state } else { &self.post_state };
-                IndependentPostObservation { observation_state: ObservationState::Present, observed_oid: Some(oid.clone()), observed_at: Utc::now() }
+                let oid = if count == 0 {
+                    &self.pre_state
+                } else {
+                    &self.post_state
+                };
+                IndependentPostObservation {
+                    observation_state: ObservationState::Present,
+                    observed_oid: Some(oid.clone()),
+                    observed_at: Utc::now(),
+                }
             }
         }
 
-        let dynamic_verifier = StateVerifier { pre_state: "X".into(), post_state: "Y".into(), calls: std::cell::Cell::new(0) };
+        let dynamic_verifier = StateVerifier {
+            pre_state: "X".into(),
+            post_state: "Y".into(),
+            calls: std::cell::Cell::new(0),
+        };
         let broker = MockBroker;
 
-        let orchestrator = SovereignPublicationOrchestrator { adapter: &adapter, verifier: &dynamic_verifier, broker: &broker };
+        let orchestrator = SovereignPublicationOrchestrator {
+            adapter: &adapter,
+            verifier: &dynamic_verifier,
+            broker: &broker,
+        };
         let receipt = orchestrator.execute_governed_publication(&cand, &auth, &lease);
 
-        assert_eq!(receipt.execution_observation, ExecutionObservation::AdapterReportedSuccess);
-        assert_eq!(receipt.terminal_disposition, TerminalDisposition::VerifiedSuccess);
+        assert_eq!(
+            receipt.execution_observation,
+            ExecutionObservation::AdapterReportedSuccess
+        );
+        assert_eq!(
+            receipt.terminal_disposition,
+            TerminalDisposition::VerifiedSuccess
+        );
         assert_eq!(receipt.authorization_consumption, "CONSUMED");
-        assert!(receipt.prohibited_side_effects_checked.contains(&"force_update_attempted=false".to_string()));
+        assert!(receipt
+            .prohibited_side_effects_checked
+            .contains(&"force_update_attempted=false".to_string()));
     }
 
     #[test]
     fn test_orchestrator_denied_gate2_candidate_invalid() {
         let (mut cand, auth, lease) = default_fixtures();
         cand.candidate_commit_oid = "Z".into(); // Mismatch with proposed_to_oid "Y"
-        
-        let orchestrator = SovereignPublicationOrchestrator { 
-            adapter: &MockAdapter { response: ExecutionObservation::AdapterReportedSuccess }, 
-            verifier: &MockVerifier { response_oid: "X".into(), observation_state: ObservationState::Present }, 
-            broker: &MockBroker 
+
+        let orchestrator = SovereignPublicationOrchestrator {
+            adapter: &MockAdapter {
+                response: ExecutionObservation::AdapterReportedSuccess,
+            },
+            verifier: &MockVerifier {
+                response_oid: "X".into(),
+                observation_state: ObservationState::Present,
+            },
+            broker: &MockBroker,
         };
-        
+
         let receipt = orchestrator.execute_governed_publication(&cand, &auth, &lease);
-        
+
         // Proves Gate 2 halts execution and produces a receipt
-        assert_eq!(receipt.execution_observation, ExecutionObservation::NotDispatched);
-        assert_eq!(receipt.terminal_disposition, TerminalDisposition::CandidateInvalid);
+        assert_eq!(
+            receipt.execution_observation,
+            ExecutionObservation::NotDispatched
+        );
+        assert_eq!(
+            receipt.terminal_disposition,
+            TerminalDisposition::CandidateInvalid
+        );
         assert_eq!(receipt.authorization_consumption, "NOT_CONSUMED");
     }
 
     #[test]
     fn test_orchestrator_denied_gate5_cas_race_t008_051() {
         let (cand, auth, lease) = default_fixtures();
-        
+
         // Remote state is Z (Intervening ancestor), but expected is X
-        let verifier = MockVerifier { response_oid: "Z".into(), observation_state: ObservationState::Present }; 
-        let orchestrator = SovereignPublicationOrchestrator { 
-            adapter: &MockAdapter { response: ExecutionObservation::AdapterReportedSuccess }, 
-            verifier: &verifier, 
-            broker: &MockBroker 
+        let verifier = MockVerifier {
+            response_oid: "Z".into(),
+            observation_state: ObservationState::Present,
         };
-        
+        let orchestrator = SovereignPublicationOrchestrator {
+            adapter: &MockAdapter {
+                response: ExecutionObservation::AdapterReportedSuccess,
+            },
+            verifier: &verifier,
+            broker: &MockBroker,
+        };
+
         let receipt = orchestrator.execute_governed_publication(&cand, &auth, &lease);
-        
+
         // Proves Gate 5 strictly halts and prevents Dispatch
-        assert_eq!(receipt.execution_observation, ExecutionObservation::NotDispatched);
-        assert_eq!(receipt.terminal_disposition, TerminalDisposition::PreconditionFailed);
+        assert_eq!(
+            receipt.execution_observation,
+            ExecutionObservation::NotDispatched
+        );
+        assert_eq!(
+            receipt.terminal_disposition,
+            TerminalDisposition::PreconditionFailed
+        );
         assert_eq!(receipt.authorization_consumption, "NOT_CONSUMED");
     }
 }

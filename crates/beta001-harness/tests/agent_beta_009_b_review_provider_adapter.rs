@@ -240,8 +240,13 @@ mod review_adapter_tests {
             fake_success_without_state: false,
             reported_state: ProviderReviewState::Commented,
         };
-        let verifier = MockReviewVerifier { review_exists: true, state: Some(ProviderReviewState::Commented) };
-        let creds = MockCredentialProvider { secret: Some("token".into()) };
+        let verifier = MockReviewVerifier {
+            review_exists: true,
+            state: Some(ProviderReviewState::Commented),
+        };
+        let creds = MockCredentialProvider {
+            secret: Some("token".into()),
+        };
 
         let exec_obs = adapter.execute_review_operation(&req, &creds);
         let verification = verifier.verify_review_state(&identity, &req.pull_request_id);
@@ -256,7 +261,9 @@ mod review_adapter_tests {
         let req = ReviewProviderTransportRequest {
             repository_identity: identity.clone(),
             pull_request_id: "pr_123".into(),
-            operation: ReviewTransportOperation::SubmitComment { body: "LGTM".into() },
+            operation: ReviewTransportOperation::SubmitComment {
+                body: "LGTM".into(),
+            },
         };
 
         let adapter = MockReviewProviderAdapter {
@@ -264,8 +271,13 @@ mod review_adapter_tests {
             fake_success_without_state: false,
             reported_state: ProviderReviewState::Commented,
         };
-        let verifier = MockReviewVerifier { review_exists: true, state: Some(ProviderReviewState::Commented) };
-        let creds = MockCredentialProvider { secret: Some("token".into()) };
+        let verifier = MockReviewVerifier {
+            review_exists: true,
+            state: Some(ProviderReviewState::Commented),
+        };
+        let creds = MockCredentialProvider {
+            secret: Some("token".into()),
+        };
 
         let exec_obs = adapter.execute_review_operation(&req, &creds);
         let verification = verifier.verify_review_state(&identity, &req.pull_request_id);
@@ -288,10 +300,15 @@ mod review_adapter_tests {
             fake_success_without_state: false,
             reported_state: ProviderReviewState::Commented,
         };
-        let creds = MockCredentialProvider { secret: Some("token".into()) };
+        let creds = MockCredentialProvider {
+            secret: Some("token".into()),
+        };
 
         let exec_obs = adapter.execute_review_operation(&req, &creds);
-        assert!(matches!(exec_obs, ReviewExecutionObservation::ProviderReportedRejected(_)));
+        assert!(matches!(
+            exec_obs,
+            ReviewExecutionObservation::ProviderReportedRejected(_)
+        ));
     }
 
     #[test]
@@ -328,7 +345,9 @@ mod review_adapter_tests {
         let req = ReviewProviderTransportRequest {
             repository_identity: identity.clone(),
             pull_request_id: "pr_123".into(),
-            operation: ReviewTransportOperation::SubmitComment { body: "Fake".into() },
+            operation: ReviewTransportOperation::SubmitComment {
+                body: "Fake".into(),
+            },
         };
 
         let adapter = MockReviewProviderAdapter {
@@ -336,8 +355,13 @@ mod review_adapter_tests {
             fake_success_without_state: true,
             reported_state: ProviderReviewState::Commented,
         };
-        let verifier = MockReviewVerifier { review_exists: false, state: None };
-        let creds = MockCredentialProvider { secret: Some("token".into()) };
+        let verifier = MockReviewVerifier {
+            review_exists: false,
+            state: None,
+        };
+        let creds = MockCredentialProvider {
+            secret: Some("token".into()),
+        };
 
         let exec_obs = adapter.execute_review_operation(&req, &creds);
         let verification = verifier.verify_review_state(&identity, &req.pull_request_id);

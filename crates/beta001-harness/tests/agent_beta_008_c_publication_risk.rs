@@ -18,7 +18,7 @@ impl PublicationRiskClassifier {
     pub fn classify_path(raw_path: &str) -> PublicationRiskClassification {
         // Normalize path: convert backslashes and remove leading/trailing whitespace or traversal attempts
         let cleaned = raw_path.replace('\\', "/");
-        
+
         // Defend against path traversal manipulation (TC-C003-005)
         if cleaned.contains("..") || cleaned.starts_with('/') {
             return PublicationRiskClassification::UnknownSensitiveChange;
@@ -94,7 +94,10 @@ mod c003_risk_tests {
     fn tc_c003_001_normal_source_change() {
         let paths = vec!["src/lib.rs".to_string(), "README.md".to_string()];
         let classification = PublicationRiskClassifier::classify_candidate(&paths);
-        assert_eq!(classification, PublicationRiskClassification::StandardSourceChange);
+        assert_eq!(
+            classification,
+            PublicationRiskClassification::StandardSourceChange
+        );
     }
 
     #[test]
@@ -104,14 +107,20 @@ mod c003_risk_tests {
             ".github/workflows/release.yml".to_string(),
         ];
         let classification = PublicationRiskClassifier::classify_candidate(&paths);
-        assert_eq!(classification, PublicationRiskClassification::CiWorkflowChange);
+        assert_eq!(
+            classification,
+            PublicationRiskClassification::CiWorkflowChange
+        );
     }
 
     #[test]
     fn tc_c003_003_deployment_manifest_modification() {
         let paths = vec!["k8s/production.yaml".to_string()];
         let classification = PublicationRiskClassifier::classify_candidate(&paths);
-        assert_eq!(classification, PublicationRiskClassification::DeploymentInfrastructureChange);
+        assert_eq!(
+            classification,
+            PublicationRiskClassification::DeploymentInfrastructureChange
+        );
     }
 
     #[test]
@@ -122,14 +131,20 @@ mod c003_risk_tests {
             ".github/workflows/test.yml".to_string(),
         ];
         let classification = PublicationRiskClassifier::classify_candidate(&paths);
-        assert_eq!(classification, PublicationRiskClassification::CiWorkflowChange);
+        assert_eq!(
+            classification,
+            PublicationRiskClassification::CiWorkflowChange
+        );
     }
 
     #[test]
     fn tc_c003_005_path_traversal_attempt_yields_unknown_sensitive() {
         let paths = vec!["../../.github/workflows/deploy.yml".to_string()];
         let classification = PublicationRiskClassifier::classify_candidate(&paths);
-        assert_eq!(classification, PublicationRiskClassification::UnknownSensitiveChange);
+        assert_eq!(
+            classification,
+            PublicationRiskClassification::UnknownSensitiveChange
+        );
     }
 
     #[test]

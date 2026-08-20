@@ -39,7 +39,9 @@ impl DetachedCommitConstructor {
         head_ref: &mut String,
     ) -> ConstructionDisposition {
         // Enforce INVARIANT-289 & 291: Fresh state check (Repository and parent HEAD match candidate)
-        if candidate.repository_reference != env.repository_id || candidate.parent_commit != env.current_head {
+        if candidate.repository_reference != env.repository_id
+            || candidate.parent_commit != env.current_head
+        {
             return ConstructionDisposition::DENIED;
         }
 
@@ -109,11 +111,15 @@ fn test_agent_006_b01_exact_detached_commit_constructed() {
     };
     candidate.expected_commit_digest = compute_candidate_digest(&candidate);
 
-    let disposition = constructor.construct_detached(&env, &candidate, &mut object_db, &mut head_ref);
+    let disposition =
+        constructor.construct_detached(&env, &candidate, &mut object_db, &mut head_ref);
 
     assert_eq!(disposition, ConstructionDisposition::CONSTRUCTED);
     assert_eq!(object_db.len(), 1);
-    assert_eq!(head_ref, "d25788a", "Detached commit construction improperly moved HEAD!");
+    assert_eq!(
+        head_ref, "d25788a",
+        "Detached commit construction improperly moved HEAD!"
+    );
 }
 
 #[test]
@@ -140,7 +146,8 @@ fn test_agent_006_b02_parent_advancement_denied() {
         expected_commit_digest: "sha256:000000".to_string(),
     };
 
-    let disposition = constructor.construct_detached(&env, &candidate, &mut object_db, &mut head_ref);
+    let disposition =
+        constructor.construct_detached(&env, &candidate, &mut object_db, &mut head_ref);
     assert_eq!(disposition, ConstructionDisposition::DENIED);
     assert!(object_db.is_empty());
 }

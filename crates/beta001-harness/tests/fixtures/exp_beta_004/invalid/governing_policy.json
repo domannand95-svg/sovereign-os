@@ -1,0 +1,7 @@
+{
+  "schema_version": "EFFECT_PROPOSAL-v1",
+  "proposed_effect_type": "invoke_tool",
+  "target_resource": "tool:compiler",
+  "parameters": {},
+  "governing_policy": "allow-development-tools"
+}

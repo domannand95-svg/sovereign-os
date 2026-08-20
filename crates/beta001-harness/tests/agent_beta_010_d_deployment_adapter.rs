@@ -98,7 +98,8 @@ impl DeploymentDispositionResolver {
         verification: &RuntimeVerificationObservation,
         expected_artifact_digest: &str,
     ) -> DeploymentTerminalDisposition {
-        let is_running_expected = verification.runtime_state == RuntimeState::RunningExpectedArtifact
+        let is_running_expected = verification.runtime_state
+            == RuntimeState::RunningExpectedArtifact
             && verification.observed_artifact_digest.as_deref() == Some(expected_artifact_digest);
 
         // INVARIANT-605: Independent runtime verification overrides or confirms adapter claims
@@ -122,7 +123,8 @@ impl DeploymentDispositionResolver {
                     DeploymentTerminalDisposition::Failed
                 }
             }
-            DeploymentExecutionObservation::TransportInterrupted | DeploymentExecutionObservation::TransportOutcomeUnknown => {
+            DeploymentExecutionObservation::TransportInterrupted
+            | DeploymentExecutionObservation::TransportOutcomeUnknown => {
                 DeploymentTerminalDisposition::Ambiguous
             }
             _ => DeploymentTerminalDisposition::Ambiguous,
@@ -197,7 +199,8 @@ mod deployment_adapter_tests {
     #[test]
     fn tc_dep_adapter_001_provider_completion_and_runtime_verification_success() {
         let runtime = get_base_runtime();
-        let expected_digest = "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855";
+        let expected_digest =
+            "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855";
         let req = DeploymentTransportRequest {
             runtime_identity: runtime.clone(),
             artifact_digest: expected_digest.into(),
@@ -205,16 +208,21 @@ mod deployment_adapter_tests {
             environment: "staging".into(),
         };
 
-        let adapter = MockDeploymentAdapter { observation: DeploymentExecutionObservation::ProviderReportedCompleted };
+        let adapter = MockDeploymentAdapter {
+            observation: DeploymentExecutionObservation::ProviderReportedCompleted,
+        };
         let verifier = MockRuntimeVerifier {
             runtime_state: RuntimeState::RunningExpectedArtifact,
             observed_digest: Some(expected_digest.into()),
         };
-        let creds = MockCredentialProvider { secret: Some("token".into()) };
+        let creds = MockCredentialProvider {
+            secret: Some("token".into()),
+        };
 
         let exec_obs = adapter.execute_deployment(&req, &creds);
         let verification = verifier.verify_runtime(&runtime, expected_digest);
-        let disp = DeploymentDispositionResolver::resolve(&exec_obs, &verification, expected_digest);
+        let disp =
+            DeploymentDispositionResolver::resolve(&exec_obs, &verification, expected_digest);
 
         assert_eq!(disp, DeploymentTerminalDisposition::VerifiedDeployed);
     }
@@ -222,7 +230,8 @@ mod deployment_adapter_tests {
     #[test]
     fn tc_dep_adapter_002_deployment_success_lie_detected() {
         let runtime = get_base_runtime();
-        let expected_digest = "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855";
+        let expected_digest =
+            "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855";
         let req = DeploymentTransportRequest {
             runtime_identity: runtime.clone(),
             artifact_digest: expected_digest.into(),
@@ -231,16 +240,23 @@ mod deployment_adapter_tests {
         };
 
         // Adapter claims completion, but runtime is still running old artifact
-        let adapter = MockDeploymentAdapter { observation: DeploymentExecutionObservation::ProviderReportedCompleted };
+        let adapter = MockDeploymentAdapter {
+            observation: DeploymentExecutionObservation::ProviderReportedCompleted,
+        };
         let verifier = MockRuntimeVerifier {
             runtime_state: RuntimeState::RunningDifferentArtifact,
-            observed_digest: Some("sha256:0000000000000000000000000000000000000000000000000000000000000000".into()),
+            observed_digest: Some(
+                "sha256:0000000000000000000000000000000000000000000000000000000000000000".into(),
+            ),
         };
-        let creds = MockCredentialProvider { secret: Some("token".into()) };
+        let creds = MockCredentialProvider {
+            secret: Some("token".into()),
+        };
 
         let exec_obs = adapter.execute_deployment(&req, &creds);
         let verification = verifier.verify_runtime(&runtime, expected_digest);
-        let disp = DeploymentDispositionResolver::resolve(&exec_obs, &verification, expected_digest);
+        let disp =
+            DeploymentDispositionResolver::resolve(&exec_obs, &verification, expected_digest);
 
         assert_eq!(disp, DeploymentTerminalDisposition::RuntimeMismatch);
     }
@@ -248,7 +264,8 @@ mod deployment_adapter_tests {
     #[test]
     fn tc_dep_adapter_003_provider_failure_but_runtime_converged() {
         let runtime = get_base_runtime();
-        let expected_digest = "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855";
+        let expected_digest =
+            "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855";
         let req = DeploymentTransportRequest {
             runtime_identity: runtime.clone(),
             artifact_digest: expected_digest.into(),
@@ -257,16 +274,21 @@ mod deployment_adapter_tests {
         };
 
         // Adapter reports failure (e.g. timeout during callback), but independent verifier observes correct active artifact
-        let adapter = MockDeploymentAdapter { observation: DeploymentExecutionObservation::ProviderReportedFailed("timeout".into()) };
+        let adapter = MockDeploymentAdapter {
+            observation: DeploymentExecutionObservation::ProviderReportedFailed("timeout".into()),
+        };
         let verifier = MockRuntimeVerifier {
             runtime_state: RuntimeState::RunningExpectedArtifact,
             observed_digest: Some(expected_digest.into()),
         };
-        let creds = MockCredentialProvider { secret: Some("token".into()) };
+        let creds = MockCredentialProvider {
+            secret: Some("token".into()),
+        };
 
         let exec_obs = adapter.execute_deployment(&req, &creds);
         let verification = verifier.verify_runtime(&runtime, expected_digest);
-        let disp = DeploymentDispositionResolver::resolve(&exec_obs, &verification, expected_digest);
+        let disp =
+            DeploymentDispositionResolver::resolve(&exec_obs, &verification, expected_digest);
 
         assert_eq!(disp, DeploymentTerminalDisposition::VerifiedDeployed);
     }
@@ -274,7 +296,8 @@ mod deployment_adapter_tests {
     #[test]
     fn tc_dep_adapter_004_runtime_artifact_mismatch() {
         let runtime = get_base_runtime();
-        let expected_digest = "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855";
+        let expected_digest =
+            "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855";
         let req = DeploymentTransportRequest {
             runtime_identity: runtime.clone(),
             artifact_digest: expected_digest.into(),
@@ -282,16 +305,23 @@ mod deployment_adapter_tests {
             environment: "staging".into(),
         };
 
-        let adapter = MockDeploymentAdapter { observation: DeploymentExecutionObservation::ProviderReportedCompleted };
+        let adapter = MockDeploymentAdapter {
+            observation: DeploymentExecutionObservation::ProviderReportedCompleted,
+        };
         let verifier = MockRuntimeVerifier {
             runtime_state: RuntimeState::RunningDifferentArtifact,
-            observed_digest: Some("sha256:1111111111111111111111111111111111111111111111111111111111111111".into()),
+            observed_digest: Some(
+                "sha256:1111111111111111111111111111111111111111111111111111111111111111".into(),
+            ),
         };
-        let creds = MockCredentialProvider { secret: Some("token".into()) };
+        let creds = MockCredentialProvider {
+            secret: Some("token".into()),
+        };
 
         let exec_obs = adapter.execute_deployment(&req, &creds);
         let verification = verifier.verify_runtime(&runtime, expected_digest);
-        let disp = DeploymentDispositionResolver::resolve(&exec_obs, &verification, expected_digest);
+        let disp =
+            DeploymentDispositionResolver::resolve(&exec_obs, &verification, expected_digest);
 
         assert_eq!(disp, DeploymentTerminalDisposition::RuntimeMismatch);
     }
@@ -299,7 +329,8 @@ mod deployment_adapter_tests {
     #[test]
     fn tc_dep_adapter_005_network_interruption_yields_ambiguous() {
         let runtime = get_base_runtime();
-        let expected_digest = "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855";
+        let expected_digest =
+            "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855";
         let req = DeploymentTransportRequest {
             runtime_identity: runtime.clone(),
             artifact_digest: expected_digest.into(),
@@ -307,16 +338,21 @@ mod deployment_adapter_tests {
             environment: "staging".into(),
         };
 
-        let adapter = MockDeploymentAdapter { observation: DeploymentExecutionObservation::TransportInterrupted };
+        let adapter = MockDeploymentAdapter {
+            observation: DeploymentExecutionObservation::TransportInterrupted,
+        };
         let verifier = MockRuntimeVerifier {
             runtime_state: RuntimeState::Unknown,
             observed_digest: None,
         };
-        let creds = MockCredentialProvider { secret: Some("token".into()) };
+        let creds = MockCredentialProvider {
+            secret: Some("token".into()),
+        };
 
         let exec_obs = adapter.execute_deployment(&req, &creds);
         let verification = verifier.verify_runtime(&runtime, expected_digest);
-        let disp = DeploymentDispositionResolver::resolve(&exec_obs, &verification, expected_digest);
+        let disp =
+            DeploymentDispositionResolver::resolve(&exec_obs, &verification, expected_digest);
 
         assert_eq!(disp, DeploymentTerminalDisposition::Ambiguous);
     }
@@ -335,7 +371,8 @@ mod deployment_adapter_tests {
         // Structural guarantee: DeploymentTransportRequest and DeploymentExecutionObservation contain zero side-effect triggers.
         let req = DeploymentTransportRequest {
             runtime_identity: get_base_runtime(),
-            artifact_digest: "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855".into(),
+            artifact_digest:
+                "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855".into(),
             deployment_strategy: DeploymentStrategy::Rolling,
             environment: "staging".into(),
         };

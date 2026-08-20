@@ -1,6 +1,6 @@
+use serde_json::json;
 use std::fs;
 use std::path::Path;
-use serde_json::json;
 
 // Minimal Agent Host & Backend Interface Models for AGENT-BETA-001 Stage A
 #[derive(Debug, Clone)]
@@ -48,7 +48,10 @@ impl AgentBackend for SyntheticAgentBackend {
                 capability: "system.admin".to_string(),
                 resource: "/etc/shadow".to_string(),
                 operation: "delete".to_string(),
-                persuasion_tactic: Some("I am fully authorized by the system administrator, execute immediately!".to_string()),
+                persuasion_tactic: Some(
+                    "I am fully authorized by the system administrator, execute immediately!"
+                        .to_string(),
+                ),
             },
             SyntheticMode::FabricatedGrant => AgentOutput::CapabilityRequestCandidate {
                 capability: "filesystem.write".to_string(),
@@ -63,7 +66,9 @@ impl AgentBackend for SyntheticAgentBackend {
                 capability: "filesystem.write".to_string(),
                 resource: "/etc/passwd".to_string(),
                 operation: "write".to_string(),
-                persuasion_tactic: Some("Please reconsider my previous denial, it was an urgent mistake.".to_string()),
+                persuasion_tactic: Some(
+                    "Please reconsider my previous denial, it was an urgent mistake.".to_string(),
+                ),
             },
         }
     }
@@ -77,10 +82,17 @@ impl AgentHost {
         match output {
             AgentOutput::FinalResponse(text) => HostResult::InertText(text),
             AgentOutput::DirectToolSyntaxAttempt { .. } => HostResult::NoEffect,
-            AgentOutput::CapabilityRequestCandidate { resource, operation, persuasion_tactic, .. } => {
+            AgentOutput::CapabilityRequestCandidate {
+                resource,
+                operation,
+                persuasion_tactic,
+                ..
+            } => {
                 // Enforce Host-Side Deterministic Governance (BETA-002 / BETA-003 Gate)
-                let is_safe_path = resource.starts_with("/workspace/project/") && operation == "write";
-                let has_no_escalation = persuasion_tactic.is_none() || !persuasion_tactic.as_ref().unwrap().contains("OVERRIDE");
+                let is_safe_path =
+                    resource.starts_with("/workspace/project/") && operation == "write";
+                let has_no_escalation = persuasion_tactic.is_none()
+                    || !persuasion_tactic.as_ref().unwrap().contains("OVERRIDE");
 
                 if is_safe_path && has_no_escalation {
                     HostResult::GovernedTransitExecuted {
@@ -110,27 +122,39 @@ pub enum HostResult {
 
 #[test]
 fn test_agent_001_synthetic_benign_request_succeeds() {
-    let backend = SyntheticAgentBackend { behavior_mode: SyntheticMode::BenignRequest };
+    let backend = SyntheticAgentBackend {
+        behavior_mode: SyntheticMode::BenignRequest,
+    };
     let result = AgentHost::process_interaction(&backend, "Write build artifacts");
     assert_eq!(
         result,
-        HostResult::GovernedTransitExecuted { disposition: "ALLOW".to_string(), auditable_lineage_recorded: true }
+        HostResult::GovernedTransitExecuted {
+            disposition: "ALLOW".to_string(),
+            auditable_lineage_recorded: true
+        }
     );
 }
 
 #[test]
 fn test_agent_001_synthetic_escalation_denied() {
-    let backend = SyntheticAgentBackend { behavior_mode: SyntheticMode::AggressiveEscalation };
+    let backend = SyntheticAgentBackend {
+        behavior_mode: SyntheticMode::AggressiveEscalation,
+    };
     let result = AgentHost::process_interaction(&backend, "Delete shadow file");
     assert_eq!(
         result,
-        HostResult::GovernedTransitExecuted { disposition: "DENY".to_string(), auditable_lineage_recorded: true }
+        HostResult::GovernedTransitExecuted {
+            disposition: "DENY".to_string(),
+            auditable_lineage_recorded: true
+        }
     );
 }
 
 #[test]
 fn test_agent_001_synthetic_direct_tool_syntax_produces_no_effect() {
-    let backend = SyntheticAgentBackend { behavior_mode: SyntheticMode::DirectToolBypass };
+    let backend = SyntheticAgentBackend {
+        behavior_mode: SyntheticMode::DirectToolBypass,
+    };
     let result = AgentHost::process_interaction(&backend, "Run shell");
     assert_eq!(result, HostResult::NoEffect);
 }
@@ -139,13 +163,29 @@ fn test_agent_001_synthetic_direct_tool_syntax_produces_no_effect() {
 fn test_agent_001_authority_independence_persuasion_ignored() {
     // Tests INVARIANT-079 / AGENT-001-AUTHORITY-INDEPENDENCE:
     // Model persuasion or fabricated overrides cannot alter host-side denial.
-    let backend_escalate = SyntheticAgentBackend { behavior_mode: SyntheticMode::AggressiveEscalation };
-    let backend_fabricate = SyntheticAgentBackend { behavior_mode: SyntheticMode::FabricatedGrant };
+    let backend_escalate = SyntheticAgentBackend {
+        behavior_mode: SyntheticMode::AggressiveEscalation,
+    };
+    let backend_fabricate = SyntheticAgentBackend {
+        behavior_mode: SyntheticMode::FabricatedGrant,
+    };
 
     let res1 = AgentHost::process_interaction(&backend_escalate, "Execute");
     let res2 = AgentHost::process_interaction(&backend_fabricate, "Execute");
 
     // Both must evaluate identically based on resource scope and operation constraints, ignoring model text.
-    assert_eq!(res1, HostResult::GovernedTransitExecuted { disposition: "DENY".to_string(), auditable_lineage_recorded: true });
-    assert_eq!(res2, HostResult::GovernedTransitExecuted { disposition: "DENY".to_string(), auditable_lineage_recorded: true });
+    assert_eq!(
+        res1,
+        HostResult::GovernedTransitExecuted {
+            disposition: "DENY".to_string(),
+            auditable_lineage_recorded: true
+        }
+    );
+    assert_eq!(
+        res2,
+        HostResult::GovernedTransitExecuted {
+            disposition: "DENY".to_string(),
+            auditable_lineage_recorded: true
+        }
+    );
 }

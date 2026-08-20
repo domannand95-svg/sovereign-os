@@ -1,0 +1,11 @@
+{
+  "schema_version": "EFFECT_EVALUATION_RESULT-v1",
+  "proposal_reference": "sha256:proposal001",
+  "evaluation_context_reference": "sha256:context001",
+  "decision": "accepted",
+  "decision_reason_class": "HOST_APPROVED",
+  "evaluation_basis": [
+    "policy_rule:allow_tool_execution"
+  ],
+  "capability_candidate_reference": "sha256:candidate001"
+}

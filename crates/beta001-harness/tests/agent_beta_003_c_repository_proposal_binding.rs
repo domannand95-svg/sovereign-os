@@ -1,6 +1,6 @@
-use std::path::{Path, PathBuf, Component};
 use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
+use std::path::{Component, Path, PathBuf};
 
 pub struct ProposalBindingValidator {
     repo_root: PathBuf,
@@ -53,7 +53,9 @@ impl ProposalBindingValidator {
         if state.is_dirty {
             return ValidationResult {
                 disposition: ValidationDisposition::REJECTED,
-                reasons: vec!["Unexpected dirty repository worktree/index state encountered".to_string()],
+                reasons: vec![
+                    "Unexpected dirty repository worktree/index state encountered".to_string(),
+                ],
             };
         }
 
@@ -61,7 +63,10 @@ impl ProposalBindingValidator {
         if candidate.repository_reference != state.repository_id {
             return ValidationResult {
                 disposition: ValidationDisposition::REJECTED,
-                reasons: vec!["Candidate repository reference does not match current repository identity".to_string()],
+                reasons: vec![
+                    "Candidate repository reference does not match current repository identity"
+                        .to_string(),
+                ],
             };
         }
 
@@ -83,7 +88,9 @@ impl ProposalBindingValidator {
         if computed != candidate.diff_digest {
             return ValidationResult {
                 disposition: ValidationDisposition::REJECTED,
-                reasons: vec!["Candidate content digest does not match bound diff digest".to_string()],
+                reasons: vec![
+                    "Candidate content digest does not match bound diff digest".to_string()
+                ],
             };
         }
 
@@ -97,14 +104,19 @@ impl ProposalBindingValidator {
             if !normalized.starts_with(&base_normalized) {
                 return ValidationResult {
                     disposition: ValidationDisposition::REJECTED,
-                    reasons: vec![format!("Target path '{}' escapes granted repository scope", path)],
+                    reasons: vec![format!(
+                        "Target path '{}' escapes granted repository scope",
+                        path
+                    )],
                 };
             }
         }
 
         ValidationResult {
             disposition: ValidationDisposition::MATCHED,
-            reasons: vec!["Proposal successfully bound to authoritative repository state.".to_string()],
+            reasons: vec![
+                "Proposal successfully bound to authoritative repository state.".to_string(),
+            ],
         }
     }
 
@@ -212,5 +224,8 @@ fn test_agent_003_c14_validation_record_grants_zero_mutation_authority() {
     assert_eq!(validation.disposition, ValidationDisposition::MATCHED);
 
     let has_mutation_authority = false;
-    assert!(!has_mutation_authority, "Validation result conferred unauthorized repository mutation authority!");
+    assert!(
+        !has_mutation_authority,
+        "Validation result conferred unauthorized repository mutation authority!"
+    );
 }

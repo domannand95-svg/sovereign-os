@@ -62,10 +62,10 @@ impl<'a> Git2CredentialsCallback<'a> {
         self.call_count.set(count + 1);
 
         let mut resolved = None;
-        
-        // BOUNDARY DOCUMENTATION: 
+
+        // BOUNDARY DOCUMENTATION:
         // The credential lifetime is bounded by this libgit2 authentication callback lifecycle.
-        // No Rust-owned object, adapter state, transport state, or audit object may 
+        // No Rust-owned object, adapter state, transport state, or audit object may
         // retain credential material beyond this lifecycle.
         self.provider.with_secret(&mut |secret_opt| {
             if let Some(secret) = secret_opt {
@@ -97,12 +97,11 @@ pub struct FakeGitHttpServer {
 
 impl FakeGitHttpServer {
     pub fn simulate_push(
-        &self, 
-        refspec: &str, 
-        _expected_prestate: &str, 
-        auth_cb: &Git2CredentialsCallback
+        &self,
+        refspec: &str,
+        _expected_prestate: &str,
+        auth_cb: &Git2CredentialsCallback,
     ) -> Result<(), NetworkError> {
-        
         // EXPLICIT REFSPEC RESTRICTIONS (INVARIANT-412, INVARIANT-421)
         // Prohibit wildcards, tag following, push.default semantics, and force flags
         if refspec.contains('*') || refspec.starts_with('+') || refspec.is_empty() {
@@ -111,11 +110,15 @@ impl FakeGitHttpServer {
 
         match self.behavior {
             HttpBehavior::Success => {
-                let _ = auth_cb.invoke().map_err(|_| NetworkError::CredentialFailure)?;
+                let _ = auth_cb
+                    .invoke()
+                    .map_err(|_| NetworkError::CredentialFailure)?;
                 Ok(())
             }
             HttpBehavior::RequireAuthTwice => {
-                let _ = auth_cb.invoke().map_err(|_| NetworkError::CredentialFailure)?;
+                let _ = auth_cb
+                    .invoke()
+                    .map_err(|_| NetworkError::CredentialFailure)?;
                 // Second retrieval attempt simulating libgit2 retry loop
                 if auth_cb.invoke().is_err() {
                     return Err(NetworkError::ProtocolViolation); // Fixture correctly halts
@@ -123,13 +126,19 @@ impl FakeGitHttpServer {
                 Ok(())
             }
             HttpBehavior::RejectAuth401 => {
-                let _ = auth_cb.invoke().map_err(|_| NetworkError::CredentialFailure)?;
+                let _ = auth_cb
+                    .invoke()
+                    .map_err(|_| NetworkError::CredentialFailure)?;
                 // Proves that remote rejection (401) is structurally different from local failure
                 Err(NetworkError::Rejected("HTTP 401 Unauthorized".into()))
             }
             HttpBehavior::BranchProtected403 => {
-                let _ = auth_cb.invoke().map_err(|_| NetworkError::CredentialFailure)?;
-                Err(NetworkError::Rejected("HTTP 403 Forbidden: Branch protection hook".into()))
+                let _ = auth_cb
+                    .invoke()
+                    .map_err(|_| NetworkError::CredentialFailure)?;
+                Err(NetworkError::Rejected(
+                    "HTTP 403 Forbidden: Branch protection hook".into(),
+                ))
             }
             HttpBehavior::DnsFailure => Err(NetworkError::TransportUnavailable),
             HttpBehavior::TlsFailure => Err(NetworkError::EndpointMismatch),
@@ -152,14 +161,25 @@ pub struct ConcreteGitTransport<'a> {
 }
 
 impl<'a> ConcreteGitTransport<'a> {
-    pub fn execute_push(&self, req: &RemotePublicationTransportRequest, creds: &dyn ScopedCredentialProvider) -> ExecutionObservation {
+    pub fn execute_push(
+        &self,
+        req: &RemotePublicationTransportRequest,
+        creds: &dyn ScopedCredentialProvider,
+    ) -> ExecutionObservation {
         // Enforce exact 1:1 refspec construction without force (+) flags
         let exact_refspec = format!("{}:{}", req.candidate_oid, req.destination_ref);
         let call_count = Cell::new(0);
-        let callback = Git2CredentialsCallback { provider: creds, call_count: &call_count };
+        let callback = Git2CredentialsCallback {
+            provider: creds,
+            call_count: &call_count,
+        };
 
-        let result = self.server_fixture.simulate_push(&exact_refspec, &req.expected_prestate_oid, &callback);
-        
+        let result = self.server_fixture.simulate_push(
+            &exact_refspec,
+            &req.expected_prestate_oid,
+            &callback,
+        );
+
         match result {
             Ok(_) => ExecutionObservation::AdapterReportedSuccess,
             Err(e) => map_network_error(&e),
@@ -175,9 +195,13 @@ impl<'a> ConcreteGitTransport<'a> {
 mod b002_tests {
     use super::*;
 
-    struct MockProvider { secret: Option<String> }
+    struct MockProvider {
+        secret: Option<String>,
+    }
     impl ScopedCredentialProvider for MockProvider {
-        fn with_secret(&self, f: &mut dyn FnMut(Option<&str>)) { f(self.secret.as_deref()); }
+        fn with_secret(&self, f: &mut dyn FnMut(Option<&str>)) {
+            f(self.secret.as_deref());
+        }
     }
 
     fn default_req() -> RemotePublicationTransportRequest {
@@ -190,19 +214,37 @@ mod b002_tests {
 
     #[test]
     fn test_tc_https_001_credential_requested_once() {
-        let server = FakeGitHttpServer { behavior: HttpBehavior::Success };
-        let transport = ConcreteGitTransport { server_fixture: &server };
-        let obs = transport.execute_push(&default_req(), &MockProvider { secret: Some("token".into()) });
-        
+        let server = FakeGitHttpServer {
+            behavior: HttpBehavior::Success,
+        };
+        let transport = ConcreteGitTransport {
+            server_fixture: &server,
+        };
+        let obs = transport.execute_push(
+            &default_req(),
+            &MockProvider {
+                secret: Some("token".into()),
+            },
+        );
+
         assert_eq!(obs, ExecutionObservation::AdapterReportedSuccess);
     }
 
     #[test]
     fn test_tc_https_002_second_retrieval_blocked() {
-        let server = FakeGitHttpServer { behavior: HttpBehavior::RequireAuthTwice };
-        let transport = ConcreteGitTransport { server_fixture: &server };
-        let obs = transport.execute_push(&default_req(), &MockProvider { secret: Some("token".into()) });
-        
+        let server = FakeGitHttpServer {
+            behavior: HttpBehavior::RequireAuthTwice,
+        };
+        let transport = ConcreteGitTransport {
+            server_fixture: &server,
+        };
+        let obs = transport.execute_push(
+            &default_req(),
+            &MockProvider {
+                secret: Some("token".into()),
+            },
+        );
+
         // Protocol Violation occurs because the closure halts the second FFI callback
         assert_eq!(obs, ExecutionObservation::AdapterReportedFailure);
     }
@@ -211,45 +253,85 @@ mod b002_tests {
     fn test_tc_https_003_transport_error_logging_absence() {
         let req = default_req();
         // Structurally prove the request object itself (what gets logged on error) is safe
-        let debug_str = format!("Req: {} -> {}", req.expected_prestate_oid, req.candidate_oid);
+        let debug_str = format!(
+            "Req: {} -> {}",
+            req.expected_prestate_oid, req.candidate_oid
+        );
         assert!(!debug_str.to_lowercase().contains("token"));
         assert!(!debug_str.to_lowercase().contains("secret"));
     }
 
     #[test]
     fn test_tc_https_004_remote_rejects_credential() {
-        let server = FakeGitHttpServer { behavior: HttpBehavior::RejectAuth401 };
-        let transport = ConcreteGitTransport { server_fixture: &server };
-        let obs = transport.execute_push(&default_req(), &MockProvider { secret: Some("token".into()) });
-        
+        let server = FakeGitHttpServer {
+            behavior: HttpBehavior::RejectAuth401,
+        };
+        let transport = ConcreteGitTransport {
+            server_fixture: &server,
+        };
+        let obs = transport.execute_push(
+            &default_req(),
+            &MockProvider {
+                secret: Some("token".into()),
+            },
+        );
+
         // Proves 401 does not equal NotDispatched. The remote actively participated and rejected it.
-        assert_eq!(obs, ExecutionObservation::RemoteReportedRejection("HTTP 401 Unauthorized".into()));
+        assert_eq!(
+            obs,
+            ExecutionObservation::RemoteReportedRejection("HTTP 401 Unauthorized".into())
+        );
     }
 
     #[test]
     fn test_tc_https_005_dns_vs_tls_mapping() {
         let req = default_req();
-        let creds = MockProvider { secret: Some("token".into()) };
+        let creds = MockProvider {
+            secret: Some("token".into()),
+        };
 
         // TLS Failure -> Endpoint Identity Mismatch
-        let tls_server = FakeGitHttpServer { behavior: HttpBehavior::TlsFailure };
-        let tls_obs = ConcreteGitTransport { server_fixture: &tls_server }.execute_push(&req, &creds);
+        let tls_server = FakeGitHttpServer {
+            behavior: HttpBehavior::TlsFailure,
+        };
+        let tls_obs = ConcreteGitTransport {
+            server_fixture: &tls_server,
+        }
+        .execute_push(&req, &creds);
         assert_eq!(tls_obs, ExecutionObservation::NotDispatched); // Mapped via EndpointMismatch
 
         // DNS Failure -> Transport Unavailable
-        let dns_server = FakeGitHttpServer { behavior: HttpBehavior::DnsFailure };
-        let dns_obs = ConcreteGitTransport { server_fixture: &dns_server }.execute_push(&req, &creds);
+        let dns_server = FakeGitHttpServer {
+            behavior: HttpBehavior::DnsFailure,
+        };
+        let dns_obs = ConcreteGitTransport {
+            server_fixture: &dns_server,
+        }
+        .execute_push(&req, &creds);
         assert_eq!(dns_obs, ExecutionObservation::TransportInterrupted); // Mapped via TransportUnavailable
     }
 
     #[test]
     fn test_tc_https_006_refspec_wildcard_rejection() {
-        let server = FakeGitHttpServer { behavior: HttpBehavior::Success };
+        let server = FakeGitHttpServer {
+            behavior: HttpBehavior::Success,
+        };
         let call_count = Cell::new(0);
-        let cb = Git2CredentialsCallback { provider: &MockProvider { secret: Some("token".into()) }, call_count: &call_count };
-        
+        let cb = Git2CredentialsCallback {
+            provider: &MockProvider {
+                secret: Some("token".into()),
+            },
+            call_count: &call_count,
+        };
+
         // Assert force flag and wildcards are violently rejected by the transport boundary
-        assert_eq!(server.simulate_push("+refs/heads/main:refs/heads/main", "XXX", &cb), Err(NetworkError::ProtocolViolation));
-        assert_eq!(server.simulate_push("refs/heads/*:refs/heads/*", "XXX", &cb), Err(NetworkError::ProtocolViolation));
+        assert_eq!(
+            server.simulate_push("+refs/heads/main:refs/heads/main", "XXX", &cb),
+            Err(NetworkError::ProtocolViolation)
+        );
+        assert_eq!(
+            server.simulate_push("refs/heads/*:refs/heads/*", "XXX", &cb),
+            Err(NetworkError::ProtocolViolation)
+        );
     }
 }

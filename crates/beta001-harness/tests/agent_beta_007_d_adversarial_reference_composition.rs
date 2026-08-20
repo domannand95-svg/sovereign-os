@@ -36,7 +36,10 @@ impl AdversarialRefOrchestrator {
         }
 
         // Enforce INVARIANT-394 & 395: Exact ref name and local heads namespace confinement
-        if is_alternate_ref || requested_ref != context.authorized_ref || !requested_ref.starts_with("refs/heads/") {
+        if is_alternate_ref
+            || requested_ref != context.authorized_ref
+            || !requested_ref.starts_with("refs/heads/")
+        {
             return AdversarialRefTransitionDisposition::DENIED;
         }
 
@@ -87,7 +90,10 @@ fn test_agent_007_d_cas_race_denied() {
     );
 
     assert_eq!(disposition, AdversarialRefTransitionDisposition::DENIED);
-    assert_eq!(live_refs.get("refs/heads/main"), Some(&"commit_B".to_string())); // Unchanged by race
+    assert_eq!(
+        live_refs.get("refs/heads/main"),
+        Some(&"commit_B".to_string())
+    ); // Unchanged by race
 }
 
 #[test]
@@ -118,7 +124,10 @@ fn test_agent_007_d_alternate_branch_substitution_denied() {
     );
 
     assert_eq!(disposition, AdversarialRefTransitionDisposition::DENIED);
-    assert_eq!(live_refs.get("refs/heads/release"), Some(&"commit_A".to_string()));
+    assert_eq!(
+        live_refs.get("refs/heads/release"),
+        Some(&"commit_A".to_string())
+    );
 }
 
 #[test]
@@ -145,10 +154,19 @@ fn test_agent_007_d_push_boundary_isolated() {
         false,
     );
 
-    assert_eq!(disposition, AdversarialRefTransitionDisposition::TRANSITIONED);
+    assert_eq!(
+        disposition,
+        AdversarialRefTransitionDisposition::TRANSITIONED
+    );
 
     // Verify local ref updated while remote publication authority remains absent (isolated)
     let has_push_authority = false;
-    assert_eq!(live_refs.get("refs/heads/main"), Some(&"commit_C".to_string()));
-    assert!(!has_push_authority, "Local ref transition incorrectly conferred remote push authority!");
+    assert_eq!(
+        live_refs.get("refs/heads/main"),
+        Some(&"commit_C".to_string())
+    );
+    assert!(
+        !has_push_authority,
+        "Local ref transition incorrectly conferred remote push authority!"
+    );
 }

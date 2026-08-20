@@ -42,7 +42,9 @@ impl FaultInjectingStageAdapter {
             return EffectClassification::NoEffect;
         }
 
-        if fault_mode == StagingFaultMode::PreStateMismatch || actual_pre_state != &context.expected_pre_state {
+        if fault_mode == StagingFaultMode::PreStateMismatch
+            || actual_pre_state != &context.expected_pre_state
+        {
             return EffectClassification::NoEffect;
         }
 
@@ -123,7 +125,10 @@ fn test_agent_005_c_partial_index_effect_classified() {
     assert_eq!(classification, EffectClassification::PartialEffect);
     assert_eq!(current_index.get(path0), Some(&"content a".to_string()));
     assert_eq!(current_index.get(path1), None); // Not transitioned
-    assert_eq!(current_index.get(user_file), Some(&"user content".to_string()));
+    assert_eq!(
+        current_index.get(user_file),
+        Some(&"user content".to_string())
+    );
 }
 
 #[test]

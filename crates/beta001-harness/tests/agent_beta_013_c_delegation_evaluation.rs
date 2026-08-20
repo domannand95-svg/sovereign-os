@@ -62,7 +62,9 @@ impl DelegationEvaluator for StandardDelegationEvaluator {
                 evaluation_id: eval_id,
                 request_id: request_id.into(),
                 classification: DelegationEvaluationClassification::InsufficientEvidence,
-                rationale: "Delegation request lacks supporting communication evidence or provenance.".into(),
+                rationale:
+                    "Delegation request lacks supporting communication evidence or provenance."
+                        .into(),
                 human_review_required: true,
                 evaluation_digest: "sha256:eval_insufficient_evidence".into(),
             };
@@ -74,7 +76,9 @@ impl DelegationEvaluator for StandardDelegationEvaluator {
                 evaluation_id: eval_id,
                 request_id: request_id.into(),
                 classification: DelegationEvaluationClassification::ConflictDetected,
-                rationale: "Conflicting delegation rules or capability constraints detected (Fail Closed).".into(),
+                rationale:
+                    "Conflicting delegation rules or capability constraints detected (Fail Closed)."
+                        .into(),
                 human_review_required: true,
                 evaluation_digest: "sha256:eval_conflict_detected".into(),
             };
@@ -134,7 +138,10 @@ mod delegation_evaluation_tests {
         let requested = vec!["REPOSITORY_READ".into()];
 
         let res = evaluator.evaluate_delegation("req_01", &parent, &requested, true, false, false);
-        assert_eq!(res.classification, DelegationEvaluationClassification::ApprovedForConsideration);
+        assert_eq!(
+            res.classification,
+            DelegationEvaluationClassification::ApprovedForConsideration
+        );
         assert!(!res.human_review_required);
     }
 
@@ -145,7 +152,10 @@ mod delegation_evaluation_tests {
         let requested = vec!["REPOSITORY_READ".into(), "POLICY_EVALUATE".into()]; // Exceeds parent
 
         let res = evaluator.evaluate_delegation("req_02", &parent, &requested, true, false, false);
-        assert_eq!(res.classification, DelegationEvaluationClassification::Rejected);
+        assert_eq!(
+            res.classification,
+            DelegationEvaluationClassification::Rejected
+        );
     }
 
     #[test]
@@ -170,7 +180,10 @@ mod delegation_evaluation_tests {
         let requested = vec!["REPOSITORY_READ".into()];
 
         let res = evaluator.evaluate_delegation("req_04", &parent, &requested, false, false, false); // has_evidence = false
-        assert_eq!(res.classification, DelegationEvaluationClassification::InsufficientEvidence);
+        assert_eq!(
+            res.classification,
+            DelegationEvaluationClassification::InsufficientEvidence
+        );
     }
 
     #[test]
@@ -180,7 +193,10 @@ mod delegation_evaluation_tests {
         let requested = vec!["REPOSITORY_READ".into()];
 
         let res = evaluator.evaluate_delegation("req_05", &parent, &requested, true, true, false); // is_conflict = true
-        assert_eq!(res.classification, DelegationEvaluationClassification::ConflictDetected);
+        assert_eq!(
+            res.classification,
+            DelegationEvaluationClassification::ConflictDetected
+        );
     }
 
     #[test]
@@ -190,7 +206,10 @@ mod delegation_evaluation_tests {
         let requested = vec!["REPOSITORY_READ".into()];
 
         let res = evaluator.evaluate_delegation("req_06", &parent, &requested, true, false, true); // requires_review = true
-        assert_eq!(res.classification, DelegationEvaluationClassification::HumanReviewRequired);
+        assert_eq!(
+            res.classification,
+            DelegationEvaluationClassification::HumanReviewRequired
+        );
         assert!(res.human_review_required);
     }
 
@@ -200,8 +219,10 @@ mod delegation_evaluation_tests {
         let parent = vec!["REPOSITORY_READ".into()];
         let requested = vec!["REPOSITORY_READ".into()];
 
-        let res_a = evaluator.evaluate_delegation("req_07", &parent, &requested, true, false, false);
-        let res_b = evaluator.evaluate_delegation("req_07", &parent, &requested, true, false, false);
+        let res_a =
+            evaluator.evaluate_delegation("req_07", &parent, &requested, true, false, false);
+        let res_b =
+            evaluator.evaluate_delegation("req_07", &parent, &requested, true, false, false);
 
         assert_eq!(res_a.classification, res_b.classification);
         assert_eq!(res_a.rationale, res_b.rationale);

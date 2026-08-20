@@ -1,0 +1,9 @@
+{
+  "schema_version": "EFFECT_EVALUATION_RESULT-v1",
+  "proposal_reference": "sha256:proposal009",
+  "evaluation_context_reference": "sha256:context009",
+  "decision": "rejected",
+  "decision_reason_class": "POLICY_DENIED",
+  "evaluation_basis": [],
+  "capability_candidate_reference": "sha256:orphan_candidate"
+}

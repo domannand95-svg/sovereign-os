@@ -94,7 +94,11 @@ impl GovernanceOrchestrator for StandardGovernanceOrchestrator {
             }
         };
 
-        let transition_digest = format!("sha256:transition_{}_{}", evidence_digest.len(), Utc::now().timestamp_subsec_nanos());
+        let transition_digest = format!(
+            "sha256:transition_{}_{}",
+            evidence_digest.len(),
+            Utc::now().timestamp_subsec_nanos()
+        );
 
         Ok(WorkflowStateTransition {
             from_state: current_state,
@@ -118,10 +122,20 @@ mod orchestration_engine_tests {
         let orchestrator = StandardGovernanceOrchestrator;
         let digest = "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855";
 
-        let t1 = orchestrator.evaluate_transition(digest, digest, false, false, WorkflowState::Created).unwrap();
+        let t1 = orchestrator
+            .evaluate_transition(digest, digest, false, false, WorkflowState::Created)
+            .unwrap();
         assert_eq!(t1.to_state, WorkflowState::EvidenceCollection);
 
-        let t2 = orchestrator.evaluate_transition(digest, digest, false, false, WorkflowState::EvidenceCollection).unwrap();
+        let t2 = orchestrator
+            .evaluate_transition(
+                digest,
+                digest,
+                false,
+                false,
+                WorkflowState::EvidenceCollection,
+            )
+            .unwrap();
         assert_eq!(t2.to_state, WorkflowState::PolicyEvaluationPending);
     }
 
@@ -132,7 +146,8 @@ mod orchestration_engine_tests {
 
         // Attempting to jump directly from Created to Completed
         let mut forced_state = WorkflowState::Completed;
-        let res = orchestrator.evaluate_transition(digest, digest, true, false, forced_state.clone());
+        let res =
+            orchestrator.evaluate_transition(digest, digest, true, false, forced_state.clone());
         assert!(res.is_err());
     }
 
@@ -157,7 +172,9 @@ mod orchestration_engine_tests {
         let orchestrator = StandardGovernanceOrchestrator;
         let digest = ""; // Empty digest representing missing evidence
 
-        let t1 = orchestrator.evaluate_transition("cand_01", digest, false, false, WorkflowState::Created).unwrap();
+        let t1 = orchestrator
+            .evaluate_transition("cand_01", digest, false, false, WorkflowState::Created)
+            .unwrap();
         assert_eq!(t1.to_state, WorkflowState::InsufficientEvidence);
     }
 
@@ -166,7 +183,15 @@ mod orchestration_engine_tests {
         let orchestrator = StandardGovernanceOrchestrator;
         let digest = "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855";
 
-        let t1 = orchestrator.evaluate_transition(digest, digest, true, true, WorkflowState::PolicyEvaluationPending).unwrap();
+        let t1 = orchestrator
+            .evaluate_transition(
+                digest,
+                digest,
+                true,
+                true,
+                WorkflowState::PolicyEvaluationPending,
+            )
+            .unwrap();
         assert_eq!(t1.to_state, WorkflowState::PolicyConflict);
     }
 
@@ -175,8 +200,12 @@ mod orchestration_engine_tests {
         let orchestrator = StandardGovernanceOrchestrator;
         let digest = "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855";
 
-        let res_a = orchestrator.evaluate_transition(digest, digest, false, false, WorkflowState::Created).unwrap();
-        let res_b = orchestrator.evaluate_transition(digest, digest, false, false, WorkflowState::Created).unwrap();
+        let res_a = orchestrator
+            .evaluate_transition(digest, digest, false, false, WorkflowState::Created)
+            .unwrap();
+        let res_b = orchestrator
+            .evaluate_transition(digest, digest, false, false, WorkflowState::Created)
+            .unwrap();
 
         assert_eq!(res_a.to_state, res_b.to_state);
         assert_eq!(res_a.from_state, res_b.from_state);
@@ -187,7 +216,9 @@ mod orchestration_engine_tests {
         let orchestrator = StandardGovernanceOrchestrator;
         let digest = "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855";
 
-        let t1 = orchestrator.evaluate_transition(digest, digest, true, false, WorkflowState::PolicyEvaluated).unwrap();
+        let t1 = orchestrator
+            .evaluate_transition(digest, digest, true, false, WorkflowState::PolicyEvaluated)
+            .unwrap();
         assert_eq!(t1.to_state, WorkflowState::AwaitingExternalAuthority);
         // Engine routes to awaiting external authority rather than auto-issuing authorization
     }

@@ -11,26 +11,42 @@ pub struct DeploymentCandidateValidator;
 impl DeploymentCandidateValidator {
     pub fn validate(value: &serde_json::Value) -> DeploymentCandidateValidationResult {
         // Enforce strict schema version
-        if value.get("schema_version").and_then(|v| v.as_str()) != Some("REPOSITORY_DEPLOYMENT_CANDIDATE-v1") {
-            return DeploymentCandidateValidationResult::Invalid("Invalid or missing schema_version".into());
+        if value.get("schema_version").and_then(|v| v.as_str())
+            != Some("REPOSITORY_DEPLOYMENT_CANDIDATE-v1")
+        {
+            return DeploymentCandidateValidationResult::Invalid(
+                "Invalid or missing schema_version".into(),
+            );
         }
 
         // Validate deployment_candidate_id pattern
-        if let Some(id) = value.get("deployment_candidate_id").and_then(|v| v.as_str()) {
+        if let Some(id) = value
+            .get("deployment_candidate_id")
+            .and_then(|v| v.as_str())
+        {
             if !id.starts_with("dep_cand_") {
-                return DeploymentCandidateValidationResult::Invalid("Invalid deployment_candidate_id format".into());
+                return DeploymentCandidateValidationResult::Invalid(
+                    "Invalid deployment_candidate_id format".into(),
+                );
             }
         } else {
-            return DeploymentCandidateValidationResult::Invalid("Missing deployment_candidate_id".into());
+            return DeploymentCandidateValidationResult::Invalid(
+                "Missing deployment_candidate_id".into(),
+            );
         }
 
         // Validate immutable artifact digest format (must be sha256:...)
         if let Some(digest) = value.get("source_artifact_digest").and_then(|v| v.as_str()) {
             if !digest.starts_with("sha256:") || digest.len() != 71 {
-                return DeploymentCandidateValidationResult::Invalid("Invalid or mutable source_artifact_digest reference (must be sha256 hex)".into());
+                return DeploymentCandidateValidationResult::Invalid(
+                    "Invalid or mutable source_artifact_digest reference (must be sha256 hex)"
+                        .into(),
+                );
             }
         } else {
-            return DeploymentCandidateValidationResult::Invalid("Missing source_artifact_digest".into());
+            return DeploymentCandidateValidationResult::Invalid(
+                "Missing source_artifact_digest".into(),
+            );
         }
 
         // Validate target_runtime_identity environment enum
@@ -38,35 +54,54 @@ impl DeploymentCandidateValidator {
             if let Some(env) = runtime_id.get("environment").and_then(|v| v.as_str()) {
                 let valid_envs = ["development", "staging", "production"];
                 if !valid_envs.contains(&env) {
-                    return DeploymentCandidateValidationResult::Invalid("Invalid environment value".into());
+                    return DeploymentCandidateValidationResult::Invalid(
+                        "Invalid environment value".into(),
+                    );
                 }
             } else {
-                return DeploymentCandidateValidationResult::Invalid("Missing environment in target_runtime_identity".into());
+                return DeploymentCandidateValidationResult::Invalid(
+                    "Missing environment in target_runtime_identity".into(),
+                );
             }
         } else {
-            return DeploymentCandidateValidationResult::Invalid("Missing target_runtime_identity".into());
+            return DeploymentCandidateValidationResult::Invalid(
+                "Missing target_runtime_identity".into(),
+            );
         }
 
         // Validate deployment_strategy enum
         if let Some(strat) = value.get("deployment_strategy").and_then(|v| v.as_str()) {
             let valid_strategies = ["ROLLING", "BLUE_GREEN", "RECREATE"];
             if !valid_strategies.contains(&strat) {
-                return DeploymentCandidateValidationResult::Invalid("Invalid deployment_strategy value".into());
+                return DeploymentCandidateValidationResult::Invalid(
+                    "Invalid deployment_strategy value".into(),
+                );
             }
         } else {
-            return DeploymentCandidateValidationResult::Invalid("Missing deployment_strategy".into());
+            return DeploymentCandidateValidationResult::Invalid(
+                "Missing deployment_strategy".into(),
+            );
         }
 
         // Injected Authority Check: Ensure no implicit credentials or side-effect flags exist
         let allowed_keys = [
-            "schema_version", "deployment_candidate_id", "source_artifact_digest",
-            "repository_identity", "source_commit_oid", "target_runtime_identity",
-            "deployment_strategy", "expected_runtime_state", "proposed_runtime_state"
+            "schema_version",
+            "deployment_candidate_id",
+            "source_artifact_digest",
+            "repository_identity",
+            "source_commit_oid",
+            "target_runtime_identity",
+            "deployment_strategy",
+            "expected_runtime_state",
+            "proposed_runtime_state",
         ];
         if let Some(obj) = value.as_object() {
             for key in obj.keys() {
                 if !allowed_keys.contains(&key.as_str()) {
-                    return DeploymentCandidateValidationResult::Invalid(format!("Injected unauthorized deployment authority field detected: {}", key));
+                    return DeploymentCandidateValidationResult::Invalid(format!(
+                        "Injected unauthorized deployment authority field detected: {}",
+                        key
+                    ));
                 }
             }
         }
@@ -105,48 +140,75 @@ mod deployment_candidate_schema_tests {
     #[test]
     fn tc_dep_cand_001_valid_candidate_accepted() {
         let cand = get_valid_deployment_candidate();
-        assert_eq!(DeploymentCandidateValidator::validate(&cand), DeploymentCandidateValidationResult::Valid);
+        assert_eq!(
+            DeploymentCandidateValidator::validate(&cand),
+            DeploymentCandidateValidationResult::Valid
+        );
     }
 
     #[test]
     fn tc_dep_cand_002_missing_artifact_digest_rejected() {
         let mut cand = get_valid_deployment_candidate();
-        cand.as_object_mut().unwrap().remove("source_artifact_digest");
-        assert!(matches!(DeploymentCandidateValidator::validate(&cand), DeploymentCandidateValidationResult::Invalid(_)));
+        cand.as_object_mut()
+            .unwrap()
+            .remove("source_artifact_digest");
+        assert!(matches!(
+            DeploymentCandidateValidator::validate(&cand),
+            DeploymentCandidateValidationResult::Invalid(_)
+        ));
     }
 
     #[test]
     fn tc_dep_cand_003_mutable_artifact_reference_rejected() {
         let mut cand = get_valid_deployment_candidate();
         cand["source_artifact_digest"] = json!("latest");
-        assert!(matches!(DeploymentCandidateValidator::validate(&cand), DeploymentCandidateValidationResult::Invalid(_)));
+        assert!(matches!(
+            DeploymentCandidateValidator::validate(&cand),
+            DeploymentCandidateValidationResult::Invalid(_)
+        ));
     }
 
     #[test]
     fn tc_dep_cand_004_invalid_environment_rejected() {
         let mut cand = get_valid_deployment_candidate();
         cand["target_runtime_identity"]["environment"] = json!("unknown_env");
-        assert!(matches!(DeploymentCandidateValidator::validate(&cand), DeploymentCandidateValidationResult::Invalid(_)));
+        assert!(matches!(
+            DeploymentCandidateValidator::validate(&cand),
+            DeploymentCandidateValidationResult::Invalid(_)
+        ));
     }
 
     #[test]
     fn tc_dep_cand_005_credential_injection_rejected() {
         let mut cand = get_valid_deployment_candidate();
-        cand.as_object_mut().unwrap().insert("token".to_string(), json!("secret_key_123"));
-        assert!(matches!(DeploymentCandidateValidator::validate(&cand), DeploymentCandidateValidationResult::Invalid(_)));
+        cand.as_object_mut()
+            .unwrap()
+            .insert("token".to_string(), json!("secret_key_123"));
+        assert!(matches!(
+            DeploymentCandidateValidator::validate(&cand),
+            DeploymentCandidateValidationResult::Invalid(_)
+        ));
     }
 
     #[test]
     fn tc_dep_cand_006_deployment_side_effect_escalation_rejected() {
         let mut cand = get_valid_deployment_candidate();
-        cand.as_object_mut().unwrap().insert("publish_release".to_string(), json!(true));
-        assert!(matches!(DeploymentCandidateValidator::validate(&cand), DeploymentCandidateValidationResult::Invalid(_)));
+        cand.as_object_mut()
+            .unwrap()
+            .insert("publish_release".to_string(), json!(true));
+        assert!(matches!(
+            DeploymentCandidateValidator::validate(&cand),
+            DeploymentCandidateValidationResult::Invalid(_)
+        ));
     }
 
     #[test]
     fn tc_dep_cand_007_unknown_deployment_strategy_rejected() {
         let mut cand = get_valid_deployment_candidate();
         cand["deployment_strategy"] = json!("MAGIC_DEPLOY");
-        assert!(matches!(DeploymentCandidateValidator::validate(&cand), DeploymentCandidateValidationResult::Invalid(_)));
+        assert!(matches!(
+            DeploymentCandidateValidator::validate(&cand),
+            DeploymentCandidateValidationResult::Invalid(_)
+        ));
     }
 }

@@ -1,6 +1,6 @@
-use std::path::{Path, PathBuf, Component};
 use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
+use std::path::{Component, Path, PathBuf};
 
 pub struct AdversarialCompositionOrchestrator {
     sandbox_root: PathBuf,
@@ -32,7 +32,9 @@ impl AdversarialCompositionOrchestrator {
     ) -> Result<String, AdversarialError> {
         // Enforce INVARIANT-122 & 126: Denial dominance and runtime revocation check
         if !session.write_active || session.revoked || is_revoked_at_execution {
-            return Err(AdversarialError::AuthorityDenied("Authorization denied or revoked at execution boundary".to_string()));
+            return Err(AdversarialError::AuthorityDenied(
+                "Authorization denied or revoked at execution boundary".to_string(),
+            ));
         }
 
         // Enforce INVARIANT-104: Payload digest binding
@@ -40,7 +42,9 @@ impl AdversarialCompositionOrchestrator {
         bytes.hash(&mut hasher);
         let computed = format!("sha256:{:x}", hasher.finish());
         if computed != digest {
-            return Err(AdversarialError::PayloadMismatch("Payload digest mismatch".to_string()));
+            return Err(AdversarialError::PayloadMismatch(
+                "Payload digest mismatch".to_string(),
+            ));
         }
 
         // Enforce INVARIANT-121 & 101: Target confinement against granted write scope
@@ -51,7 +55,9 @@ impl AdversarialCompositionOrchestrator {
         let normalized_base = Self::normalize_path(&base_dir);
 
         if !normalized.starts_with(&normalized_base) {
-            return Err(AdversarialError::ScopeViolation("Target escapes granted write scope; injection rejected".to_string()));
+            return Err(AdversarialError::ScopeViolation(
+                "Target escapes granted write scope; injection rejected".to_string(),
+            ));
         }
 
         Ok("COMPOSITE_WRITE_SUCCESS".to_string())
@@ -107,8 +113,19 @@ fn test_agent_002_d_bounded_authority_injection_resisted() {
     let payload = b"Injected unauthorized payload";
     let digest = compute_digest(payload);
 
-    let res = orchestrator.evaluate_and_execute_write(&session, malicious_target, payload, &digest, false);
-    assert_eq!(res, Err(AdversarialError::ScopeViolation("Target escapes granted write scope; injection rejected".to_string())));
+    let res = orchestrator.evaluate_and_execute_write(
+        &session,
+        malicious_target,
+        payload,
+        &digest,
+        false,
+    );
+    assert_eq!(
+        res,
+        Err(AdversarialError::ScopeViolation(
+            "Target escapes granted write scope; injection rejected".to_string()
+        ))
+    );
 }
 
 #[test]
@@ -127,8 +144,14 @@ fn test_agent_002_d_toctou_authority_revocation_denied() {
     let digest = compute_digest(payload);
 
     // Simulate revocation occurring precisely at execution time
-    let res = orchestrator.evaluate_and_execute_write(&session, "summary.md", payload, &digest, true);
-    assert_eq!(res, Err(AdversarialError::AuthorityDenied("Authorization denied or revoked at execution boundary".to_string())));
+    let res =
+        orchestrator.evaluate_and_execute_write(&session, "summary.md", payload, &digest, true);
+    assert_eq!(
+        res,
+        Err(AdversarialError::AuthorityDenied(
+            "Authorization denied or revoked at execution boundary".to_string()
+        ))
+    );
 }
 
 #[test]
@@ -146,6 +169,17 @@ fn test_agent_002_d_cross_resource_isolation_denied() {
     let payload = b"Data";
     let digest = compute_digest(payload);
 
-    let res = orchestrator.evaluate_and_execute_write(&session, "../other-session/output.txt", payload, &digest, false);
-    assert_eq!(res, Err(AdversarialError::ScopeViolation("Target escapes granted write scope; injection rejected".to_string())));
+    let res = orchestrator.evaluate_and_execute_write(
+        &session,
+        "../other-session/output.txt",
+        payload,
+        &digest,
+        false,
+    );
+    assert_eq!(
+        res,
+        Err(AdversarialError::ScopeViolation(
+            "Target escapes granted write scope; injection rejected".to_string()
+        ))
+    );
 }

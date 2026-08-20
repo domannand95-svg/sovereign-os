@@ -12,14 +12,20 @@ pub struct ExternalIdentityValidator;
 impl ExternalIdentityValidator {
     pub fn validate(value: &serde_json::Value) -> ExternalIdentityValidationResult {
         // Enforce strict schema version
-        if value.get("schema_version").and_then(|v| v.as_str()) != Some("REPOSITORY_EXTERNAL_IDENTITY_ASSERTION-v1") {
-            return ExternalIdentityValidationResult::Invalid("Invalid or missing schema_version".into());
+        if value.get("schema_version").and_then(|v| v.as_str())
+            != Some("REPOSITORY_EXTERNAL_IDENTITY_ASSERTION-v1")
+        {
+            return ExternalIdentityValidationResult::Invalid(
+                "Invalid or missing schema_version".into(),
+            );
         }
 
         // Validate assertion_id pattern
         if let Some(id) = value.get("assertion_id").and_then(|v| v.as_str()) {
             if !id.starts_with("ext_id_") {
-                return ExternalIdentityValidationResult::Invalid("Invalid assertion_id format".into());
+                return ExternalIdentityValidationResult::Invalid(
+                    "Invalid assertion_id format".into(),
+                );
             }
         } else {
             return ExternalIdentityValidationResult::Invalid("Missing assertion_id".into());
@@ -32,7 +38,9 @@ impl ExternalIdentityValidator {
                     return ExternalIdentityValidationResult::Invalid("Namespace collision or empty principal: external identity cannot claim internal sovereign namespace".into());
                 }
             } else {
-                return ExternalIdentityValidationResult::Invalid("Missing external_principal".into());
+                return ExternalIdentityValidationResult::Invalid(
+                    "Missing external_principal".into(),
+                );
             }
         } else {
             return ExternalIdentityValidationResult::Invalid("Missing identity_subject".into());
@@ -43,27 +51,39 @@ impl ExternalIdentityValidator {
             if let Some(exp_str) = prov.get("expires_at").and_then(|v| v.as_str()) {
                 if let Ok(exp_dt) = DateTime::parse_from_rfc3339(exp_str) {
                     if exp_dt < Utc::now() {
-                        return ExternalIdentityValidationResult::Invalid("Identity assertion expired".into());
+                        return ExternalIdentityValidationResult::Invalid(
+                            "Identity assertion expired".into(),
+                        );
                     }
                 }
             } else {
-                return ExternalIdentityValidationResult::Invalid("Missing expires_at in cryptographic_provenance".into());
+                return ExternalIdentityValidationResult::Invalid(
+                    "Missing expires_at in cryptographic_provenance".into(),
+                );
             }
         } else {
-            return ExternalIdentityValidationResult::Invalid("Missing cryptographic_provenance".into());
+            return ExternalIdentityValidationResult::Invalid(
+                "Missing cryptographic_provenance".into(),
+            );
         }
 
         // AUTHORITY INJECTION & PRIVILEGE ESCALATION CHECK (TC-EXT-ID-004):
         // Ensure no capability grants or permission fields exist in the assertion.
         let allowed_keys = [
-            "schema_version", "assertion_id", "identity_subject",
-            "cryptographic_provenance", "verification_state"
+            "schema_version",
+            "assertion_id",
+            "identity_subject",
+            "cryptographic_provenance",
+            "verification_state",
         ];
 
         if let Some(obj) = value.as_object() {
             for key in obj.keys() {
                 if !allowed_keys.contains(&key.as_str()) {
-                    return ExternalIdentityValidationResult::Invalid(format!("Authority injection or forbidden capability field detected: {}", key));
+                    return ExternalIdentityValidationResult::Invalid(format!(
+                        "Authority injection or forbidden capability field detected: {}",
+                        key
+                    ));
                 }
             }
         }
@@ -101,35 +121,60 @@ mod external_identity_assertion_tests {
     #[test]
     fn tc_ext_id_001_valid_external_identity_accepted() {
         let assertion = get_valid_identity_assertion();
-        assert_eq!(ExternalIdentityValidator::validate(&assertion), ExternalIdentityValidationResult::Valid);
+        assert_eq!(
+            ExternalIdentityValidator::validate(&assertion),
+            ExternalIdentityValidationResult::Valid
+        );
     }
 
     #[test]
     fn tc_ext_id_002_reject_missing_cryptographic_provenance() {
         let mut assertion = get_valid_identity_assertion();
-        assertion.as_object_mut().unwrap().remove("cryptographic_provenance");
-        assert!(matches!(ExternalIdentityValidator::validate(&assertion), ExternalIdentityValidationResult::Invalid(_)));
+        assertion
+            .as_object_mut()
+            .unwrap()
+            .remove("cryptographic_provenance");
+        assert!(matches!(
+            ExternalIdentityValidator::validate(&assertion),
+            ExternalIdentityValidationResult::Invalid(_)
+        ));
     }
 
     #[test]
     fn tc_ext_id_003_external_identity_cannot_become_internal_principal() {
         let mut assertion = get_valid_identity_assertion();
-        assertion["identity_subject"]["external_principal"] = json!("sovereign::internal::root_admin");
-        assert!(matches!(ExternalIdentityValidator::validate(&assertion), ExternalIdentityValidationResult::Invalid(_)));
+        assertion["identity_subject"]["external_principal"] =
+            json!("sovereign::internal::root_admin");
+        assert!(matches!(
+            ExternalIdentityValidator::validate(&assertion),
+            ExternalIdentityValidationResult::Invalid(_)
+        ));
     }
 
     #[test]
     fn tc_ext_id_004_reject_capability_injection() {
         let mut assertion = get_valid_identity_assertion();
-        assertion.as_object_mut().unwrap().insert("grant_capability".to_string(), json!("repository.admin"));
-        assert!(matches!(ExternalIdentityValidator::validate(&assertion), ExternalIdentityValidationResult::Invalid(_)));
+        assertion
+            .as_object_mut()
+            .unwrap()
+            .insert("grant_capability".to_string(), json!("repository.admin"));
+        assert!(matches!(
+            ExternalIdentityValidator::validate(&assertion),
+            ExternalIdentityValidationResult::Invalid(_)
+        ));
     }
 
     #[test]
     fn tc_ext_id_005_reject_namespace_collision() {
         let assertion = get_valid_identity_assertion();
-        let ns = assertion["identity_subject"]["namespace"].as_str().unwrap_or("");
-        let allowed_ns = ["EXTERNAL_FEDERATED", "THIRD_PARTY_AGENT", "EXTERNAL_MODEL_PROVIDER"];
+        let ns = assertion["identity_subject"]["namespace"]
+            .as_str()
+            .unwrap_or("");
+        let allowed_ns = [
+            "EXTERNAL_FEDERATED",
+            "THIRD_PARTY_AGENT",
+            "EXTERNAL_MODEL_PROVIDER",
+        ];
         assert!(allowed_ns.contains(&ns));
     }
 
@@ -141,7 +186,10 @@ mod external_identity_assertion_tests {
         assertion["cryptographic_provenance"]["issued_at"] = json!(past_iss);
         assertion["cryptographic_provenance"]["expires_at"] = json!(past_exp);
 
-        assert!(matches!(ExternalIdentityValidator::validate(&assertion), ExternalIdentityValidationResult::Invalid(_)));
+        assert!(matches!(
+            ExternalIdentityValidator::validate(&assertion),
+            ExternalIdentityValidationResult::Invalid(_)
+        ));
     }
 
     #[test]
@@ -149,6 +197,9 @@ mod external_identity_assertion_tests {
         let assertion = get_valid_identity_assertion();
         let res = ExternalIdentityValidator::validate(&assertion);
         assert_eq!(res, ExternalIdentityValidationResult::Valid);
-        assert_eq!(assertion["verification_state"], json!("ASSERTED_EXTERNAL_IDENTITY"));
+        assert_eq!(
+            assertion["verification_state"],
+            json!("ASSERTED_EXTERNAL_IDENTITY")
+        );
     }
 }

@@ -1,0 +1,7 @@
+{
+  "schema_version": "EFFECT_PROPOSAL-v1",
+  "proposed_effect_type": "external_interaction",
+  "target_resource": "service:example",
+  "parameters": {},
+  "execution_id": "exec-001"
+}
