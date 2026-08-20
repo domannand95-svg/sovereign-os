@@ -1,0 +1,70 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "RepositoryGovernanceEvidenceV1",
+  "description": "Defines immutable, provenance-bound upstream evidence for policy evaluation. Grants ZERO authority.",
+  "type": "object",
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "REPOSITORY_GOVERNANCE_EVIDENCE-v1"
+    },
+    "evidence_id": {
+      "type": "string",
+      "pattern": "^evid_[a-zA-Z0-9_-]+$"
+    },
+    "evidence_type": {
+      "type": "string",
+      "enum": [
+        "PUBLICATION_OBSERVATION",
+        "PULL_REQUEST_OBSERVATION",
+        "REVIEW_OBSERVATION",
+        "MERGE_OBSERVATION",
+        "DEPLOYMENT_OBSERVATION",
+        "RUNTIME_OBSERVATION"
+      ]
+    },
+    "source_domain": {
+      "type": "string",
+      "enum": [
+        "PUBLICATION",
+        "PULL_REQUEST",
+        "REVIEW",
+        "MERGE",
+        "DEPLOYMENT",
+        "RUNTIME"
+      ]
+    },
+    "source_reference": {
+      "type": "object",
+      "properties": {
+        "origin_id": { "type": "string", "minLength": 1 },
+        "origin_schema": { "type": "string", "minLength": 1 }
+      },
+      "required": ["origin_id", "origin_schema"],
+      "additionalProperties": false
+    },
+    "evidence_digest": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "observed_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "verification_status": {
+      "type": "string",
+      "enum": ["INDEPENDENTLY_VERIFIED", "OBSERVED", "UNVERIFIED"]
+    }
+  },
+  "required": [
+    "schema_version",
+    "evidence_id",
+    "evidence_type",
+    "source_domain",
+    "source_reference",
+    "evidence_digest",
+    "observed_at",
+    "verification_status"
+  ],
+  "additionalProperties": false
+}
