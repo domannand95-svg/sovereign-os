@@ -1,0 +1,69 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "RepositoryReviewObservationCandidateV1",
+  "description": "Defines an immutable observed code review telemetry record. Does NOT grant approval, merge, or repository mutation authority.",
+  "type": "object",
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "REPOSITORY_REVIEW_OBSERVATION_CANDIDATE-v1"
+    },
+    "review_observation_id": {
+      "type": "string",
+      "pattern": "^rev_obs_[a-zA-Z0-9_-]+$"
+    },
+    "pull_request_binding": {
+      "type": "object",
+      "properties": {
+        "candidate_id": {
+          "type": "string",
+          "pattern": "^pr_cand_[a-zA-Z0-9_-]+$"
+        },
+        "source_commit_oid": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{40}$"
+        }
+      },
+      "required": [
+        "candidate_id",
+        "source_commit_oid"
+      ],
+      "additionalProperties": false
+    },
+    "reviewer_identity": {
+      "type": "object",
+      "properties": {
+        "principal_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "principal_type": {
+          "type": "string",
+          "enum": ["human", "agent", "service_principal"]
+        }
+      },
+      "required": [
+        "principal_id",
+        "principal_type"
+      ],
+      "additionalProperties": false
+    },
+    "review_state": {
+      "type": "string",
+      "enum": ["COMMENTED", "CHANGES_REQUESTED", "APPROVED_OBSERVED", "DISMISSED"]
+    },
+    "observed_at": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "required": [
+    "schema_version",
+    "review_observation_id",
+    "pull_request_binding",
+    "reviewer_identity",
+    "review_state",
+    "observed_at"
+  ],
+  "additionalProperties": false
+}
