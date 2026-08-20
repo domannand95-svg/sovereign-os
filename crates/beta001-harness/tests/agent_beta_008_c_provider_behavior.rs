@@ -222,9 +222,10 @@ impl IndependentRemoteVerifier for LibGit2ProviderFixture {
     }
 }
 
-// Smart HTTP Server Simulation Fixture (C-001-B Domain)
+// Smart HTTP Receive-Pack Simulation Fixture with Object Graph Transfer (C-001 Domain)
 pub struct SmartHttpServerFixture {
     pub force_remote_rejection: bool,
+    pub local_repo_path: PathBuf,
     pub remote_repo_path: PathBuf,
     pub target_commit_oid: String,
 }
@@ -232,13 +233,30 @@ pub struct SmartHttpServerFixture {
 impl NetworkTransport for SmartHttpServerFixture {
     fn execute_push(&self, req: &RemotePublicationTransportRequest, _creds: &dyn ScopedCredentialProvider) -> Result<(), NetworkError> {
         if self.force_remote_rejection {
-            Err(NetworkError::Rejected("HTTP 403 Forbidden: pre-receive hook declined".into()))
-        } else {
-            let repo = git2::Repository::open(&self.remote_repo_path).map_err(|_| NetworkError::ProtocolViolation)?;
-            let oid = git2::Oid::from_str(&self.target_commit_oid).map_err(|_| NetworkError::ProtocolViolation)?;
-            repo.reference(&req.destination_ref, oid, true, "Smart HTTP Push Acceptance").map_err(|_| NetworkError::ProtocolViolation)?;
-            Ok(())
+            return Err(NetworkError::Rejected("HTTP 403 Forbidden: pre-receive hook declined".into()));
         }
+
+        // PHASE 1: Object Graph Availability / Transfer (local ODB → remote ODB)
+        let local_repo = git2::Repository::open(&self.local_repo_path).map_err(|_| NetworkError::ProtocolViolation)?;
+        let remote_repo = git2::Repository::open(&self.remote_repo_path).map_err(|_| NetworkError::ProtocolViolation)?;
+
+        let oid = git2::Oid::from_str(&self.target_commit_oid).map_err(|_| NetworkError::ProtocolViolation)?;
+        let commit_obj = local_repo.find_object(oid, Some(git2::ObjectType::Commit)).map_err(|_| NetworkError::ProtocolViolation)?;
+
+        // Ensure object is present in remote ODB (simulate packfile transfer)
+        let local_odb = local_repo.odb().map_err(|_| NetworkError::ProtocolViolation)?;
+        let remote_odb = remote_repo.odb().map_err(|_| NetworkError::ProtocolViolation)?;
+
+        if !remote_odb.exists(oid) {
+            let reader = local_odb.read(oid).map_err(|_| NetworkError::ProtocolViolation)?;
+            remote_odb.write(reader.kind(), reader.data()).map_err(|_| NetworkError::ProtocolViolation)?;
+        }
+
+        // PHASE 2: Reference Mutation (Atomic update post-object verification)
+        remote_repo.reference(&req.destination_ref, oid, true, "Smart HTTP receive-pack: object transfer verified")
+            .map_err(|_| NetworkError::ProtocolViolation)?;
+
+        Ok(())
     }
 }
 
@@ -260,7 +278,7 @@ impl IndependentRemoteVerifier for SmartHttpServerFixture {
 }
 
 // =====================================================================
-// 4. C-001 ACCEPTANCE SUITES
+// 4. C-001 REDESIGNED ACCEPTANCE SUITES
 // =====================================================================
 
 #[cfg(test)]
@@ -303,7 +321,7 @@ mod c001_provider_tests {
 
     #[test]
     fn tc_c001_000_file_transport_bypasses_server_hooks() {
-        let (_local_dir, remote_dir, _oid_x, _oid_y) = setup_base_repo();
+        let (local_dir, remote_dir, _oid_x, _oid_y) = setup_base_repo();
         
         let hooks_dir = remote_dir.path().join("hooks");
         std::fs::create_dir_all(&hooks_dir).unwrap();
@@ -311,7 +329,7 @@ mod c001_provider_tests {
         std::fs::write(&hook_path, if cfg!(windows) { "@echo off\nexit /b 1" } else { "#!/bin/sh\nexit 1" }).unwrap();
 
         let fixture = LibGit2ProviderFixture {
-            local_repo_path: _local_dir.path().to_path_buf(),
+            local_repo_path: local_dir.path().to_path_buf(),
             remote_repo_path: remote_dir.path().to_path_buf(),
         };
 
@@ -326,10 +344,11 @@ mod c001_provider_tests {
 
     #[test]
     fn tc_c001_001_smart_http_server_hook_rejection_results_in_verified_no_effect() {
-        let (_local_dir, remote_dir, oid_x, oid_y) = setup_base_repo();
+        let (local_dir, remote_dir, oid_x, oid_y) = setup_base_repo();
 
         let fixture = SmartHttpServerFixture {
             force_remote_rejection: true,
+            local_repo_path: local_dir.path().to_path_buf(),
             remote_repo_path: remote_dir.path().to_path_buf(),
             target_commit_oid: oid_y.clone(),
         };
@@ -367,10 +386,11 @@ mod c001_provider_tests {
 
     #[test]
     fn tc_c001_004_smart_http_hook_accepts_update_results_in_verified_success() {
-        let (_local_dir, remote_dir, oid_x, oid_y) = setup_base_repo();
+        let (local_dir, remote_dir, oid_x, oid_y) = setup_base_repo();
 
         let fixture = SmartHttpServerFixture {
             force_remote_rejection: false,
+            local_repo_path: local_dir.path().to_path_buf(),
             remote_repo_path: remote_dir.path().to_path_buf(),
             target_commit_oid: oid_y.clone(),
         };
