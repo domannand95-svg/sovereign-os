@@ -1,0 +1,12 @@
+{
+  "schema_version": "CAPABILITY_REQUEST-v1",
+  "request_id": "req_003",
+  "requester_identity": "agent-instance-001",
+  "requested_capability": { "capability": "filesystem.write" },
+  "declared_purpose": "Unauthorized escalation",
+  "required_scope": { "resource": "/etc", "operations": ["write"] },
+  "duration_requirement": "1h",
+  "risk_classification": "CRITICAL",
+  "supporting_evidence_references": ["EVID-001"],
+  "execution_token": "token_unauthorized_999"
+}

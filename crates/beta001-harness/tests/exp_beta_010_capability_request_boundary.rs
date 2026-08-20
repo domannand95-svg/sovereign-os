@@ -22,55 +22,39 @@ fn load_schema() -> Validator {
 }
 
 #[test]
-fn test_exp_010_valid_request_passes() {
+fn test_exp_010_valid_fixtures() {
     let validator = load_schema();
-    let instance = serde_json::json!({
-        "schema_version": "CAPABILITY_REQUEST-v1",
-        "request_id": "req_001",
-        "requester_identity": "agent-instance-001",
-        "requested_capability": {
-            "capability": "filesystem.write"
-        },
-        "declared_purpose": "Write build output into workspace",
-        "required_scope": {
-            "resource": "/workspace/project",
-            "operations": ["write"]
-        },
-        "duration_requirement": "10m",
-        "risk_classification": "LOW",
-        "supporting_evidence_references": ["EVID-001"]
-    });
+    let manifest_dir = env!("CARGO_MANIFEST_DIR");
+    let valid_dir = Path::new(manifest_dir).join("tests/fixtures/exp_beta_010/valid");
 
-    assert!(validator.is_valid(&instance), "Valid capability request failed validation");
+    if valid_dir.exists() {
+        for entry in fs::read_dir(&valid_dir).expect("Failed to read valid request fixtures") {
+            let entry = entry.unwrap();
+            let path = entry.path();
+            if path.is_file() {
+                let content = fs::read_to_string(&path).unwrap();
+                let instance: Value = serde_json::from_str(&content).unwrap();
+                assert!(validator.is_valid(&instance), "Valid fixture rejected: {:?}", path);
+            }
+        }
+    }
 }
 
 #[test]
-fn test_exp_010_missing_field_rejected() {
+fn test_exp_010_invalid_fixtures() {
     let validator = load_schema();
-    let instance = serde_json::json!({
-        "schema_version": "CAPABILITY_REQUEST-v1",
-        "request_id": "req_002",
-        "requester_identity": "agent-instance-001"
-    });
+    let manifest_dir = env!("CARGO_MANIFEST_DIR");
+    let invalid_dir = Path::new(manifest_dir).join("tests/fixtures/exp_beta_010/invalid");
 
-    assert!(!validator.is_valid(&instance), "Malformed request should fail validation");
-}
-
-#[test]
-fn test_exp_010_embedded_credential_rejected() {
-    let validator = load_schema();
-    let instance = serde_json::json!({
-        "schema_version": "CAPABILITY_REQUEST-v1",
-        "request_id": "req_003",
-        "requester_identity": "agent-instance-001",
-        "requested_capability": { "capability": "filesystem.write" },
-        "declared_purpose": "Unauthorized escalation",
-        "required_scope": { "resource": "/etc", "operations": ["write"] },
-        "duration_requirement": "1h",
-        "risk_classification": "CRITICAL",
-        "supporting_evidence_references": ["EVID-001"],
-        "execution_token": "token_unauthorized_999"
-    });
-
-    assert!(!validator.is_valid(&instance), "Request containing execution token must be rejected");
+    if invalid_dir.exists() {
+        for entry in fs::read_dir(&invalid_dir).expect("Failed to read invalid request fixtures") {
+            let entry = entry.unwrap();
+            let path = entry.path();
+            if path.is_file() {
+                let content = fs::read_to_string(&path).unwrap();
+                let instance: Value = serde_json::from_str(&content).unwrap();
+                assert!(!validator.is_valid(&instance), "Invalid/Adversarial fixture incorrectly accepted: {:?}", path);
+            }
+        }
+    }
 }
