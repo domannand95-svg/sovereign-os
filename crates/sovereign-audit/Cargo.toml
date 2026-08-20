@@ -5,13 +5,4 @@ edition = "2021"
 publish = false
 
 [dependencies]
-blake3 = { workspace = true }
-sovereign-registry = { version = "0.1.0", path = "../sovereign-registry" }
-
-[features]
-governance-evidence-chain = []
-
-
-[dependencies]
-serde_json = { version = "1.0" }
-
+serde_json = "1.0"
