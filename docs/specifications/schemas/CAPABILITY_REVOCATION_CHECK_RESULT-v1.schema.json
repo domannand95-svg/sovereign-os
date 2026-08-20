@@ -1,0 +1,57 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "CapabilityRevocationCheckResultV1",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "check_id",
+    "query_reference",
+    "state_disposition",
+    "expiration_status",
+    "revocation_status",
+    "verification_reasons",
+    "timestamp"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "CAPABILITY_REVOCATION_CHECK_RESULT-v1"
+    },
+    "check_id": {
+      "type": "string",
+      "pattern": "^crc_[a-zA-Z0-9_-]+$"
+    },
+    "query_reference": {
+      "type": "string",
+      "pattern": "^csq_[a-zA-Z0-9_-]+$"
+    },
+    "state_disposition": {
+      "type": "string",
+      "enum": ["ACTIVE", "EXPIRED", "REVOKED", "SUSPENDED"]
+    },
+    "expiration_status": {
+      "type": "string",
+      "enum": ["VALID", "EXPIRED"]
+    },
+    "revocation_status": {
+      "type": "string",
+      "enum": ["UNREVOKED", "REVOKED"]
+    },
+    "verification_reasons": {
+      "type": "array",
+      "items": { "type": "string" },
+      "minItems": 1
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "not": {
+    "anyOf": [
+      { "required": ["execution_token"] },
+      { "required": ["override_flag"] }
+    ]
+  },
+  "additionalProperties": false
+}
