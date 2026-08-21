@@ -60,6 +60,36 @@ impl AuditLedgerEntry {
         Digest(hex::encode(hasher.finalize().as_bytes()))
     }
 
+    pub fn new(
+        sequence: u64,
+        previous_entry_digest: Digest,
+        event_type: AuditEventType,
+        subject_digest: Digest,
+        payload_digest: Digest,
+        recorded_at: String,
+        recorded_by: AgentIdentityId,
+    ) -> Self {
+        let entry_digest = Self::derive_digest(
+            sequence,
+            &previous_entry_digest,
+            &event_type,
+            &subject_digest,
+            &payload_digest,
+            &recorded_at,
+            &recorded_by,
+        );
+
+        Self {
+            sequence,
+            previous_entry_digest,
+            event_type,
+            subject_digest,
+            payload_digest,
+            recorded_at,
+            recorded_by,
+            entry_digest,
+        }
+    }
     pub fn verify_integrity(&self) -> bool {
         self.entry_digest
             == Self::derive_digest(
@@ -149,5 +179,20 @@ mod tests {
         record.sequence = 2;
 
         assert!(!record.verify_integrity());
+    }
+
+    #[test]
+    fn constructor_produces_valid_integrity_digest() {
+        let entry = AuditLedgerEntry::new(
+            0,
+            Digest("genesis".into()),
+            AuditEventType::ExecutionCommitted,
+            Digest("receipt-id".into()),
+            Digest("output".into()),
+            "2026-08-22T00:00:00Z".into(),
+            AgentIdentityId("agent-001".into()),
+        );
+
+        assert!(entry.verify_integrity());
     }
 }
