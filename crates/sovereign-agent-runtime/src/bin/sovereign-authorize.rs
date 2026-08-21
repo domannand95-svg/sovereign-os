@@ -106,6 +106,18 @@ fn safe_target(target: &str, allowed_root: &Path) -> bool {
     let Ok(root) = fs::canonicalize(allowed_root) else {
         return false;
     };
+    if path.exists() {
+        let Ok(metadata) = fs::symlink_metadata(&path) else {
+            return false;
+        };
+        if metadata.file_type().is_symlink() {
+            return false;
+        }
+        let Ok(resolved) = fs::canonicalize(&path) else {
+            return false;
+        };
+        return resolved.starts_with(root);
+    }
     let Some(parent) = path.parent() else {
         return false;
     };
