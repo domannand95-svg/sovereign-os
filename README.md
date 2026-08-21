@@ -148,9 +148,11 @@ authorize execution.
 ### Local Workbench authorization receipts
 
 The experimental `sovereign-authorize` boundary emits
-`sovereign.authorization.receipt.v2`. Its Ed25519 signature binds the grant ID,
-proposal SHA-256, operation, exact target, and policy ID. Consumers must verify
-the signature independently against a separately configured public key.
+`sovereign.authorization.receipt.v3`. It registers the configured requester,
+derives a capability request, admits a signed policy evaluation through the
+capability registry, and signs a receipt binding the grant, proposal, operation,
+exact target, policy, requester, capability request, nonce, issue time, and
+expiry. Consumers must verify the signature and lifetime independently.
 
 Local development must configure exactly one seed source:
 
@@ -161,6 +163,13 @@ Local development must configure exactly one seed source:
 Production deployment still requires operating-system-backed secret custody,
 key rotation, and an independent receipt verifier. A receipt authorizes only
 its exact bounded proposal and remains subject to one-time consumption.
+
+Set `SOVEREIGN_REQUESTER_KEY_DIGEST` to the requester's 32-byte public-key
+digest in hexadecimal. Derive the pinned Workbench identity with:
+
+```powershell
+cargo run -p sovereign-agent-runtime --bin sovereign-authorize -- --print-requester-identity
+```
 
 The activated integration pins `bki-sovereign-v1.0.0-beta.1`, matching schema
 identities, cross-platform negative and positive tests, fail-closed behavior,
