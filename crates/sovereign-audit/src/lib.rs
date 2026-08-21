@@ -14,6 +14,7 @@ mod disposition;
 mod dispute;
 mod failed_attempt;
 mod identity;
+mod ledger;
 mod method;
 mod objective;
 mod reviewer_finding;
@@ -38,8 +39,9 @@ pub use failed_attempt::{FailedAttemptError, FailedAttemptPayload, FailureKind};
 
 pub use identity::*;
 
-pub use method::{MethodError, MethodPayload};
+pub use ledger::{AuditEventType, AuditLedgerEntry, AuditLedgerError};
 
+pub use method::{MethodError, MethodPayload};
 pub use objective::{ObjectiveError, ObjectivePayload, MAX_LIST_ITEMS, MAX_TEXT_FIELD_LEN};
 
 pub use reviewer_finding::{
