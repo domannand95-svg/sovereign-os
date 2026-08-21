@@ -1,3 +1,21 @@
+//! Runtime execution receipt projection boundary.
+//!
+//! Converts verified `ExecutionReceipt` evidence into generic
+//! `sovereign-audit` `AuditLedgerEntry` records.
+//!
+//! This module:
+//! - verifies receipt authenticity
+//! - translates runtime evidence into audit evidence
+//! - maps execution outcomes to audit events
+//! - constructs immutable audit ledger entries
+//!
+//! This module does not:
+//! - execute operations
+//! - grant capabilities
+//! - append ledger entries
+//! - persist audit history
+//! - mutate execution receipts
+
 use sovereign_audit::{
     AgentIdentityId as AuditAgentIdentityId, AuditEventType, AuditLedgerEntry, Digest,
 };
@@ -9,6 +27,17 @@ pub enum ProjectionError {
     InvalidReceipt,
 }
 
+/// Projects a verified runtime execution receipt into an audit ledger entry.
+///
+/// The projection boundary:
+///
+/// `ExecutionReceipt`
+///     -> receipt verification
+///     -> evidence extraction
+///     -> `AuditLedgerEntry`
+///
+/// This function performs no ledger mutation. The caller remains responsible
+/// for explicitly appending the returned entry to an audit chain.
 pub fn project_execution_receipt(
     receipt: &ExecutionReceipt,
     verifying_key: &[u8; 32],
@@ -21,8 +50,12 @@ pub fn project_execution_receipt(
     }
 
     let event_type = match receipt.result {
-        crate::execution::ExecutionResult::Success => AuditEventType::ExecutionCommitted,
-        crate::execution::ExecutionResult::Failure => AuditEventType::ExecutionFailed,
+        crate::execution::ExecutionResult::Success => {
+            AuditEventType::ExecutionCommitted
+        }
+        crate::execution::ExecutionResult::Failure => {
+            AuditEventType::ExecutionFailed
+        }
     };
 
     Ok(AuditLedgerEntry::new(
