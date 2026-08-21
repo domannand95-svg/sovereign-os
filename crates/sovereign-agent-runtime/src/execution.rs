@@ -275,7 +275,34 @@ pub struct ExecutionReceipt {
     pub result: ExecutionResult,
     pub output_digest: String,
     pub completed_at: String,
+    pub receipt_digest: String,
     pub signature: [u8; 64],
+}
+
+impl ExecutionReceipt {
+    pub fn derive_receipt_digest(&self) -> String {
+        let mut hasher = CanonicalHasher::new(b"SOVEREIGN_EXECUTION_RECEIPT_DIGEST_V1");
+
+        hasher.field(self.schema_version.as_bytes());
+        hasher.field(self.receipt_id.0.as_bytes());
+        hasher.field(self.attempt_reference.0.as_bytes());
+        hasher.field(self.grant_reference.0.as_bytes());
+        hasher.field(self.executor_identity.0.as_bytes());
+
+        hasher.field(match self.result {
+            ExecutionResult::Success => b"Success",
+            ExecutionResult::Failure => b"Failure",
+        });
+
+        hasher.field(self.output_digest.as_bytes());
+        hasher.field(self.completed_at.as_bytes());
+
+        hasher.finish()
+    }
+
+    pub fn verify_receipt_integrity(&self) -> bool {
+        self.receipt_digest == self.derive_receipt_digest()
+    }
 }
 
 pub struct ExecutionAuthority {
@@ -319,8 +346,11 @@ impl ExecutionAuthority {
             result,
             output_digest,
             completed_at,
+            receipt_digest: String::new(),
             signature: [0u8; 64],
         };
+        receipt.receipt_digest = receipt.derive_receipt_digest();
+
         receipt.signature = self
             .signing_key
             .sign(receipt_signature_digest(&receipt).as_bytes())
