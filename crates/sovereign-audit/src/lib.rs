@@ -9,6 +9,7 @@ use std::collections::HashSet;
 use std::fmt;
 
 mod admission;
+mod chain;
 mod claim;
 mod disposition;
 mod dispute;
@@ -41,7 +42,10 @@ pub use identity::*;
 
 pub use ledger::{AuditEventType, AuditLedgerEntry, AuditLedgerError};
 
+pub use chain::{AuditLedgerChain, AuditLedgerChainError};
+
 pub use method::{MethodError, MethodPayload};
+
 pub use objective::{ObjectiveError, ObjectivePayload, MAX_LIST_ITEMS, MAX_TEXT_FIELD_LEN};
 
 pub use reviewer_finding::{
@@ -51,7 +55,6 @@ pub use reviewer_finding::{
 pub use source::{DigestAlgorithm, SourceError, SourcePayload};
 
 pub use uncertainty::{UncertaintyError, UncertaintyKind, UncertaintyPayload};
-
 pub const EVIDENCE_SCHEMA_VERSION: u16 = 1;
 pub const MAX_EVIDENCE_PARENTS: usize = 64;
 pub const MAX_EVIDENCE_PAYLOAD_LEN: usize = 1024 * 1024;
