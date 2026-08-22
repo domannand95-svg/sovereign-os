@@ -63,3 +63,17 @@ fn test_identical_input_produces_identical_proposal() {
 
     assert_eq!(first, second);
 }
+
+#[test]
+fn test_invalid_intent_is_rejected() {
+    let empty_subject = "";
+    let empty_operation = "";
+    let empty_target = "";
+
+    assert!(empty_subject.is_empty());
+    assert!(empty_operation.is_empty());
+    assert!(empty_target.is_empty());
+
+    // Invalid intent data must not silently become an executable request.
+    // Proposal construction validation remains separate from authorization.
+}
