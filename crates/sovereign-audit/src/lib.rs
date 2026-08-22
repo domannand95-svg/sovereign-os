@@ -18,6 +18,7 @@ mod identity;
 mod ledger;
 mod method;
 mod objective;
+mod reconstruction;
 mod reviewer_finding;
 mod source;
 mod uncertainty;
@@ -30,6 +31,7 @@ pub use admission::{
     EvidenceAdmissionResult, EvidenceAdmissionStateRef, EvidenceRelationshipKind,
     ExternalIdentityKind, RecordKindRequirement, ReviewerIndependenceRequirement,
 };
+
 pub use claim::{ClaimError, ClaimKind, ClaimPayload, Substantiation};
 
 pub use disposition::{DispositionDecision, DispositionError, DispositionPayload};
@@ -46,15 +48,25 @@ pub use chain::{AuditLedgerChain, AuditLedgerChainError};
 
 pub use method::{MethodError, MethodPayload};
 
-pub use objective::{ObjectiveError, ObjectivePayload, MAX_LIST_ITEMS, MAX_TEXT_FIELD_LEN};
+pub use objective::{
+    ObjectiveError, ObjectivePayload, MAX_LIST_ITEMS, MAX_TEXT_FIELD_LEN,
+};
+
+pub use reconstruction::{
+    AuditReconstructionReport,
+    ReconstructionAnomaly,
+    ReconstructionStatus,
+};
 
 pub use reviewer_finding::{
-    FindingKind, FindingSeverity, IndependenceResult, ReviewerFindingError, ReviewerFindingPayload,
+    FindingKind, FindingSeverity, IndependenceResult, ReviewerFindingError,
+    ReviewerFindingPayload,
 };
 
 pub use source::{DigestAlgorithm, SourceError, SourcePayload};
 
 pub use uncertainty::{UncertaintyError, UncertaintyKind, UncertaintyPayload};
+
 pub const EVIDENCE_SCHEMA_VERSION: u16 = 1;
 pub const MAX_EVIDENCE_PARENTS: usize = 64;
 pub const MAX_EVIDENCE_PAYLOAD_LEN: usize = 1024 * 1024;
