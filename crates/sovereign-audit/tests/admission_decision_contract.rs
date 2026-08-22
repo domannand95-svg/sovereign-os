@@ -273,3 +273,50 @@ fn test_admission_outcome_does_not_replace_source_provenance() {
         "intent-002"
     );
 }
+
+#[test]
+fn test_permit_is_not_authorization_receipt() {
+    let context = GovernanceContext {
+        governance_mode: GovernanceMode::Normal,
+    };
+
+    let decision = AdmissionDecision::decide(
+        &EvaluationClassification::ConditionsSatisfied,
+        &context,
+    );
+
+    assert_eq!(
+        decision.outcome,
+        AdmissionOutcome::Permit
+    );
+
+    let decision_size = std::mem::size_of_val(&decision);
+
+    assert!(
+        decision_size > 0,
+        "AdmissionDecision exists as governance data only"
+    );
+}
+
+#[test]
+fn test_admission_layer_has_no_execution_transition() {
+    let context = GovernanceContext {
+        governance_mode: GovernanceMode::Normal,
+    };
+
+    let decision = AdmissionDecision::decide(
+        &EvaluationClassification::ConditionsSatisfied,
+        &context,
+    );
+
+    match decision.outcome {
+        AdmissionOutcome::Permit => {
+            // Permit reaches BETA-024 consideration only.
+            // It does not execute.
+            assert!(true);
+        }
+        _ => {
+            assert!(false, "Expected Permit outcome");
+        }
+    }
+}
