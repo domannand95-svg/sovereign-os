@@ -1,185 +1,180 @@
-#[derive(Debug, PartialEq, Eq, Clone)]
-struct Digest(String);
+use sovereign_audit::authorization_receipt::{
+    AuthorizationReceipt, AuthorizationReceiptIdentity,
+    CanonicalAuthorizationReceiptIdentityPayloadV1, IssuerContext,
+};
+use sovereign_audit::governance_admission::{AdmissionDecision, AdmissionOutcome};
 
-#[derive(Debug, PartialEq, Eq, Clone)]
-struct Signature(String);
-
-#[derive(Debug, PartialEq, Eq, Clone)]
-struct Nonce(String);
-
-#[derive(Debug, PartialEq, Eq, Clone)]
-struct IssuerContext {
-    issuer_reference: String,
-    signing_key_reference: Digest,
-}
-
-#[derive(Debug, PartialEq, Eq, Clone)]
-enum AdmissionOutcome {
-    Permit,
-    Deny,
-    Quarantine,
-    Escalate,
-}
-
-#[derive(Debug, Clone)]
-struct AdmissionDecision {
-    decision_reference: String,
-    outcome: AdmissionOutcome,
-    authorized_scope: String,
-}
-
-#[derive(Debug, PartialEq, Eq, Clone)]
-struct AuthorizationReceipt {
-    receipt_reference: Digest,
-    subject_reference: String,
-    intent_reference: Digest,
-    admission_reference: Digest,
-    authorized_scope: String,
-    issued_at: u64,
-    expires_at: u64,
-    issuer_reference: String,
-    nonce: Nonce,
-    signature: Signature,
-}
-
-impl AuthorizationReceipt {
-    const MAX_LIFETIME: u64 = 3600;
-
-    fn generate(
-        decision: &AdmissionDecision,
-        subject: &str,
-        intent_ref: Digest,
-        issued_at: u64,
-        expires_at: u64,
-        issuer_context: &IssuerContext,
-    ) -> Result<Self, &'static str> {
-
-        if decision.outcome != AdmissionOutcome::Permit {
-            return Err("Non permit cannot issue receipt");
-        }
-
-        if subject == issuer_context.issuer_reference {
-            return Err("Subject cannot self issue");
-        }
-
-        if expires_at <= issued_at {
-            return Err("Invalid lifetime");
-        }
-
-        if expires_at - issued_at > Self::MAX_LIFETIME {
-            return Err("Lifetime exceeded");
-        }
-
-        Ok(Self {
-            receipt_reference: Digest("receipt_test".to_string()),
-            subject_reference: subject.to_string(),
-            intent_reference: intent_ref,
-            admission_reference: Digest(
-                decision.decision_reference.clone()
-            ),
-            authorized_scope: decision.authorized_scope.clone(),
-            issued_at,
-            expires_at,
-            issuer_reference: issuer_context.issuer_reference.clone(),
-            nonce: Nonce("nonce_test".to_string()),
-            signature: Signature("signature_test".to_string()),
-        })
+fn mock_permit() -> AdmissionDecision {
+    AdmissionDecision {
+        decision_reference: "adm_01".to_string(),
+        intent_reference: "int_01".to_string(),
+        evaluation_reference: "eval_01".to_string(),
+        governance_context_reference: "gov_ctx_01".to_string(),
+        outcome: AdmissionOutcome::Permit,
+        authorized_scope: "tenant_a".to_string(),
+        reason_references: vec![],
     }
 }
 
-
-#[test]
-fn test_requester_cannot_self_issue_receipt() {
-    let decision = AdmissionDecision {
-        decision_reference: "adm_001".to_string(),
-        outcome: AdmissionOutcome::Permit,
-        authorized_scope: "tenant_a".to_string(),
-    };
-
-    let issuer = IssuerContext {
-        issuer_reference: "agent_42".to_string(),
-        signing_key_reference: Digest("key".to_string()),
-    };
-
-    assert!(
-        AuthorizationReceipt::generate(
-            &decision,
-            "agent_42",
-            Digest("intent".to_string()),
-            100,
-            200,
-            &issuer
-        )
-        .is_err()
-    );
+fn mock_issuer() -> IssuerContext {
+    IssuerContext {
+        issuer_reference: "gov_node_alpha".to_string(),
+        signing_key_reference: "key_01".to_string(),
+    }
 }
 
-
 #[test]
-fn test_receipt_preserves_governance_lineage() {
-    let decision = AdmissionDecision {
-        decision_reference: "adm_lineage".to_string(),
-        outcome: AdmissionOutcome::Permit,
-        authorized_scope: "tenant_a".to_string(),
-    };
-
-    let issuer = IssuerContext {
-        issuer_reference: "gov_node".to_string(),
-        signing_key_reference: Digest("key".to_string()),
-    };
-
+fn test_ar_001_permit_generates_receipt() {
     let receipt = AuthorizationReceipt::generate(
-        &decision,
+        &mock_permit(),
         "agent_42",
-        Digest("intent_lineage".to_string()),
-        100,
-        200,
-        &issuer,
-    )
-    .unwrap();
-
-    assert_eq!(
-        receipt.intent_reference,
-        Digest("intent_lineage".to_string())
+        "int_01",
+        "pol_01",
+        "ctx_01",
+        "READ",
+        "data",
+        1000,
+        2000,
+        &mock_issuer(),
+        "nonce_123",
     );
 
-    assert_eq!(
-        receipt.admission_reference,
-        Digest("adm_lineage".to_string())
-    );
+    assert!(receipt.is_ok());
 }
 
-
 #[test]
-fn test_receipt_scope_cannot_expand_beyond_admitted_scope() {
-    let decision = AdmissionDecision {
-        decision_reference: "adm_scope".to_string(),
-        outcome: AdmissionOutcome::Permit,
-        authorized_scope: "tenant_a_read_only".to_string(),
-    };
+fn test_ar_002_deny_rejects_receipt() {
+    let mut decision = mock_permit();
+    decision.outcome = AdmissionOutcome::Deny;
 
-    let issuer = IssuerContext {
-        issuer_reference: "gov_node".to_string(),
-        signing_key_reference: Digest("key".to_string()),
-    };
-
-    let receipt = AuthorizationReceipt::generate(
+    assert!(AuthorizationReceipt::generate(
         &decision,
         "agent_42",
-        Digest("intent_scope".to_string()),
-        100,
-        200,
-        &issuer,
+        "int_01",
+        "pol_01",
+        "ctx_01",
+        "READ",
+        "data",
+        1000,
+        2000,
+        &mock_issuer(),
+        "nonce_123",
     )
-    .unwrap();
+    .is_err());
+}
 
-    assert_eq!(
-        receipt.authorized_scope,
-        "tenant_a_read_only"
-    );
+#[test]
+fn test_ar_003_quarantine_rejects_receipt() {
+    let mut decision = mock_permit();
+    decision.outcome = AdmissionOutcome::Quarantine;
 
-    assert_ne!(
-        receipt.authorized_scope,
-        "tenant_a_admin"
-    );
+    assert!(AuthorizationReceipt::generate(
+        &decision,
+        "agent_42",
+        "int_01",
+        "pol_01",
+        "ctx_01",
+        "READ",
+        "data",
+        1000,
+        2000,
+        &mock_issuer(),
+        "nonce_123",
+    )
+    .is_err());
+}
+
+#[test]
+fn test_ar_004_invalid_expiry_rejected() {
+    assert!(AuthorizationReceipt::generate(
+        &mock_permit(),
+        "agent_42",
+        "int_01",
+        "pol_01",
+        "ctx_01",
+        "READ",
+        "data",
+        2000,
+        1000,
+        &mock_issuer(),
+        "nonce_123",
+    )
+    .is_err());
+}
+
+#[test]
+fn test_ar_005_lifetime_overflow_rejected() {
+    assert!(AuthorizationReceipt::generate(
+        &mock_permit(),
+        "agent_42",
+        "int_01",
+        "pol_01",
+        "ctx_01",
+        "READ",
+        "data",
+        1000,
+        1000 + AuthorizationReceipt::MAX_LIFETIME + 1,
+        &mock_issuer(),
+        "nonce_123",
+    )
+    .is_err());
+}
+
+#[test]
+fn test_ar_006_empty_issuer_rejected() {
+    let issuer = IssuerContext {
+        issuer_reference: " ".to_string(),
+        signing_key_reference: "key".to_string(),
+    };
+
+    assert!(AuthorizationReceipt::generate(
+        &mock_permit(),
+        "agent_42",
+        "int_01",
+        "pol_01",
+        "ctx_01",
+        "READ",
+        "data",
+        1000,
+        2000,
+        &issuer,
+        "nonce_123",
+    )
+    .is_err());
+}
+
+#[test]
+fn test_ar_007_empty_nonce_rejected() {
+    assert!(AuthorizationReceipt::generate(
+        &mock_permit(),
+        "agent_42",
+        "int_01",
+        "pol_01",
+        "ctx_01",
+        "READ",
+        "data",
+        1000,
+        2000,
+        &mock_issuer(),
+        " ",
+    )
+    .is_err());
+}
+
+#[test]
+fn test_ar_008_identity_changes_with_canonical_input() {
+    let a = CanonicalAuthorizationReceiptIdentityPayloadV1 {
+        admission_reference: "adm_01".to_string(),
+        subject_reference: "agent_42".to_string(),
+        issued_at: 1000,
+        nonce: "nonce_a".to_string(),
+    };
+
+    let mut b = a.clone();
+    b.nonce = "nonce_b".to_string();
+
+    let first = AuthorizationReceiptIdentity::derive(&a);
+    let second = AuthorizationReceiptIdentity::derive(&b);
+
+    assert_ne!(first.receipt_id, second.receipt_id);
 }

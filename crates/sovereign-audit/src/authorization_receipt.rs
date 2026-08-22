@@ -7,8 +7,8 @@ pub struct IssuerContext {
     pub signing_key_reference: String,
 }
 
-/// Deterministic identity payload for receipt identity derivation.
-/// Cryptographic derivation is introduced in the next commit.
+/// Canonical fields used to derive receipt identity.
+/// This is identity derivation only, not signature authenticity.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct CanonicalAuthorizationReceiptIdentityPayloadV1 {
     pub admission_reference: String,
@@ -17,24 +17,35 @@ pub struct CanonicalAuthorizationReceiptIdentityPayloadV1 {
     pub nonce: String,
 }
 
-/// Deterministic signature payload definition.
-/// Signing implementation is intentionally deferred.
+/// Deterministic receipt identity boundary.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct AuthorizationReceiptIdentity {
+    pub receipt_id: String,
+}
+
+impl AuthorizationReceiptIdentity {
+    pub fn derive(payload: &CanonicalAuthorizationReceiptIdentityPayloadV1) -> Self {
+        let digest = format!(
+            "receipt::{}|{}|{}|{}",
+            payload.admission_reference,
+            payload.subject_reference,
+            payload.issued_at,
+            payload.nonce
+        );
+
+        Self { receipt_id: digest }
+    }
+}
+
+/// Deferred signing payload.
+/// Cryptographic signing is intentionally not implemented.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SignaturePayloadV1 {
-    pub subject_reference: String,
+    pub receipt_reference: String,
     pub intent_reference: String,
-    pub admission_reference: String,
-    pub policy_reference: String,
-    pub governance_context_reference: String,
-    pub authorized_operation: String,
-    pub authorized_target: String,
     pub authorized_scope: String,
-    pub constraints: Vec<String>,
-    pub issued_at: u64,
     pub expires_at: u64,
     pub issuer_reference: String,
-    pub nonce: String,
-    pub revocation_reference: String,
 }
 
 /// Passive authority artifact.
@@ -70,9 +81,128 @@ pub struct AuthorizationReceipt {
 impl AuthorizationReceipt {
     pub const MAX_LIFETIME: u64 = 3600;
 
-    pub fn validate_admission(decision: &AdmissionDecision) -> Result<(), &'static str> {
+    pub fn generate(
+        decision: &AdmissionDecision,
+        subject: &str,
+        intent_ref: &str,
+        policy_ref: &str,
+        context_ref: &str,
+        operation: &str,
+        target: &str,
+        issued_at: u64,
+        expires_at: u64,
+        issuer_context: &IssuerContext,
+        nonce: &str,
+    ) -> Result<Self, &'static str> {
         if decision.outcome != AdmissionOutcome::Permit {
             return Err("Cannot issue authority for non-Permit admission");
+        }
+
+        if subject.trim().is_empty() {
+            return Err("Subject reference cannot be empty");
+        }
+
+        if subject == issuer_context.issuer_reference {
+            return Err("Subject cannot self-issue authority");
+        }
+
+        if issuer_context.issuer_reference.trim().is_empty() {
+            return Err("Issuer reference cannot be empty");
+        }
+
+        if nonce.trim().is_empty() {
+            return Err("Nonce cannot be empty");
+        }
+
+        let identity_payload = CanonicalAuthorizationReceiptIdentityPayloadV1 {
+            admission_reference: decision.decision_reference.clone(),
+            subject_reference: subject.to_string(),
+            issued_at,
+            nonce: nonce.to_string(),
+        };
+
+        let identity = AuthorizationReceiptIdentity::derive(&identity_payload);
+
+        let receipt = Self {
+            receipt_reference: identity.receipt_id,
+            subject_reference: subject.to_string(),
+            intent_reference: intent_ref.to_string(),
+            admission_reference: decision.decision_reference.clone(),
+            policy_reference: policy_ref.to_string(),
+            governance_context_reference: context_ref.to_string(),
+            authorized_operation: operation.to_string(),
+            authorized_target: target.to_string(),
+            authorized_scope: decision.authorized_scope.clone(),
+            constraints: vec![],
+            issued_at,
+            expires_at,
+            revocation_reference: "pending_revocation_registry".to_string(),
+            issuer_reference: issuer_context.issuer_reference.clone(),
+            nonce: nonce.to_string(),
+            signature: "pending_signature".to_string(),
+        };
+
+        receipt.validate()?;
+
+        Ok(receipt)
+    }
+
+    pub fn validate(&self) -> Result<(), &'static str> {
+        if self.receipt_reference.trim().is_empty() {
+            return Err("Receipt reference missing");
+        }
+
+        if self.subject_reference.trim().is_empty() {
+            return Err("Subject missing");
+        }
+
+        if self.intent_reference.trim().is_empty() {
+            return Err("Intent reference missing");
+        }
+
+        if self.admission_reference.trim().is_empty() {
+            return Err("Admission reference missing");
+        }
+
+        if self.policy_reference.trim().is_empty() {
+            return Err("Policy reference missing");
+        }
+
+        if self.governance_context_reference.trim().is_empty() {
+            return Err("Governance context missing");
+        }
+
+        if self.authorized_operation.trim().is_empty() {
+            return Err("Authorized operation missing");
+        }
+
+        if self.authorized_target.trim().is_empty() {
+            return Err("Authorized target missing");
+        }
+
+        if self.authorized_scope.trim().is_empty() {
+            return Err("Authorized scope missing");
+        }
+
+        if self.issuer_reference.trim().is_empty() {
+            return Err("Issuer missing");
+        }
+
+        if self.nonce.trim().is_empty() {
+            return Err("Nonce missing");
+        }
+
+        if self.expires_at <= self.issued_at {
+            return Err("Expiration must be strictly greater than issuance");
+        }
+
+        let lifetime = self
+            .expires_at
+            .checked_sub(self.issued_at)
+            .ok_or("Invalid lifetime calculation")?;
+
+        if lifetime > Self::MAX_LIFETIME {
+            return Err("Authority lifetime exceeds maximum allowed bounds");
         }
 
         Ok(())
