@@ -18,7 +18,7 @@ pub mod observation;
 pub mod proposal;
 pub mod replay;
 
-pub use audit_projection::*;
+pub use adapters::audit::*;
 pub use capability::*;
 pub use execution::*;
 pub use identity::*;
