@@ -77,3 +77,17 @@ fn test_invalid_intent_is_rejected() {
     // Invalid intent data must not silently become an executable request.
     // Proposal construction validation remains separate from authorization.
 }
+
+#[test]
+fn test_source_reference_is_provenance_not_authority() {
+    let proposal =
+        AgentProposal::new("agent-42", "READ", "dataset");
+
+    assert_eq!(
+        proposal.source_reference,
+        "test-source"
+    );
+
+    // Source identity records origin only.
+    // It does not grant permission or execution authority.
+}
