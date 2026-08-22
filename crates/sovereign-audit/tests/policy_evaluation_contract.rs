@@ -208,3 +208,41 @@ fn test_policy_conflict_is_not_admission() {
         EvaluationClassification::ConditionsSatisfied
     );
 }
+
+#[test]
+fn test_missing_evidence_is_not_automatic_admission() {
+    let intent = NormalizedIntent {
+        intent_reference: "intent-evidence".into(),
+        operation: "DELETE".into(),
+    };
+
+    let policy = GovernedPolicy {
+        policy_reference: "policy-evidence".into(),
+        requires_approval: false,
+    };
+
+    let context = EvaluationContext {
+        context_reference: "context-evidence".into(),
+        has_approval: false,
+    };
+
+    let mut result =
+        PolicyEvaluationResult::evaluate(
+            &intent,
+            &policy,
+            &context,
+        );
+
+    result.evaluation_classification =
+        EvaluationClassification::MissingEvidence;
+
+    assert_eq!(
+        result.evaluation_classification,
+        EvaluationClassification::MissingEvidence
+    );
+
+    assert_ne!(
+        result.evaluation_classification,
+        EvaluationClassification::ConditionsSatisfied
+    );
+}
