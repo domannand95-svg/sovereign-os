@@ -1863,6 +1863,7 @@ name = "sovereign-audit"
 version = "0.1.0"
 dependencies = [
  "blake3",
+ "ed25519-dalek",
  "hex",
  "serde",
  "serde_json",
