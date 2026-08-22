@@ -180,7 +180,7 @@ mod evidence_graph_tests {
             }],
             graph_digest: "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
                 .into(),
-            created_at: Utc::now().to_rfc3339(),
+            created_at: "2026-08-22T00:00:00Z".into(),
         }
     }
 
