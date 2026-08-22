@@ -113,3 +113,64 @@ fn test_oversized_payload_is_rejected_before_kernel_execution() {
 
     assert!(result.is_err());
 }
+
+#[test]
+fn test_kernel_rejection_propagates_to_base44_egress() {
+    use sha2::Digest;
+    use sovereign_execution_api::{
+        ExecutionApiFacade,
+        KernelExecutionError,
+        KernelExecutionRequest,
+        KernelExecutionResponse,
+        KernelInvoker,
+    };
+
+    struct RejectingMockKernel;
+
+    impl KernelInvoker for RejectingMockKernel {
+        fn invoke_kernel(
+            &self,
+            _request: KernelExecutionRequest,
+        ) -> Result<KernelExecutionResponse, KernelExecutionError> {
+            Err(KernelExecutionError::OperationRejected(
+                "simulated kernel rejection".to_string(),
+            ))
+        }
+    }
+
+    let kernel = RejectingMockKernel;
+    let api = ExecutionApiFacade::new(kernel);
+    let dispatcher = Base44Dispatcher::new(api);
+
+    let content = b"test content";
+    let content_digest = sha2::Sha256::digest(content);
+    let content_digest_hex = hex::encode(content_digest);
+
+    let timestamp = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap()
+        .as_secs();
+
+    let request = Base44IngressRequest {
+        request_id: "req-reject-001".to_string(),
+        receipt_reference: "a".repeat(64),
+        operation: "file.create".to_string(),
+        target: "/data/test.txt".to_string(),
+        content_digest: content_digest_hex,
+        content: content.to_vec(),
+        timestamp,
+    };
+
+    let result = dispatcher.dispatch(request);
+
+    assert!(result.is_ok());
+
+    let response = result.unwrap();
+
+    assert_eq!(
+        response.status,
+        Base44ExecutionStatus::ExecutionFailed
+    );
+
+    assert!(response.report_reference.is_none());
+}
