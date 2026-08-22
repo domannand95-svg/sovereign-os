@@ -9,7 +9,7 @@ members = [
     "crates/sovereign-audit",
     "crates/sovereign-discovery",
     "crates/beta001-harness",
-    "crates/sovereign-agent-runtime",
+    "crates/sovereign-agent-runtime", "crates/sovereign-execution",
 ]
 
 [workspace.dependencies]

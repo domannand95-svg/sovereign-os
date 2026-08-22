@@ -1891,6 +1891,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "sovereign-execution"
+version = "0.1.0"
+dependencies = [
+ "sovereign-audit",
+]
+
+[[package]]
 name = "sovereign-ledger"
 version = "0.1.0"
 dependencies = [
