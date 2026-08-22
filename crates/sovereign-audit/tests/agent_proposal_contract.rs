@@ -91,3 +91,18 @@ fn test_source_reference_is_provenance_not_authority() {
     // Source identity records origin only.
     // It does not grant permission or execution authority.
 }
+
+#[test]
+fn test_requested_scope_is_not_granted_scope() {
+    let proposal =
+        AgentProposal::new("agent-42", "DELETE", "customer_records");
+
+    assert_eq!(
+        proposal.requested_scope,
+        "requested-scope"
+    );
+
+    // The proposal describes requested scope only.
+    // It does not establish an approved execution boundary.
+    // Granting authority belongs to later governance phases.
+}
