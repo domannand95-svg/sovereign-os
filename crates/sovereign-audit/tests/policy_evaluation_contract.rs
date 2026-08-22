@@ -170,3 +170,41 @@ fn test_policy_result_contains_no_authority_surface() {
         )
     );
 }
+
+#[test]
+fn test_policy_conflict_is_not_admission() {
+    let intent = NormalizedIntent {
+        intent_reference: "intent-conflict".into(),
+        operation: "DELETE".into(),
+    };
+
+    let policy = GovernedPolicy {
+        policy_reference: "policy-conflict".into(),
+        requires_approval: true,
+    };
+
+    let context = EvaluationContext {
+        context_reference: "context-conflict".into(),
+        has_approval: false,
+    };
+
+    let mut result =
+        PolicyEvaluationResult::evaluate(
+            &intent,
+            &policy,
+            &context,
+        );
+
+    result.evaluation_classification =
+        EvaluationClassification::ConflictingRules;
+
+    assert_eq!(
+        result.evaluation_classification,
+        EvaluationClassification::ConflictingRules
+    );
+
+    assert_ne!(
+        result.evaluation_classification,
+        EvaluationClassification::ConditionsSatisfied
+    );
+}
