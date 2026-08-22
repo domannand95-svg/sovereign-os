@@ -194,6 +194,15 @@ pub fn verify(
     verifying_key.verify(&canonical_bytes, signature)
 }
 }
+/// Result of cryptographic receipt authentication.
+///
+/// This represents signature validity only.
+/// It does not represent trust, authorization, or capability.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ReceiptAuthenticationResult {
+    Valid,
+    Invalid,
+}
 /// Passive authority artifact.
 /// Contains no execution capability.
 #[derive(Debug, PartialEq, Eq, Clone)]
@@ -226,6 +235,28 @@ pub struct AuthorizationReceipt {
 
 impl AuthorizationReceipt {
     pub const MAX_LIFETIME: u64 = 3600;
+    /// Authenticates the receipt payload against a provided verifying key and signature.
+    ///
+    /// This operation:
+    /// - verifies cryptographic validity of the signature over canonical bytes
+    /// - returns authentication state only
+    ///
+    /// This operation does not:
+    /// - resolve issuers
+    /// - evaluate trust anchors
+    /// - grant authority
+    pub fn authenticate(
+        &self,
+        payload: &SignaturePayloadV1,
+        verifying_key: &VerifyingKey,
+        signature: &ed25519_dalek::Signature,
+    ) -> ReceiptAuthenticationResult {
+        match payload.verify(verifying_key, signature) {
+            Ok(()) => ReceiptAuthenticationResult::Valid,
+            Err(_) => ReceiptAuthenticationResult::Invalid,
+        }
+    }
+
 
     pub fn generate(
         decision: &AdmissionDecision,
@@ -432,3 +463,6 @@ fn signature_payload_verification_fails_with_wrong_key() {
         .is_err());
 }
 }
+
+
+
