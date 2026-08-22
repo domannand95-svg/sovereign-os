@@ -50,12 +50,8 @@ pub fn project_execution_receipt(
     }
 
     let event_type = match receipt.result {
-        crate::execution::ExecutionResult::Success => {
-            AuditEventType::ExecutionCommitted
-        }
-        crate::execution::ExecutionResult::Failure => {
-            AuditEventType::ExecutionFailed
-        }
+        crate::execution::ExecutionResult::Success => AuditEventType::ExecutionCommitted,
+        crate::execution::ExecutionResult::Failure => AuditEventType::ExecutionFailed,
     };
 
     Ok(AuditLedgerEntry::new(
