@@ -178,3 +178,85 @@ fn test_ar_008_identity_changes_with_canonical_input() {
 
     assert_ne!(first.receipt_id, second.receipt_id);
 }
+
+// --- BETA-024-E: RECEIPT CONTRACT EXPANSION ---
+
+#[test]
+fn test_ar_009_identity_mutates_on_admission_change() {
+    let base_payload = CanonicalAuthorizationReceiptIdentityPayloadV1 {
+        admission_reference: "adm_01".to_string(),
+        subject_reference: "agent_42".to_string(),
+        issued_at: 1000,
+        nonce: "nonce_123".to_string(),
+    };
+
+    let mut mutated_payload = base_payload.clone();
+    mutated_payload.admission_reference = "adm_02".to_string();
+
+    let id_base = AuthorizationReceiptIdentity::derive(&base_payload);
+    let id_mutated = AuthorizationReceiptIdentity::derive(&mutated_payload);
+
+    assert_ne!(id_base.receipt_id, id_mutated.receipt_id);
+}
+
+#[test]
+fn test_ar_010_identity_mutates_on_subject_change() {
+    let base_payload = CanonicalAuthorizationReceiptIdentityPayloadV1 {
+        admission_reference: "adm_01".to_string(),
+        subject_reference: "agent_42".to_string(),
+        issued_at: 1000,
+        nonce: "nonce_123".to_string(),
+    };
+
+    let mut mutated_payload = base_payload.clone();
+    mutated_payload.subject_reference = "agent_99".to_string();
+
+    let id_base = AuthorizationReceiptIdentity::derive(&base_payload);
+    let id_mutated = AuthorizationReceiptIdentity::derive(&mutated_payload);
+
+    assert_ne!(id_base.receipt_id, id_mutated.receipt_id);
+}
+
+#[test]
+fn test_ar_011_identity_mutates_on_issuance_time_change() {
+    let base_payload = CanonicalAuthorizationReceiptIdentityPayloadV1 {
+        admission_reference: "adm_01".to_string(),
+        subject_reference: "agent_42".to_string(),
+        issued_at: 1000,
+        nonce: "nonce_123".to_string(),
+    };
+
+    let mut mutated_payload = base_payload.clone();
+    mutated_payload.issued_at = 1001;
+
+    let id_base = AuthorizationReceiptIdentity::derive(&base_payload);
+    let id_mutated = AuthorizationReceiptIdentity::derive(&mutated_payload);
+
+    assert_ne!(id_base.receipt_id, id_mutated.receipt_id);
+}
+
+#[test]
+fn test_ar_012_receipt_is_passive_data_without_execution_surface() {
+    fn assert_passive_data<T: Send + Sync + 'static + Clone + Eq>() {}
+
+    assert_passive_data::<AuthorizationReceipt>();
+
+    assert!(std::mem::size_of::<AuthorizationReceipt>() > 0);
+}
+
+#[test]
+fn test_ar_013_identical_payloads_yield_identical_identity() {
+    let first = CanonicalAuthorizationReceiptIdentityPayloadV1 {
+        admission_reference: "adm_01".to_string(),
+        subject_reference: "agent_42".to_string(),
+        issued_at: 1000,
+        nonce: "nonce_123".to_string(),
+    };
+
+    let second = first.clone();
+
+    assert_eq!(
+        AuthorizationReceiptIdentity::derive(&first).receipt_id,
+        AuthorizationReceiptIdentity::derive(&second).receipt_id
+    );
+}
