@@ -129,7 +129,7 @@ fn wrong_previous_digest_is_rejected_by_chain() {
 
     assert!(chain.append(entry).is_ok());
 
-    let mut second = AuditLedgerEntry::new(
+    let second = AuditLedgerEntry::new(
         1,
         Digest("wrong-predecessor".into()),
         AuditEventType::ExecutionCommitted,
