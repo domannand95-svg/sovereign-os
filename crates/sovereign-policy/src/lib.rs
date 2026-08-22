@@ -7,6 +7,7 @@
 pub mod approval;
 pub mod decision;
 pub mod intent;
+pub mod lifecycle;
 pub mod proposal;
 pub mod risk;
 
@@ -14,6 +15,7 @@ pub mod risk;
 pub use approval::*;
 pub use decision::*;
 pub use intent::*;
+pub use lifecycle::*;
 pub use proposal::*;
 pub use risk::*;
 
