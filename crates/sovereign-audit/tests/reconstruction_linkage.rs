@@ -1,9 +1,5 @@
 use sovereign_audit::{
-    AuditEventType,
-    AuditLedgerEntry,
-    Digest,
-    ReconstructionAnomaly,
-    AuditReconstructionReport,
+    AuditEventType, AuditLedgerEntry, AuditReconstructionReport, Digest, ReconstructionAnomaly,
 };
 
 fn entry(sequence: u64, previous: Digest) -> AuditLedgerEntry {
@@ -23,8 +19,7 @@ fn valid_linkage_has_no_anomalies() {
     let first = entry(0, Digest("genesis".into()));
     let second = entry(1, first.entry_digest.clone());
 
-    let anomalies =
-        AuditReconstructionReport::verify_linkage(&[first, second]);
+    let anomalies = AuditReconstructionReport::verify_linkage(&[first, second]);
 
     assert!(anomalies.is_empty());
 }
@@ -34,8 +29,7 @@ fn sequence_gap_is_detected() {
     let first = entry(0, Digest("genesis".into()));
     let second = entry(2, first.entry_digest.clone());
 
-    let anomalies =
-        AuditReconstructionReport::verify_linkage(&[first, second]);
+    let anomalies = AuditReconstructionReport::verify_linkage(&[first, second]);
 
     assert_eq!(
         anomalies,
@@ -51,13 +45,10 @@ fn previous_digest_mismatch_is_detected() {
     let first = entry(0, Digest("genesis".into()));
     let second = entry(1, Digest("wrong".into()));
 
-    let anomalies =
-        AuditReconstructionReport::verify_linkage(&[first, second]);
+    let anomalies = AuditReconstructionReport::verify_linkage(&[first, second]);
 
     assert_eq!(
         anomalies,
-        vec![ReconstructionAnomaly::PreviousDigestMismatch {
-            sequence: 1,
-        }]
+        vec![ReconstructionAnomaly::PreviousDigestMismatch { sequence: 1 }]
     );
 }

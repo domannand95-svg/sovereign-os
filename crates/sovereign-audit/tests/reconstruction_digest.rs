@@ -1,9 +1,5 @@
 use sovereign_audit::{
-    AuditEventType,
-    AuditLedgerEntry,
-    Digest,
-    ReconstructionAnomaly,
-    ReconstructionStatus,
+    AuditEventType, AuditLedgerEntry, Digest, ReconstructionAnomaly, ReconstructionStatus,
 };
 
 fn fixture_entry() -> AuditLedgerEntry {
@@ -40,8 +36,6 @@ fn tampered_entry_is_classified_as_integrity_failure() {
 
     assert_eq!(
         report.anomalies,
-        vec![ReconstructionAnomaly::EntryIntegrityFailure {
-            sequence: 0
-        }]
+        vec![ReconstructionAnomaly::EntryIntegrityFailure { sequence: 0 }]
     );
 }

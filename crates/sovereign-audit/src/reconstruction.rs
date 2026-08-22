@@ -9,28 +9,17 @@ pub enum ReconstructionStatus {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ReconstructionAnomaly {
-    SequenceGap {
-        expected: u64,
-        observed: u64,
-    },
+    SequenceGap { expected: u64, observed: u64 },
 
-    DuplicateSequence {
-        sequence: u64,
-    },
+    DuplicateSequence { sequence: u64 },
 
-    PreviousDigestMismatch {
-        sequence: u64,
-    },
+    PreviousDigestMismatch { sequence: u64 },
 
-    EntryIntegrityFailure {
-        sequence: u64,
-    },
+    EntryIntegrityFailure { sequence: u64 },
 
     UnexpectedGenesis,
 
-    ConflictingEntry {
-        sequence: u64,
-    },
+    ConflictingEntry { sequence: u64 },
 
     OutOfOrderInput,
 }
@@ -78,6 +67,13 @@ impl AuditReconstructionReport {
                         sequence: entry.sequence,
                     });
             }
+        }
+
+        let linkage_anomalies = Self::verify_linkage(entries);
+
+        if !linkage_anomalies.is_empty() {
+            report.status = ReconstructionStatus::Invalid;
+            report.anomalies.extend(linkage_anomalies);
         }
 
         report

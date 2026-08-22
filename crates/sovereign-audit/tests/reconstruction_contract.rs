@@ -1,8 +1,4 @@
-use sovereign_audit::{
-    AuditReconstructionReport,
-    ReconstructionAnomaly,
-    ReconstructionStatus,
-};
+use sovereign_audit::{AuditReconstructionReport, ReconstructionAnomaly, ReconstructionStatus};
 
 #[test]
 fn empty_report_can_be_constructed() {
@@ -27,23 +23,15 @@ fn anomaly_variants_are_constructible() {
         observed: 3,
     };
 
-    let _ = ReconstructionAnomaly::DuplicateSequence {
-        sequence: 1,
-    };
+    let _ = ReconstructionAnomaly::DuplicateSequence { sequence: 1 };
 
-    let _ = ReconstructionAnomaly::PreviousDigestMismatch {
-        sequence: 2,
-    };
+    let _ = ReconstructionAnomaly::PreviousDigestMismatch { sequence: 2 };
 
-    let _ = ReconstructionAnomaly::EntryIntegrityFailure {
-        sequence: 3,
-    };
+    let _ = ReconstructionAnomaly::EntryIntegrityFailure { sequence: 3 };
 
     let _ = ReconstructionAnomaly::UnexpectedGenesis;
 
-    let _ = ReconstructionAnomaly::ConflictingEntry {
-        sequence: 4,
-    };
+    let _ = ReconstructionAnomaly::ConflictingEntry { sequence: 4 };
 
     let _ = ReconstructionAnomaly::OutOfOrderInput;
 }
