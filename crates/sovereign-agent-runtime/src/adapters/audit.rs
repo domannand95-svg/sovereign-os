@@ -20,24 +20,20 @@ use sovereign_audit::{
     AgentIdentityId as AuditAgentIdentityId, AuditEventType, AuditLedgerEntry, Digest,
 };
 
-use crate::execution::{verify_receipt, ExecutionReceipt};
+pub use crate::audit_projection::ProjectionError;
 
-#[derive(Debug, PartialEq, Eq)]
-pub enum ProjectionError {
-    InvalidReceipt,
-}
+use crate::execution::{verify_receipt, ExecutionReceipt};
 
 /// Projects a verified runtime execution receipt into an audit ledger entry.
 ///
-/// The projection boundary:
+/// Projection boundary:
 ///
 /// `ExecutionReceipt`
 ///     -> receipt verification
 ///     -> evidence extraction
 ///     -> `AuditLedgerEntry`
 ///
-/// This function performs no ledger mutation. The caller remains responsible
-/// for explicitly appending the returned entry to an audit chain.
+/// This function performs no ledger mutation.
 pub fn project_execution_receipt(
     receipt: &ExecutionReceipt,
     verifying_key: &[u8; 32],
@@ -50,12 +46,8 @@ pub fn project_execution_receipt(
     }
 
     let event_type = match receipt.result {
-        crate::execution::ExecutionResult::Success => {
-            AuditEventType::ExecutionCommitted
-        }
-        crate::execution::ExecutionResult::Failure => {
-            AuditEventType::ExecutionFailed
-        }
+        crate::execution::ExecutionResult::Success => AuditEventType::ExecutionCommitted,
+        crate::execution::ExecutionResult::Failure => AuditEventType::ExecutionFailed,
     };
 
     Ok(AuditLedgerEntry::new(
