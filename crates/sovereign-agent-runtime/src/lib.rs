@@ -8,6 +8,7 @@
 //! It does not bypass policy.
 //! It does not mutate audit history.
 
+pub mod adapters;
 pub mod audit_projection;
 pub mod capability;
 mod encoding;
