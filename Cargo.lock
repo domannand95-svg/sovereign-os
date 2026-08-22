@@ -1900,6 +1900,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "sovereign-execution-api"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "sovereign-audit",
+ "sovereign-execution",
+]
+
+[[package]]
 name = "sovereign-ledger"
 version = "0.1.0"
 dependencies = [
