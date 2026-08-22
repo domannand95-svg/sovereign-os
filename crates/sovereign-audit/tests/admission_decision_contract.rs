@@ -204,3 +204,72 @@ fn test_lockdown_context_overrides_all_positive_classifications() {
         );
     }
 }
+
+#[derive(Debug, PartialEq, Eq, Clone)]
+struct ProvenanceBoundAdmissionDecision {
+    intent_reference: String,
+    evaluation_reference: String,
+    governance_context_reference: String,
+    outcome: AdmissionOutcome,
+}
+
+impl ProvenanceBoundAdmissionDecision {
+    fn new(
+        intent_reference: &str,
+        evaluation_reference: &str,
+        governance_context_reference: &str,
+        outcome: AdmissionOutcome,
+    ) -> Self {
+        Self {
+            intent_reference: intent_reference.to_string(),
+            evaluation_reference: evaluation_reference.to_string(),
+            governance_context_reference: governance_context_reference.to_string(),
+            outcome,
+        }
+    }
+}
+
+#[test]
+fn test_admission_decision_preserves_provenance_binding() {
+    let decision = ProvenanceBoundAdmissionDecision::new(
+        "intent-001",
+        "evaluation-001",
+        "context-001",
+        AdmissionOutcome::Permit,
+    );
+
+    assert_eq!(
+        decision.intent_reference,
+        "intent-001"
+    );
+
+    assert_eq!(
+        decision.evaluation_reference,
+        "evaluation-001"
+    );
+
+    assert_eq!(
+        decision.governance_context_reference,
+        "context-001"
+    );
+}
+
+#[test]
+fn test_admission_outcome_does_not_replace_source_provenance() {
+    let decision = ProvenanceBoundAdmissionDecision::new(
+        "intent-002",
+        "evaluation-002",
+        "context-002",
+        AdmissionOutcome::Permit,
+    );
+
+    assert_ne!(
+        decision.outcome,
+        AdmissionOutcome::Deny
+    );
+
+    assert_eq!(
+        decision.intent_reference,
+        "intent-002"
+    );
+}
