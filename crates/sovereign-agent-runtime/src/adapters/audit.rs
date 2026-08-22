@@ -20,9 +20,12 @@ use sovereign_audit::{
     AgentIdentityId as AuditAgentIdentityId, AuditEventType, AuditLedgerEntry, Digest,
 };
 
-pub use crate::audit_projection::ProjectionError;
-
 use crate::execution::{verify_receipt, ExecutionReceipt};
+
+#[derive(Debug, PartialEq, Eq)]
+pub enum ProjectionError {
+    InvalidReceipt,
+}
 
 /// Projects a verified runtime execution receipt into an audit ledger entry.
 ///
