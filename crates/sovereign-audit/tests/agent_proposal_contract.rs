@@ -1,0 +1,65 @@
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct AgentProposal {
+    proposal_id: String,
+    source_reference: String,
+    subject_reference: String,
+    requested_operation: String,
+    target_reference: String,
+    requested_scope: String,
+    constraints: Vec<String>,
+    rationale: String,
+    evidence_references: Vec<String>,
+    created_at: u64,
+}
+
+impl AgentProposal {
+    fn new(
+        subject_reference: &str,
+        requested_operation: &str,
+        target_reference: &str,
+    ) -> Self {
+        Self {
+            proposal_id: "proposal-test-001".into(),
+            source_reference: "test-source".into(),
+            subject_reference: subject_reference.into(),
+            requested_operation: requested_operation.into(),
+            target_reference: target_reference.into(),
+            requested_scope: "requested-scope".into(),
+            constraints: Vec::new(),
+            rationale: "test rationale".into(),
+            evidence_references: Vec::new(),
+            created_at: 0,
+        }
+    }
+}
+
+#[test]
+fn test_agent_proposal_contains_requested_intent_only() {
+    let proposal =
+        AgentProposal::new("agent-42", "DELETE", "customer-records");
+
+    assert_eq!(proposal.subject_reference, "agent-42");
+    assert_eq!(proposal.requested_operation, "DELETE");
+    assert_eq!(proposal.target_reference, "customer-records");
+}
+
+#[test]
+fn test_agent_proposal_has_no_authority_fields() {
+    let proposal =
+        AgentProposal::new("agent-1", "READ", "dataset");
+
+    assert_eq!(proposal.requested_scope, "requested-scope");
+    assert!(proposal.constraints.is_empty());
+    assert!(proposal.evidence_references.is_empty());
+}
+
+#[test]
+fn test_identical_input_produces_identical_proposal() {
+    let first =
+        AgentProposal::new("agent-1", "READ", "dataset");
+
+    let second =
+        AgentProposal::new("agent-1", "READ", "dataset");
+
+    assert_eq!(first, second);
+}
