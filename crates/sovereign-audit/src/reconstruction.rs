@@ -83,3 +83,29 @@ impl AuditReconstructionReport {
         report
     }
 }
+impl AuditReconstructionReport {
+    pub fn verify_linkage(entries: &[AuditLedgerEntry]) -> Vec<ReconstructionAnomaly> {
+        let mut anomalies = Vec::new();
+
+        for (index, entry) in entries.iter().enumerate() {
+            if entry.sequence != index as u64 {
+                anomalies.push(ReconstructionAnomaly::SequenceGap {
+                    expected: index as u64,
+                    observed: entry.sequence,
+                });
+            }
+
+            if index > 0 {
+                let previous = &entries[index - 1];
+
+                if entry.previous_entry_digest != previous.entry_digest {
+                    anomalies.push(ReconstructionAnomaly::PreviousDigestMismatch {
+                        sequence: entry.sequence,
+                    });
+                }
+            }
+        }
+
+        anomalies
+    }
+}
