@@ -8,6 +8,9 @@ use sovereign_registry::IdentityId;
 use std::collections::HashSet;
 use std::fmt;
 
+pub mod authorization_receipt;
+pub mod governance_admission;
+
 mod admission;
 mod chain;
 mod claim;
@@ -22,7 +25,6 @@ mod reconstruction;
 mod reviewer_finding;
 mod source;
 mod uncertainty;
-
 pub use admission::{
     evaluate_admission, AdmittedRecordEquivalence, AuthoritativeA05ReferenceActivation,
     AuthoritativeCanonicalIdentity, AuthoritativeDisputeResolution, AuthoritativeIndependence,
