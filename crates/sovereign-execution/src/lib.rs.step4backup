@@ -11,18 +11,11 @@ pub struct FileCreationOperation {
     pub path: String,
     pub content_hash: [u8; 32],
 }
-
 impl FileCreationOperation {
     pub fn matches(&self, other: &FileCreationOperation) -> bool {
         self == other
     }
-
-    pub fn verify_content(&self, content: &[u8]) -> bool {
-        let digest = blake3::hash(content);
-        digest.as_bytes() == &self.content_hash
-    }
 }
-
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ExecutionResult {
     Accepted,
@@ -32,8 +25,8 @@ pub enum ExecutionResult {
 pub enum ExecutionError {
     Unauthenticated,
     OperationMismatch,
-    ContentIntegrityMismatch,
-    ExecutionRejected,
+ContentIntegrityMismatch,
+ExecutionRejected,
 }
 
 pub trait GovernedExecutor {
@@ -43,7 +36,9 @@ pub trait GovernedExecutor {
         authentication: ReceiptAuthenticationResult,
         governed_operation: &FileCreationOperation,
         requested_operation: &FileCreationOperation,
-        content: &[u8],
     ) -> Result<ExecutionResult, ExecutionError>;
 }
+
+
+
 

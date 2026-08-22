@@ -20,7 +20,6 @@ impl GovernedExecutor for FileCreationAdapter {
         authentication: ReceiptAuthenticationResult,
         governed_operation: &FileCreationOperation,
         requested_operation: &FileCreationOperation,
-        content: &[u8],
     ) -> Result<ExecutionResult, ExecutionError> {
         match authentication {
             ReceiptAuthenticationResult::Invalid => {
@@ -32,12 +31,10 @@ impl GovernedExecutor for FileCreationAdapter {
                     return Err(ExecutionError::OperationMismatch);
                 }
 
-                if !requested_operation.verify_content(content) {
-                    return Err(ExecutionError::ContentIntegrityMismatch);
-                }
-
                 Ok(ExecutionResult::Accepted)
             }
         }
     }
 }
+
+
