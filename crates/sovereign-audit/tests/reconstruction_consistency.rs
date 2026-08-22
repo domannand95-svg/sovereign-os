@@ -60,3 +60,23 @@ fn test_reconstruction_yields_consistent_observation() {
         "deterministic valid reconstruction should contain no anomalies"
     );
 }
+
+#[test]
+fn test_reconstruction_consistency_does_not_mutate_input() {
+    let first = fixture_entry(0, genesis_digest());
+
+    let second = fixture_entry(1, first.entry_digest.clone());
+
+    let entries = vec![first, second];
+
+    let before = entries.clone();
+
+    let _report_a = AuditReconstructionReport::reconstruct_entries(&entries);
+    let _report_b = AuditReconstructionReport::reconstruct_entries(&entries);
+
+    assert_eq!(
+        entries,
+        before,
+        "reconstruction consistency observation must not mutate input evidence"
+    );
+}
