@@ -1,5 +1,11 @@
 //! Deterministic directive-admission policy primitives for Sovereign OS.
 
+pub mod decision;
+pub mod proposal;
+
+pub use decision::*;
+pub use proposal::*;
+
 use sovereign_ledger::EventType;
 
 /// Immutable input evaluated before a directive may reach durable storage.
@@ -75,9 +81,11 @@ impl DirectivePolicy for EventTypeAllowlist {
         if request.payload.is_empty() {
             return Ok(PolicyDecision::Deny(PolicyDenial::EmptyPayload));
         }
+
         if !self.permits(request.event_type) {
             return Ok(PolicyDecision::Deny(PolicyDenial::EventTypeDenied));
         }
+
         Ok(PolicyDecision::Allow)
     }
 }
