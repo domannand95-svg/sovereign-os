@@ -8,18 +8,24 @@ use sovereign_registry::IdentityId;
 use std::collections::HashSet;
 use std::fmt;
 
+pub mod authorization_receipt;
+pub mod governance_admission;
+pub mod governance_projection;
+
 mod admission;
+mod chain;
 mod claim;
 mod disposition;
 mod dispute;
 mod failed_attempt;
 mod identity;
+mod ledger;
 mod method;
 mod objective;
+mod reconstruction;
 mod reviewer_finding;
 mod source;
 mod uncertainty;
-
 pub use admission::{
     evaluate_admission, AdmittedRecordEquivalence, AuthoritativeA05ReferenceActivation,
     AuthoritativeCanonicalIdentity, AuthoritativeDisputeResolution, AuthoritativeIndependence,
@@ -28,6 +34,7 @@ pub use admission::{
     EvidenceAdmissionResult, EvidenceAdmissionStateRef, EvidenceRelationshipKind,
     ExternalIdentityKind, RecordKindRequirement, ReviewerIndependenceRequirement,
 };
+
 pub use claim::{ClaimError, ClaimKind, ClaimPayload, Substantiation};
 
 pub use disposition::{DispositionDecision, DispositionError, DispositionPayload};
@@ -38,9 +45,15 @@ pub use failed_attempt::{FailedAttemptError, FailedAttemptPayload, FailureKind};
 
 pub use identity::*;
 
+pub use ledger::{AuditEventType, AuditLedgerEntry, AuditLedgerError};
+
+pub use chain::{AuditLedgerChain, AuditLedgerChainError};
+
 pub use method::{MethodError, MethodPayload};
 
 pub use objective::{ObjectiveError, ObjectivePayload, MAX_LIST_ITEMS, MAX_TEXT_FIELD_LEN};
+
+pub use reconstruction::{AuditReconstructionReport, ReconstructionAnomaly, ReconstructionStatus};
 
 pub use reviewer_finding::{
     FindingKind, FindingSeverity, IndependenceResult, ReviewerFindingError, ReviewerFindingPayload,

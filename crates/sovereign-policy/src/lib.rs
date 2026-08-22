@@ -1,7 +1,29 @@
 //! Deterministic directive-admission policy primitives for Sovereign OS.
 
-use sovereign_ledger::EventType;
+// ============================================================================
+// BETA-015 Governance Boundaries
+// ============================================================================
 
+pub mod approval;
+pub mod decision;
+pub mod intent;
+pub mod lifecycle;
+pub mod proposal;
+pub mod risk;
+
+// Public governance primitives
+pub use approval::*;
+pub use decision::*;
+pub use intent::*;
+pub use lifecycle::*;
+pub use proposal::*;
+pub use risk::*;
+
+// ============================================================================
+// Legacy Directive Admission Boundary
+// ============================================================================
+
+use sovereign_ledger::EventType;
 /// Immutable input evaluated before a directive may reach durable storage.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct DirectiveRequest<'a> {
@@ -75,9 +97,11 @@ impl DirectivePolicy for EventTypeAllowlist {
         if request.payload.is_empty() {
             return Ok(PolicyDecision::Deny(PolicyDenial::EmptyPayload));
         }
+
         if !self.permits(request.event_type) {
             return Ok(PolicyDecision::Deny(PolicyDenial::EventTypeDenied));
         }
+
         Ok(PolicyDecision::Allow)
     }
 }
