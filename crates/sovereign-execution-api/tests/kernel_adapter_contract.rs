@@ -1,4 +1,4 @@
-use sovereign_execution_api::{
+﻿use sovereign_execution_api::{
     ExecutionApiFacade,
     ExecutionStatus,
     GovernedExecutionRequest,
@@ -114,7 +114,7 @@ fn kernel_failure_is_translated_into_execution_failure() {
     };
 
     match response.status {
-        ExecutionStatus::ExecutionFailed(_) => {}
+        ExecutionStatus::ExecutionFailed => {}
         _ => panic!("expected execution failure"),
     }
 }

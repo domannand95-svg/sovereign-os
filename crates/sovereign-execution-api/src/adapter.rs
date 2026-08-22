@@ -1,10 +1,16 @@
 use crate::{
-    ExecutionApiError, ExecutionStatus, GovernedExecutionRequest, GovernedExecutionResponse,
+    ExecutionApiError,
+    ExecutionStatus,
+    GovernedExecutionRequest,
+    GovernedExecutionResponse,
+    KernelExecutionRequest,
     KernelInvoker,
 };
 
-/// The API translation layer.
-/// Handles DTO validation, delegates to the kernel invoker, and maps responses.
+/// API translation layer.
+///
+/// Converts external execution requests into typed kernel requests,
+/// invokes the governed kernel boundary, and sanitizes responses.
 pub struct ExecutionApiFacade<K: KernelInvoker> {
     kernel: K,
 }
@@ -30,19 +36,21 @@ impl<K: KernelInvoker> ExecutionApiFacade<K> {
             ));
         }
 
-        match self.kernel.invoke_kernel(crate::KernelExecutionRequest {
+        let execution_id = request.execution_id;
+
+        match self.kernel.invoke_kernel(KernelExecutionRequest {
             authorization_receipt_id: request.authorization_receipt_id,
             operation_payload: request.operation_payload,
         }) {
             Ok(response) => Ok(GovernedExecutionResponse {
-                execution_id: request.execution_id,
+                execution_id,
                 status: ExecutionStatus::AuthorizedAndExecuted,
                 report_reference: Some(response.report_reference),
             }),
 
-            Err(error) => Ok(GovernedExecutionResponse {
-                execution_id: request.execution_id,
-                status: ExecutionStatus::ExecutionFailed(format!("{error:?}")),
+            Err(_error) => Ok(GovernedExecutionResponse {
+                execution_id,
+                status: ExecutionStatus::ExecutionFailed,
                 report_reference: None,
             }),
         }

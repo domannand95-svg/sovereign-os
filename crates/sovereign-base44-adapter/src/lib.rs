@@ -1,4 +1,4 @@
-//! # Sovereign Base44 Adapter
+﻿//! # Sovereign Base44 Adapter
 //!
 //! The Base44 adapter is an isolated translation layer.
 //! It validates external ingress data, converts it into governed execution
@@ -69,7 +69,7 @@ impl Base44EgressTranslator {
             ExecutionStatus::AuthenticationFailed => {
                 Base44ExecutionStatus::AuthenticationFailed
             }
-            ExecutionStatus::ExecutionFailed(_) => Base44ExecutionStatus::ExecutionFailed,
+            ExecutionStatus::ExecutionFailed => Base44ExecutionStatus::ExecutionFailed,
         };
 
         Ok(Base44EgressResponse {

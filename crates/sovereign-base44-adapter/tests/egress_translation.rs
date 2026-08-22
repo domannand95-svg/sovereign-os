@@ -1,4 +1,4 @@
-//! Egress translation integration tests.
+﻿//! Egress translation integration tests.
 
 extern crate sovereign_base44_adapter;
 
@@ -47,7 +47,7 @@ fn test_translate_execution_failed_sanitizes_error() {
     let translator = Base44EgressTranslator::new();
     let governed_response = GovernedExecutionResponse {
         execution_id: "exec-003".to_string(),
-        status: ExecutionStatus::ExecutionFailed("internal kernel error".to_string()),
+        status: ExecutionStatus::ExecutionFailed,
         report_reference: None,
     };
 
@@ -76,3 +76,4 @@ fn test_to_json_serialization() {
     assert!(json.contains("exec-004"));
     assert!(json.contains("Success"));
 }
+
