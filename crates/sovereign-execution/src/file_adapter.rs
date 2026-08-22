@@ -1,6 +1,8 @@
 use crate::{
+    ExecutionAttempt,
     ExecutionError,
-    ExecutionResult,
+    ExecutionOutcome,
+    ExecutionReport,
     FileCreationOperation,
     GovernedExecutor,
 };
@@ -16,12 +18,12 @@ pub struct FileCreationAdapter;
 impl GovernedExecutor for FileCreationAdapter {
     fn execute(
         &self,
-        _receipt: &AuthorizationReceipt,
+        receipt: &AuthorizationReceipt,
         authentication: ReceiptAuthenticationResult,
         governed_operation: &FileCreationOperation,
         requested_operation: &FileCreationOperation,
         content: &[u8],
-    ) -> Result<ExecutionResult, ExecutionError> {
+    ) -> Result<ExecutionReport, ExecutionError> {
         match authentication {
             ReceiptAuthenticationResult::Invalid => {
                 Err(ExecutionError::Unauthenticated)
@@ -39,9 +41,19 @@ impl GovernedExecutor for FileCreationAdapter {
                 std::fs::write(&requested_operation.path, content)
                     .map_err(|_| ExecutionError::FilesystemFailure)?;
 
-                Ok(ExecutionResult::Created)
+                let outcome = ExecutionOutcome::Created;
+
+                Ok(ExecutionReport {
+                    attempt: ExecutionAttempt {
+                        execution_id: "exec-local-001".into(),
+                        receipt_reference: receipt.receipt_reference.clone(),
+                        operation_reference: requested_operation.path.clone(),
+                        outcome: outcome.clone(),
+                        timestamp: 0,
+                    },
+                    outcome,
+                })
             }
         }
     }
 }
-

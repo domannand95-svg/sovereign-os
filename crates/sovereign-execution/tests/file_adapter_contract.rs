@@ -7,7 +7,7 @@ use sovereign_audit::authorization_receipt::{
 
 use sovereign_execution::{
     ExecutionError,
-    ExecutionResult,
+    ExecutionOutcome,
     FileCreationAdapter,
     FileCreationOperation,
     GovernedExecutor,
@@ -65,7 +65,7 @@ fn valid_authentication_is_accepted() {
         test_content(),
     );
 
-    assert_eq!(result, Ok(ExecutionResult::Created));
+    assert_eq!(result.unwrap().outcome, ExecutionOutcome::Created);
     assert!(path.exists());
 }
 
@@ -106,7 +106,7 @@ fn matching_operation_is_accepted() {
         test_content(),
     );
 
-    assert_eq!(result, Ok(ExecutionResult::Created));
+    assert_eq!(result.unwrap().outcome, ExecutionOutcome::Created);
     assert!(path.exists());
 }
 
@@ -145,3 +145,6 @@ fn content_hash_mismatch_is_rejected() {
 
     assert!(!operation.verify_content(b"modified content"));
 }
+
+
+

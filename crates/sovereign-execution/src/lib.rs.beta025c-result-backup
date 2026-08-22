@@ -29,23 +29,12 @@ pub enum ExecutionResult {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub enum ExecutionOutcome {
-    Created,
-    Rejected(ExecutionError),
-}
-#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ExecutionAttempt {
     pub execution_id: String,
     pub receipt_reference: String,
     pub operation_reference: String,
-    pub outcome: ExecutionOutcome,
+    pub result: ExecutionResult,
     pub timestamp: u64,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct ExecutionReport {
-    pub attempt: ExecutionAttempt,
-    pub outcome: ExecutionOutcome,
 }
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ExecutionError {
@@ -64,12 +53,8 @@ pub trait GovernedExecutor {
         governed_operation: &FileCreationOperation,
         requested_operation: &FileCreationOperation,
         content: &[u8],
-    ) -> Result<ExecutionReport, ExecutionError>;
+    ) -> Result<ExecutionResult, ExecutionError>;
 }
-
-
-
-
 
 
 
