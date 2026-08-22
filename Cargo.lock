@@ -1886,11 +1886,17 @@ dependencies = [
 [[package]]
 name = "sovereign-execution"
 version = "0.1.0"
+dependencies = [
+ "blake3",
+ "sovereign-audit",
+]
 
 [[package]]
 name = "sovereign-execution-api"
 version = "0.1.0"
 dependencies = [
+ "serde",
+ "serde_json",
  "sovereign-audit",
  "sovereign-execution",
 ]

@@ -5,3 +5,5 @@ edition = "2021"
 license = "MIT"
 
 [dependencies]
+blake3.workspace = true
+sovereign-audit = { version = "0.1.0", path = "../sovereign-audit" }
