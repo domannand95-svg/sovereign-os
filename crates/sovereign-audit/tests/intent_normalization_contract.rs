@@ -111,3 +111,24 @@ fn test_normalization_is_deterministic() {
 
     assert_eq!(first, second);
 }
+
+#[test]
+fn test_normalization_preserves_provenance() {
+    let proposal = AgentProposal {
+        proposal_id: "prop_trace_001".to_string(),
+        requested_operation: "DELETE".to_string(),
+        requested_scope: "single_customer".to_string(),
+    };
+
+    let intent =
+        NormalizedIntent::from_proposal(&proposal)
+            .expect("Should normalize cleanly");
+
+    assert_eq!(
+        intent.proposal_reference,
+        "prop_trace_001"
+    );
+
+    // Normalization transforms representation.
+    // It does not sever provenance or create authority.
+}
