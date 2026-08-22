@@ -25,7 +25,7 @@ impl FileCreationOperation {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ExecutionResult {
-    Accepted,
+    Created,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -33,6 +33,7 @@ pub enum ExecutionError {
     Unauthenticated,
     OperationMismatch,
     ContentIntegrityMismatch,
+    FilesystemFailure,
     ExecutionRejected,
 }
 
@@ -46,4 +47,8 @@ pub trait GovernedExecutor {
         content: &[u8],
     ) -> Result<ExecutionResult, ExecutionError>;
 }
+
+
+
+
 

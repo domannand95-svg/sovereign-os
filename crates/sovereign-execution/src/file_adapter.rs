@@ -36,8 +36,12 @@ impl GovernedExecutor for FileCreationAdapter {
                     return Err(ExecutionError::ContentIntegrityMismatch);
                 }
 
-                Ok(ExecutionResult::Accepted)
+                std::fs::write(&requested_operation.path, content)
+                    .map_err(|_| ExecutionError::FilesystemFailure)?;
+
+                Ok(ExecutionResult::Created)
             }
         }
     }
 }
+

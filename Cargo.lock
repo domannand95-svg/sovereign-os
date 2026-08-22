@@ -1894,7 +1894,9 @@ dependencies = [
 name = "sovereign-execution"
 version = "0.1.0"
 dependencies = [
+ "blake3",
  "sovereign-audit",
+ "tempfile",
 ]
 
 [[package]]

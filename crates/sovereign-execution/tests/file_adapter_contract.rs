@@ -1,3 +1,5 @@
+use tempfile::tempdir;
+
 use sovereign_audit::authorization_receipt::{
     AuthorizationReceipt,
     ReceiptAuthenticationResult,
@@ -47,7 +49,13 @@ fn test_receipt() -> AuthorizationReceipt {
 fn valid_authentication_is_accepted() {
     let adapter = FileCreationAdapter;
 
-    let operation = test_operation();
+    let dir = tempdir().unwrap();
+    let path = dir.path().join("test.md");
+
+    let operation = FileCreationOperation {
+        path: path.to_string_lossy().to_string(),
+        content_hash: *blake3::hash(test_content()).as_bytes(),
+    };
 
     let result = adapter.execute(
         &test_receipt(),
@@ -57,7 +65,8 @@ fn valid_authentication_is_accepted() {
         test_content(),
     );
 
-    assert_eq!(result, Ok(ExecutionResult::Accepted));
+    assert_eq!(result, Ok(ExecutionResult::Created));
+    assert!(path.exists());
 }
 
 #[test]
@@ -81,7 +90,13 @@ fn invalid_authentication_is_rejected() {
 fn matching_operation_is_accepted() {
     let adapter = FileCreationAdapter;
 
-    let operation = test_operation();
+    let dir = tempdir().unwrap();
+    let path = dir.path().join("test.md");
+
+    let operation = FileCreationOperation {
+        path: path.to_string_lossy().to_string(),
+        content_hash: *blake3::hash(test_content()).as_bytes(),
+    };
 
     let result = adapter.execute(
         &test_receipt(),
@@ -91,7 +106,8 @@ fn matching_operation_is_accepted() {
         test_content(),
     );
 
-    assert_eq!(result, Ok(ExecutionResult::Accepted));
+    assert_eq!(result, Ok(ExecutionResult::Created));
+    assert!(path.exists());
 }
 
 #[test]
