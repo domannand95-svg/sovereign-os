@@ -17,6 +17,46 @@ pub struct CanonicalAuthorizationReceiptIdentityPayloadV1 {
     pub nonce: String,
 }
 
+impl CanonicalAuthorizationReceiptIdentityPayloadV1 {
+    const DOMAIN_SEPARATOR: &'static [u8] = b"SOV:AR:IDENT:V1";
+
+    /// Produces the deterministic canonical byte representation.
+    ///
+    /// Layout:
+    ///
+    /// [domain separator]
+    /// [admission_reference length u32 BE]
+    /// [admission_reference bytes]
+    /// [subject_reference length u32 BE]
+    /// [subject_reference bytes]
+    /// [issued_at u64 BE]
+    /// [nonce length u32 BE]
+    /// [nonce bytes]
+    pub fn to_canonical_bytes(&self) -> Vec<u8> {
+        let mut output = Vec::new();
+
+        output.extend_from_slice(Self::DOMAIN_SEPARATOR);
+
+        Self::encode_string(&mut output, &self.admission_reference);
+
+        Self::encode_string(&mut output, &self.subject_reference);
+
+        output.extend_from_slice(&self.issued_at.to_be_bytes());
+
+        Self::encode_string(&mut output, &self.nonce);
+
+        output
+    }
+
+    fn encode_string(output: &mut Vec<u8>, value: &str) {
+        let bytes = value.as_bytes();
+
+        output.extend_from_slice(&(bytes.len() as u32).to_be_bytes());
+
+        output.extend_from_slice(bytes);
+    }
+}
+
 /// Deterministic receipt identity boundary.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct AuthorizationReceiptIdentity {
@@ -25,15 +65,16 @@ pub struct AuthorizationReceiptIdentity {
 
 impl AuthorizationReceiptIdentity {
     pub fn derive(payload: &CanonicalAuthorizationReceiptIdentityPayloadV1) -> Self {
+        let canonical_bytes = payload.to_canonical_bytes();
+
         let digest = format!(
-            "receipt::{}|{}|{}|{}",
-            payload.admission_reference,
-            payload.subject_reference,
-            payload.issued_at,
-            payload.nonce
+            "canonical::{:x?}",
+            canonical_bytes
         );
 
-        Self { receipt_id: digest }
+        Self {
+            receipt_id: digest,
+        }
     }
 }
 
