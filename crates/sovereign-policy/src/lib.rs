@@ -3,12 +3,15 @@
 pub mod decision;
 pub mod intent;
 pub mod proposal;
+pub mod risk;
 
 pub use decision::*;
 pub use intent::*;
 pub use proposal::*;
+pub use risk::*;
 
 use sovereign_ledger::EventType;
+
 /// Immutable input evaluated before a directive may reach durable storage.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct DirectiveRequest<'a> {
