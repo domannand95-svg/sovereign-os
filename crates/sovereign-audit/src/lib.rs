@@ -10,6 +10,7 @@ use std::fmt;
 
 pub mod authorization_receipt;
 pub mod execution_receipt;
+pub mod execution_projection;
 pub mod governance_admission;
 pub mod governance_projection;
 
@@ -51,8 +52,12 @@ pub use ledger::{AuditEventType, AuditLedgerEntry, AuditLedgerError};
 
 pub use chain::{AuditLedgerChain, AuditLedgerChainError};
 
-pub use method::{MethodError, MethodPayload};
+pub use execution_projection::{
+    ExecutionProjectionAdapter,
+    ExecutionProjectionError,
+};
 
+pub use method::{MethodError, MethodPayload};
 pub use objective::{ObjectiveError, ObjectivePayload, MAX_LIST_ITEMS, MAX_TEXT_FIELD_LEN};
 
 pub use reconstruction::{AuditReconstructionReport, ReconstructionAnomaly, ReconstructionStatus};
