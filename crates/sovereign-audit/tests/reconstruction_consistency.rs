@@ -1,11 +1,7 @@
-use sovereign_audit::{
-    AuditEventType,
-    AuditLedgerEntry,
-    AuditReconstructionReport,
-    Digest,
-    ReconstructionStatus,
-};
 use sovereign_audit::AgentIdentityId;
+use sovereign_audit::{
+    AuditEventType, AuditLedgerEntry, AuditReconstructionReport, Digest, ReconstructionStatus,
+};
 
 fn genesis_digest() -> Digest {
     Digest("genesis".into())
@@ -36,8 +32,7 @@ fn test_reconstruction_yields_consistent_observation() {
     let report_b = AuditReconstructionReport::reconstruct_entries(&entries);
 
     assert_eq!(
-        report_a,
-        report_b,
+        report_a, report_b,
         "identical evidence must yield identical reconstruction results"
     );
 
@@ -50,10 +45,7 @@ fn test_reconstruction_yields_consistent_observation() {
         Some(entries[0].entry_digest.clone())
     );
 
-    assert_eq!(
-        report_a.head_digest,
-        Some(entries[1].entry_digest.clone())
-    );
+    assert_eq!(report_a.head_digest, Some(entries[1].entry_digest.clone()));
 
     assert!(
         report_a.anomalies.is_empty(),
@@ -75,8 +67,7 @@ fn test_reconstruction_consistency_does_not_mutate_input() {
     let _report_b = AuditReconstructionReport::reconstruct_entries(&entries);
 
     assert_eq!(
-        entries,
-        before,
+        entries, before,
         "reconstruction consistency observation must not mutate input evidence"
     );
 }
@@ -95,8 +86,7 @@ fn test_reconstruction_consistency_remains_stable_across_iterations() {
         let report = AuditReconstructionReport::reconstruct_entries(&entries);
 
         assert_eq!(
-            report,
-            baseline,
+            report, baseline,
             "identical historical evidence must yield identical reconstruction results"
         );
     }

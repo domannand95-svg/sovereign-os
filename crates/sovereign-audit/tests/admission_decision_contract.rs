@@ -33,10 +33,7 @@ struct AdmissionDecision {
 }
 
 impl AdmissionDecision {
-    pub fn decide(
-        classification: &EvaluationClassification,
-        context: &GovernanceContext,
-    ) -> Self {
+    pub fn decide(classification: &EvaluationClassification, context: &GovernanceContext) -> Self {
         if context.governance_mode == GovernanceMode::Lockdown {
             return Self {
                 outcome: AdmissionOutcome::Deny,
@@ -44,21 +41,11 @@ impl AdmissionDecision {
         }
 
         let outcome = match classification {
-            EvaluationClassification::ConditionsSatisfied => {
-                AdmissionOutcome::Permit
-            }
-            EvaluationClassification::ConditionsUnmet => {
-                AdmissionOutcome::Deny
-            }
-            EvaluationClassification::ConflictingRules => {
-                AdmissionOutcome::Escalate
-            }
-            EvaluationClassification::MissingEvidence => {
-                AdmissionOutcome::Quarantine
-            }
-            EvaluationClassification::Indeterminate => {
-                AdmissionOutcome::Quarantine
-            }
+            EvaluationClassification::ConditionsSatisfied => AdmissionOutcome::Permit,
+            EvaluationClassification::ConditionsUnmet => AdmissionOutcome::Deny,
+            EvaluationClassification::ConflictingRules => AdmissionOutcome::Escalate,
+            EvaluationClassification::MissingEvidence => AdmissionOutcome::Quarantine,
+            EvaluationClassification::Indeterminate => AdmissionOutcome::Quarantine,
         };
 
         Self { outcome }
@@ -71,10 +58,8 @@ fn test_policy_conditions_satisfied_maps_to_permit() {
         governance_mode: GovernanceMode::Normal,
     };
 
-    let decision = AdmissionDecision::decide(
-        &EvaluationClassification::ConditionsSatisfied,
-        &context,
-    );
+    let decision =
+        AdmissionDecision::decide(&EvaluationClassification::ConditionsSatisfied, &context);
 
     assert_eq!(decision.outcome, AdmissionOutcome::Permit);
 }
@@ -85,10 +70,7 @@ fn test_missing_evidence_maps_to_quarantine_not_deny() {
         governance_mode: GovernanceMode::Normal,
     };
 
-    let decision = AdmissionDecision::decide(
-        &EvaluationClassification::MissingEvidence,
-        &context,
-    );
+    let decision = AdmissionDecision::decide(&EvaluationClassification::MissingEvidence, &context);
 
     assert_eq!(decision.outcome, AdmissionOutcome::Quarantine);
     assert_ne!(decision.outcome, AdmissionOutcome::Deny);
@@ -100,10 +82,7 @@ fn test_conflicting_rules_maps_to_escalate() {
         governance_mode: GovernanceMode::Normal,
     };
 
-    let decision = AdmissionDecision::decide(
-        &EvaluationClassification::ConflictingRules,
-        &context,
-    );
+    let decision = AdmissionDecision::decide(&EvaluationClassification::ConflictingRules, &context);
 
     assert_eq!(decision.outcome, AdmissionOutcome::Escalate);
 }
@@ -114,10 +93,7 @@ fn test_indeterminate_cannot_become_permit() {
         governance_mode: GovernanceMode::Normal,
     };
 
-    let decision = AdmissionDecision::decide(
-        &EvaluationClassification::Indeterminate,
-        &context,
-    );
+    let decision = AdmissionDecision::decide(&EvaluationClassification::Indeterminate, &context);
 
     assert_eq!(decision.outcome, AdmissionOutcome::Quarantine);
     assert_ne!(decision.outcome, AdmissionOutcome::Permit);
@@ -129,10 +105,8 @@ fn test_permit_contains_no_authorization_surface() {
         governance_mode: GovernanceMode::Normal,
     };
 
-    let decision = AdmissionDecision::decide(
-        &EvaluationClassification::ConditionsSatisfied,
-        &context,
-    );
+    let decision =
+        AdmissionDecision::decide(&EvaluationClassification::ConditionsSatisfied, &context);
 
     assert_eq!(decision.outcome, AdmissionOutcome::Permit);
 
@@ -150,15 +124,10 @@ fn test_admission_decision_is_deterministic() {
         governance_mode: GovernanceMode::Normal,
     };
 
-    let first = AdmissionDecision::decide(
-        &EvaluationClassification::ConditionsSatisfied,
-        &context,
-    );
+    let first = AdmissionDecision::decide(&EvaluationClassification::ConditionsSatisfied, &context);
 
-    let second = AdmissionDecision::decide(
-        &EvaluationClassification::ConditionsSatisfied,
-        &context,
-    );
+    let second =
+        AdmissionDecision::decide(&EvaluationClassification::ConditionsSatisfied, &context);
 
     assert_eq!(first, second);
 }
@@ -169,15 +138,10 @@ fn test_lockdown_context_overrides_permit_condition() {
         governance_mode: GovernanceMode::Lockdown,
     };
 
-    let decision = AdmissionDecision::decide(
-        &EvaluationClassification::ConditionsSatisfied,
-        &context,
-    );
+    let decision =
+        AdmissionDecision::decide(&EvaluationClassification::ConditionsSatisfied, &context);
 
-    assert_eq!(
-        decision.outcome,
-        AdmissionOutcome::Deny
-    );
+    assert_eq!(decision.outcome, AdmissionOutcome::Deny);
 }
 
 #[test]
@@ -193,15 +157,9 @@ fn test_lockdown_context_overrides_all_positive_classifications() {
     ];
 
     for classification in classifications {
-        let decision = AdmissionDecision::decide(
-            &classification,
-            &context,
-        );
+        let decision = AdmissionDecision::decide(&classification, &context);
 
-        assert_eq!(
-            decision.outcome,
-            AdmissionOutcome::Deny
-        );
+        assert_eq!(decision.outcome, AdmissionOutcome::Deny);
     }
 }
 
@@ -238,20 +196,11 @@ fn test_admission_decision_preserves_provenance_binding() {
         AdmissionOutcome::Permit,
     );
 
-    assert_eq!(
-        decision.intent_reference,
-        "intent-001"
-    );
+    assert_eq!(decision.intent_reference, "intent-001");
 
-    assert_eq!(
-        decision.evaluation_reference,
-        "evaluation-001"
-    );
+    assert_eq!(decision.evaluation_reference, "evaluation-001");
 
-    assert_eq!(
-        decision.governance_context_reference,
-        "context-001"
-    );
+    assert_eq!(decision.governance_context_reference, "context-001");
 }
 
 #[test]
@@ -263,15 +212,9 @@ fn test_admission_outcome_does_not_replace_source_provenance() {
         AdmissionOutcome::Permit,
     );
 
-    assert_ne!(
-        decision.outcome,
-        AdmissionOutcome::Deny
-    );
+    assert_ne!(decision.outcome, AdmissionOutcome::Deny);
 
-    assert_eq!(
-        decision.intent_reference,
-        "intent-002"
-    );
+    assert_eq!(decision.intent_reference, "intent-002");
 }
 
 #[test]
@@ -280,15 +223,10 @@ fn test_permit_is_not_authorization_receipt() {
         governance_mode: GovernanceMode::Normal,
     };
 
-    let decision = AdmissionDecision::decide(
-        &EvaluationClassification::ConditionsSatisfied,
-        &context,
-    );
+    let decision =
+        AdmissionDecision::decide(&EvaluationClassification::ConditionsSatisfied, &context);
 
-    assert_eq!(
-        decision.outcome,
-        AdmissionOutcome::Permit
-    );
+    assert_eq!(decision.outcome, AdmissionOutcome::Permit);
 
     let decision_size = std::mem::size_of_val(&decision);
 
@@ -304,10 +242,8 @@ fn test_admission_layer_has_no_execution_transition() {
         governance_mode: GovernanceMode::Normal,
     };
 
-    let decision = AdmissionDecision::decide(
-        &EvaluationClassification::ConditionsSatisfied,
-        &context,
-    );
+    let decision =
+        AdmissionDecision::decide(&EvaluationClassification::ConditionsSatisfied, &context);
 
     match decision.outcome {
         AdmissionOutcome::Permit => {

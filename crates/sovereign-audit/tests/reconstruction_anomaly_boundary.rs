@@ -1,9 +1,5 @@
 use sovereign_audit::{
-    AuditEventType,
-    AuditLedgerEntry,
-    AuditReconstructionReport,
-    AgentIdentityId,
-    Digest,
+    AgentIdentityId, AuditEventType, AuditLedgerEntry, AuditReconstructionReport, Digest,
     ReconstructionAnomaly,
 };
 
@@ -29,13 +25,9 @@ fn test_integrity_failure_remains_observation_only() {
 
     assert_eq!(report.total_entries_inspected, 1);
 
-    assert!(
-        report
-            .anomalies
-            .contains(&ReconstructionAnomaly::EntryIntegrityFailure {
-                sequence: 0
-            })
-    );
+    assert!(report
+        .anomalies
+        .contains(&ReconstructionAnomaly::EntryIntegrityFailure { sequence: 0 }));
 
     // Boundary assertion:
     // the original evidence remains unchanged after reconstruction.

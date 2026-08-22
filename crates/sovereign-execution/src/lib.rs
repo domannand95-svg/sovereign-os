@@ -1,10 +1,7 @@
 pub mod file_adapter;
 pub use file_adapter::FileCreationAdapter;
 
-use sovereign_audit::authorization_receipt::{
-    AuthorizationReceipt,
-    ReceiptAuthenticationResult,
-};
+use sovereign_audit::authorization_receipt::{AuthorizationReceipt, ReceiptAuthenticationResult};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct FileCreationOperation {
@@ -66,13 +63,3 @@ pub trait GovernedExecutor {
         content: &[u8],
     ) -> Result<ExecutionReport, ExecutionError>;
 }
-
-
-
-
-
-
-
-
-
-

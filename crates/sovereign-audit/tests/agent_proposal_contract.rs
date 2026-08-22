@@ -13,11 +13,7 @@ struct AgentProposal {
 }
 
 impl AgentProposal {
-    fn new(
-        subject_reference: &str,
-        requested_operation: &str,
-        target_reference: &str,
-    ) -> Self {
+    fn new(subject_reference: &str, requested_operation: &str, target_reference: &str) -> Self {
         Self {
             proposal_id: "proposal-test-001".into(),
             source_reference: "test-source".into(),
@@ -35,8 +31,7 @@ impl AgentProposal {
 
 #[test]
 fn test_agent_proposal_contains_requested_intent_only() {
-    let proposal =
-        AgentProposal::new("agent-42", "DELETE", "customer-records");
+    let proposal = AgentProposal::new("agent-42", "DELETE", "customer-records");
 
     assert_eq!(proposal.subject_reference, "agent-42");
     assert_eq!(proposal.requested_operation, "DELETE");
@@ -45,8 +40,7 @@ fn test_agent_proposal_contains_requested_intent_only() {
 
 #[test]
 fn test_agent_proposal_has_no_authority_fields() {
-    let proposal =
-        AgentProposal::new("agent-1", "READ", "dataset");
+    let proposal = AgentProposal::new("agent-1", "READ", "dataset");
 
     assert_eq!(proposal.requested_scope, "requested-scope");
     assert!(proposal.constraints.is_empty());
@@ -55,11 +49,9 @@ fn test_agent_proposal_has_no_authority_fields() {
 
 #[test]
 fn test_identical_input_produces_identical_proposal() {
-    let first =
-        AgentProposal::new("agent-1", "READ", "dataset");
+    let first = AgentProposal::new("agent-1", "READ", "dataset");
 
-    let second =
-        AgentProposal::new("agent-1", "READ", "dataset");
+    let second = AgentProposal::new("agent-1", "READ", "dataset");
 
     assert_eq!(first, second);
 }
@@ -80,13 +72,9 @@ fn test_invalid_intent_is_rejected() {
 
 #[test]
 fn test_source_reference_is_provenance_not_authority() {
-    let proposal =
-        AgentProposal::new("agent-42", "READ", "dataset");
+    let proposal = AgentProposal::new("agent-42", "READ", "dataset");
 
-    assert_eq!(
-        proposal.source_reference,
-        "test-source"
-    );
+    assert_eq!(proposal.source_reference, "test-source");
 
     // Source identity records origin only.
     // It does not grant permission or execution authority.
@@ -94,13 +82,9 @@ fn test_source_reference_is_provenance_not_authority() {
 
 #[test]
 fn test_requested_scope_is_not_granted_scope() {
-    let proposal =
-        AgentProposal::new("agent-42", "DELETE", "customer_records");
+    let proposal = AgentProposal::new("agent-42", "DELETE", "customer_records");
 
-    assert_eq!(
-        proposal.requested_scope,
-        "requested-scope"
-    );
+    assert_eq!(proposal.requested_scope, "requested-scope");
 
     // The proposal describes requested scope only.
     // It does not establish an approved execution boundary.
@@ -109,8 +93,7 @@ fn test_requested_scope_is_not_granted_scope() {
 
 #[test]
 fn test_requested_constraints_are_not_policy_decisions() {
-    let proposal =
-        AgentProposal::new("agent-42", "DELETE", "customer_records");
+    let proposal = AgentProposal::new("agent-42", "DELETE", "customer_records");
 
     assert!(proposal.constraints.is_empty());
 

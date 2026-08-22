@@ -62,9 +62,7 @@ impl PolicyEvaluationResult {
             evaluation_classification: classification,
             matched_rules,
             failed_rules,
-            evaluation_trace: vec![
-                "deterministic_policy_evaluation".to_string()
-            ],
+            evaluation_trace: vec!["deterministic_policy_evaluation".to_string()],
         }
     }
 }
@@ -86,11 +84,7 @@ fn test_policy_evaluation_yields_classification_not_admission() {
         has_approval: false,
     };
 
-    let result = PolicyEvaluationResult::evaluate(
-        &intent,
-        &policy,
-        &context,
-    );
+    let result = PolicyEvaluationResult::evaluate(&intent, &policy, &context);
 
     assert_eq!(
         result.evaluation_classification,
@@ -102,11 +96,9 @@ fn test_policy_evaluation_yields_classification_not_admission() {
         EvaluationClassification::ConditionsSatisfied
     );
 
-    assert!(
-        result
-            .failed_rules
-            .contains(&"approval_missing".to_string())
-    );
+    assert!(result
+        .failed_rules
+        .contains(&"approval_missing".to_string()));
 }
 
 #[test]
@@ -126,17 +118,9 @@ fn test_policy_evaluation_is_deterministic() {
         has_approval: false,
     };
 
-    let result_a = PolicyEvaluationResult::evaluate(
-        &intent,
-        &policy,
-        &context,
-    );
+    let result_a = PolicyEvaluationResult::evaluate(&intent, &policy, &context);
 
-    let result_b = PolicyEvaluationResult::evaluate(
-        &intent,
-        &policy,
-        &context,
-    );
+    let result_b = PolicyEvaluationResult::evaluate(&intent, &policy, &context);
 
     assert_eq!(result_a, result_b);
 }
@@ -158,17 +142,11 @@ fn test_policy_result_contains_no_authority_surface() {
         has_approval: false,
     };
 
-    let result = PolicyEvaluationResult::evaluate(
-        &intent,
-        &policy,
-        &context,
-    );
+    let result = PolicyEvaluationResult::evaluate(&intent, &policy, &context);
 
-    assert!(
-        result.evaluation_trace.contains(
-            &"deterministic_policy_evaluation".to_string()
-        )
-    );
+    assert!(result
+        .evaluation_trace
+        .contains(&"deterministic_policy_evaluation".to_string()));
 }
 
 #[test]
@@ -188,15 +166,9 @@ fn test_policy_conflict_is_not_admission() {
         has_approval: false,
     };
 
-    let mut result =
-        PolicyEvaluationResult::evaluate(
-            &intent,
-            &policy,
-            &context,
-        );
+    let mut result = PolicyEvaluationResult::evaluate(&intent, &policy, &context);
 
-    result.evaluation_classification =
-        EvaluationClassification::ConflictingRules;
+    result.evaluation_classification = EvaluationClassification::ConflictingRules;
 
     assert_eq!(
         result.evaluation_classification,
@@ -226,15 +198,9 @@ fn test_missing_evidence_is_not_automatic_admission() {
         has_approval: false,
     };
 
-    let mut result =
-        PolicyEvaluationResult::evaluate(
-            &intent,
-            &policy,
-            &context,
-        );
+    let mut result = PolicyEvaluationResult::evaluate(&intent, &policy, &context);
 
-    result.evaluation_classification =
-        EvaluationClassification::MissingEvidence;
+    result.evaluation_classification = EvaluationClassification::MissingEvidence;
 
     assert_eq!(
         result.evaluation_classification,
@@ -266,12 +232,7 @@ fn test_policy_evaluation_does_not_mutate_policy() {
 
     let before = policy.clone();
 
-    let _result =
-        PolicyEvaluationResult::evaluate(
-            &intent,
-            &policy,
-            &context,
-        );
+    let _result = PolicyEvaluationResult::evaluate(&intent, &policy, &context);
 
     assert_eq!(policy, before);
 }

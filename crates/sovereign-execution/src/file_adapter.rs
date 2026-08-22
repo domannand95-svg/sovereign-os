@@ -1,16 +1,9 @@
 use crate::{
-    ExecutionAttempt,
-    ExecutionError,
-    ExecutionOutcome,
-    ExecutionReport,
-    FileCreationOperation,
+    ExecutionAttempt, ExecutionError, ExecutionOutcome, ExecutionReport, FileCreationOperation,
     GovernedExecutor,
 };
 
-use sovereign_audit::authorization_receipt::{
-    AuthorizationReceipt,
-    ReceiptAuthenticationResult,
-};
+use sovereign_audit::authorization_receipt::{AuthorizationReceipt, ReceiptAuthenticationResult};
 
 #[derive(Debug, Clone, Copy)]
 pub struct FileCreationAdapter;
@@ -25,9 +18,7 @@ impl GovernedExecutor for FileCreationAdapter {
         content: &[u8],
     ) -> Result<ExecutionReport, ExecutionError> {
         match authentication {
-            ReceiptAuthenticationResult::Invalid => {
-                Err(ExecutionError::Unauthenticated)
-            }
+            ReceiptAuthenticationResult::Invalid => Err(ExecutionError::Unauthenticated),
 
             ReceiptAuthenticationResult::Valid => {
                 if !governed_operation.matches(requested_operation) {

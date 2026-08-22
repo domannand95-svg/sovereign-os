@@ -1,8 +1,4 @@
-use sovereign_execution::{
-    ExecutionAttempt,
-    ExecutionOutcome,
-    ExecutionError,
-};
+use sovereign_execution::{ExecutionAttempt, ExecutionError, ExecutionOutcome};
 
 #[test]
 fn execution_attempt_preserves_created_result() {
@@ -23,17 +19,13 @@ fn execution_attempt_preserves_failed_result() {
         execution_id: "exec-002".into(),
         receipt_reference: "receipt-002".into(),
         operation_reference: "operation-002".into(),
-        outcome: ExecutionOutcome::Rejected(
-            ExecutionError::ContentIntegrityMismatch
-        ),
+        outcome: ExecutionOutcome::Rejected(ExecutionError::ContentIntegrityMismatch),
         timestamp: 1001,
     };
 
     assert_eq!(
         attempt.outcome,
-        ExecutionOutcome::Rejected(
-            ExecutionError::ContentIntegrityMismatch
-        )
+        ExecutionOutcome::Rejected(ExecutionError::ContentIntegrityMismatch)
     );
 }
 

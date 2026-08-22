@@ -180,19 +180,19 @@ impl SignaturePayloadV1 {
     /// - resolve issuers
     /// - mutate receipts
     /// - grant authority
-pub fn sign(&self, signing_key: &SigningKey) -> ed25519_dalek::Signature {
-    let canonical_bytes = self.to_canonical_bytes();
-    signing_key.sign(&canonical_bytes)
-}
+    pub fn sign(&self, signing_key: &SigningKey) -> ed25519_dalek::Signature {
+        let canonical_bytes = self.to_canonical_bytes();
+        signing_key.sign(&canonical_bytes)
+    }
 
-pub fn verify(
-    &self,
-    verifying_key: &VerifyingKey,
-    signature: &ed25519_dalek::Signature,
-) -> Result<(), ed25519_dalek::SignatureError> {
-    let canonical_bytes = self.to_canonical_bytes();
-    verifying_key.verify(&canonical_bytes, signature)
-}
+    pub fn verify(
+        &self,
+        verifying_key: &VerifyingKey,
+        signature: &ed25519_dalek::Signature,
+    ) -> Result<(), ed25519_dalek::SignatureError> {
+        let canonical_bytes = self.to_canonical_bytes();
+        verifying_key.verify(&canonical_bytes, signature)
+    }
 }
 /// Result of cryptographic receipt authentication.
 ///
@@ -256,7 +256,6 @@ impl AuthorizationReceipt {
             Err(_) => ReceiptAuthenticationResult::Invalid,
         }
     }
-
 
     pub fn generate(
         decision: &AdmissionDecision,
@@ -386,8 +385,6 @@ impl AuthorizationReceipt {
     }
 }
 
-
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -423,46 +420,43 @@ mod tests {
         assert_eq!(first, second);
     }
 
-  #[test]
-fn signature_payload_verification_succeeds_with_matching_key() {
-    let payload = test_signature_payload();
-    let signing_key = SigningKey::from_bytes(&[7u8; 32]);
+    #[test]
+    fn signature_payload_verification_succeeds_with_matching_key() {
+        let payload = test_signature_payload();
+        let signing_key = SigningKey::from_bytes(&[7u8; 32]);
 
-    let verifying_key = signing_key.verifying_key();
+        let verifying_key = signing_key.verifying_key();
 
-    let signature = payload.sign(&signing_key);
+        let signature = payload.sign(&signing_key);
 
-    assert!(payload.verify(&verifying_key, &signature).is_ok());
+        assert!(payload.verify(&verifying_key, &signature).is_ok());
+    }
+
+    #[test]
+    fn signature_payload_verification_fails_on_payload_mutation() {
+        let mut payload = test_signature_payload();
+        let signing_key = SigningKey::from_bytes(&[7u8; 32]);
+
+        let verifying_key = signing_key.verifying_key();
+
+        let signature = payload.sign(&signing_key);
+
+        payload.authorized_scope = "modified-scope".into();
+
+        assert!(payload.verify(&verifying_key, &signature).is_err());
+    }
+
+    #[test]
+    fn signature_payload_verification_fails_with_wrong_key() {
+        let payload = test_signature_payload();
+
+        let signing_key = SigningKey::from_bytes(&[7u8; 32]);
+        let wrong_key = SigningKey::from_bytes(&[8u8; 32]);
+
+        let signature = payload.sign(&signing_key);
+
+        assert!(payload
+            .verify(&wrong_key.verifying_key(), &signature)
+            .is_err());
+    }
 }
-
-#[test]
-fn signature_payload_verification_fails_on_payload_mutation() {
-    let mut payload = test_signature_payload();
-    let signing_key = SigningKey::from_bytes(&[7u8; 32]);
-
-    let verifying_key = signing_key.verifying_key();
-
-    let signature = payload.sign(&signing_key);
-
-    payload.authorized_scope = "modified-scope".into();
-
-    assert!(payload.verify(&verifying_key, &signature).is_err());
-}
-
-#[test]
-fn signature_payload_verification_fails_with_wrong_key() {
-    let payload = test_signature_payload();
-
-    let signing_key = SigningKey::from_bytes(&[7u8; 32]);
-    let wrong_key = SigningKey::from_bytes(&[8u8; 32]);
-
-    let signature = payload.sign(&signing_key);
-
-    assert!(payload
-        .verify(&wrong_key.verifying_key(), &signature)
-        .is_err());
-}
-}
-
-
-

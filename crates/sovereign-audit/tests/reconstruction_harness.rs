@@ -1,10 +1,5 @@
-use sovereign_audit::{
-    AuditEventType,
-    AuditLedgerEntry,
-    AuditReconstructionReport,
-    Digest,
-};
 use sovereign_audit::AgentIdentityId;
+use sovereign_audit::{AuditEventType, AuditLedgerEntry, AuditReconstructionReport, Digest};
 
 fn genesis_digest() -> Digest {
     Digest("genesis".into())
@@ -32,24 +27,15 @@ fn test_valid_historical_chain_reconstructs_cleanly() {
 
     let report = AuditReconstructionReport::reconstruct_entries(&entries);
 
-    assert_eq!(
-        report.status,
-        sovereign_audit::ReconstructionStatus::Valid
-    );
+    assert_eq!(report.status, sovereign_audit::ReconstructionStatus::Valid);
 
     assert!(report.anomalies.is_empty());
 
     assert_eq!(report.total_entries_inspected, 2);
 
-    assert_eq!(
-        report.genesis_digest,
-        Some(entries[0].entry_digest.clone())
-    );
+    assert_eq!(report.genesis_digest, Some(entries[0].entry_digest.clone()));
 
-    assert_eq!(
-        report.head_digest,
-        Some(entries[1].entry_digest.clone())
-    );
+    assert_eq!(report.head_digest, Some(entries[1].entry_digest.clone()));
 }
 
 #[test]
@@ -58,10 +44,7 @@ fn test_empty_evidence_slice_yields_valid_empty_report() {
 
     let report = AuditReconstructionReport::reconstruct_entries(&entries);
 
-    assert_eq!(
-        report.status,
-        sovereign_audit::ReconstructionStatus::Valid
-    );
+    assert_eq!(report.status, sovereign_audit::ReconstructionStatus::Valid);
 
     assert_eq!(report.total_entries_inspected, 0);
 
@@ -80,22 +63,13 @@ fn test_single_entry_slice_yields_valid_report() {
 
     let report = AuditReconstructionReport::reconstruct_entries(&entries);
 
-    assert_eq!(
-        report.status,
-        sovereign_audit::ReconstructionStatus::Valid
-    );
+    assert_eq!(report.status, sovereign_audit::ReconstructionStatus::Valid);
 
     assert_eq!(report.total_entries_inspected, 1);
 
-    assert_eq!(
-        report.genesis_digest,
-        Some(entries[0].entry_digest.clone())
-    );
+    assert_eq!(report.genesis_digest, Some(entries[0].entry_digest.clone()));
 
-    assert_eq!(
-        report.head_digest,
-        Some(entries[0].entry_digest.clone())
-    );
+    assert_eq!(report.head_digest, Some(entries[0].entry_digest.clone()));
 
     assert!(report.anomalies.is_empty());
 }
@@ -115,13 +89,9 @@ fn test_tampered_entry_yields_integrity_failure() {
         sovereign_audit::ReconstructionStatus::Invalid
     );
 
-    assert!(
-        report
-            .anomalies
-            .contains(&sovereign_audit::ReconstructionAnomaly::EntryIntegrityFailure {
-                sequence: 0
-            })
-    );
+    assert!(report
+        .anomalies
+        .contains(&sovereign_audit::ReconstructionAnomaly::EntryIntegrityFailure { sequence: 0 }));
 }
 
 #[test]
@@ -134,14 +104,12 @@ fn test_sequence_gap_yields_gap_anomaly() {
 
     let report = AuditReconstructionReport::reconstruct_entries(&entries);
 
-    assert!(
-        report
-            .anomalies
-            .contains(&sovereign_audit::ReconstructionAnomaly::SequenceGap {
-                expected: 1,
-                observed: 2
-            })
-    );
+    assert!(report
+        .anomalies
+        .contains(&sovereign_audit::ReconstructionAnomaly::SequenceGap {
+            expected: 1,
+            observed: 2
+        }));
 }
 
 #[test]
@@ -154,13 +122,9 @@ fn test_predecessor_hash_mismatch_yields_linkage_failure() {
 
     let report = AuditReconstructionReport::reconstruct_entries(&entries);
 
-    assert!(
-        report
-            .anomalies
-            .contains(&sovereign_audit::ReconstructionAnomaly::PreviousDigestMismatch {
-                sequence: 1
-            })
-    );
+    assert!(report
+        .anomalies
+        .contains(&sovereign_audit::ReconstructionAnomaly::PreviousDigestMismatch { sequence: 1 }));
 }
 
 #[test]

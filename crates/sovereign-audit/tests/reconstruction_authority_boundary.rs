@@ -1,7 +1,4 @@
-use sovereign_audit::{
-    AuditReconstructionReport,
-    ReconstructionStatus,
-};
+use sovereign_audit::{AuditReconstructionReport, ReconstructionStatus};
 
 #[test]
 fn test_authority_boundary_has_no_execution_surface() {

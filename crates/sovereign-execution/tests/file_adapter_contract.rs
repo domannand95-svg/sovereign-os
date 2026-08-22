@@ -1,16 +1,9 @@
 use tempfile::tempdir;
 
-use sovereign_audit::authorization_receipt::{
-    AuthorizationReceipt,
-    ReceiptAuthenticationResult,
-};
+use sovereign_audit::authorization_receipt::{AuthorizationReceipt, ReceiptAuthenticationResult};
 
 use sovereign_execution::{
-    ExecutionError,
-    ExecutionOutcome,
-    FileCreationAdapter,
-    FileCreationOperation,
-    GovernedExecutor,
+    ExecutionError, ExecutionOutcome, FileCreationAdapter, FileCreationOperation, GovernedExecutor,
 };
 
 fn test_content() -> &'static [u8] {
@@ -145,6 +138,3 @@ fn content_hash_mismatch_is_rejected() {
 
     assert!(!operation.verify_content(b"modified content"));
 }
-
-
-

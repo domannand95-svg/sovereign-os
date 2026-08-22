@@ -24,18 +24,13 @@ struct NormalizedIntent {
 }
 
 impl NormalizedIntent {
-    fn from_proposal(
-        proposal: &AgentProposal,
-    ) -> Result<Self, &'static str> {
-        if proposal.requested_operation == "DELETE"
-            && proposal.requested_scope == "single_customer"
+    fn from_proposal(proposal: &AgentProposal) -> Result<Self, &'static str> {
+        if proposal.requested_operation == "DELETE" && proposal.requested_scope == "single_customer"
         {
             Ok(Self {
                 proposal_reference: proposal.proposal_id.clone(),
                 normalized_operation: NormalizedOperation::DeleteRecord,
-                normalized_scope: ScopeReference::SingleCustomer(
-                    "mock_id".to_string(),
-                ),
+                normalized_scope: ScopeReference::SingleCustomer("mock_id".to_string()),
                 risk_classification: "High".to_string(),
             })
         } else {
@@ -43,7 +38,6 @@ impl NormalizedIntent {
         }
     }
 }
-
 
 #[test]
 fn test_normalization_creates_typed_artifact_without_authority() {
@@ -53,9 +47,7 @@ fn test_normalization_creates_typed_artifact_without_authority() {
         requested_scope: "single_customer".to_string(),
     };
 
-    let intent =
-        NormalizedIntent::from_proposal(&proposal)
-            .expect("Should normalize cleanly");
+    let intent = NormalizedIntent::from_proposal(&proposal).expect("Should normalize cleanly");
 
     assert_eq!(intent.proposal_reference, "prop_001");
 
@@ -64,12 +56,8 @@ fn test_normalization_creates_typed_artifact_without_authority() {
         NormalizedOperation::DeleteRecord
     );
 
-    assert_eq!(
-        intent.risk_classification,
-        "High"
-    );
+    assert_eq!(intent.risk_classification, "High");
 }
-
 
 #[test]
 fn test_normalization_does_not_expand_requested_scope() {
@@ -79,18 +67,13 @@ fn test_normalization_does_not_expand_requested_scope() {
         requested_scope: "single_customer".to_string(),
     };
 
-    let intent =
-        NormalizedIntent::from_proposal(&proposal)
-            .expect("Should normalize cleanly");
+    let intent = NormalizedIntent::from_proposal(&proposal).expect("Should normalize cleanly");
 
     assert_eq!(
         intent.normalized_scope,
-        ScopeReference::SingleCustomer(
-            "mock_id".to_string()
-        )
+        ScopeReference::SingleCustomer("mock_id".to_string())
     );
 }
-
 
 #[test]
 fn test_invalid_intent_is_rejected() {
@@ -100,11 +83,8 @@ fn test_invalid_intent_is_rejected() {
         requested_scope: "unknown_scope".to_string(),
     };
 
-    assert!(
-        NormalizedIntent::from_proposal(&proposal).is_err()
-    );
+    assert!(NormalizedIntent::from_proposal(&proposal).is_err());
 }
-
 
 #[test]
 fn test_normalization_is_deterministic() {
@@ -114,21 +94,12 @@ fn test_normalization_is_deterministic() {
         requested_scope: "single_customer".to_string(),
     };
 
-    let first =
-        NormalizedIntent::from_proposal(&proposal)
-            .unwrap();
+    let first = NormalizedIntent::from_proposal(&proposal).unwrap();
 
-    let second =
-        NormalizedIntent::from_proposal(&proposal)
-            .unwrap();
+    let second = NormalizedIntent::from_proposal(&proposal).unwrap();
 
-    assert_eq!(
-        first,
-        second,
-        "Normalization must be deterministic"
-    );
+    assert_eq!(first, second, "Normalization must be deterministic");
 }
-
 
 #[test]
 fn test_normalization_preserves_provenance() {
@@ -138,19 +109,13 @@ fn test_normalization_preserves_provenance() {
         requested_scope: "single_customer".to_string(),
     };
 
-    let intent =
-        NormalizedIntent::from_proposal(&proposal)
-            .expect("Should normalize cleanly");
+    let intent = NormalizedIntent::from_proposal(&proposal).expect("Should normalize cleanly");
 
-    assert_eq!(
-        intent.proposal_reference,
-        "prop_trace_001"
-    );
+    assert_eq!(intent.proposal_reference, "prop_trace_001");
 
     // Normalization transforms representation.
     // It does not sever provenance or create authority.
 }
-
 
 #[test]
 fn test_risk_classification_is_not_policy_decision() {
@@ -160,26 +125,14 @@ fn test_risk_classification_is_not_policy_decision() {
         requested_scope: "single_customer".to_string(),
     };
 
-    let intent =
-        NormalizedIntent::from_proposal(&proposal)
-            .unwrap();
+    let intent = NormalizedIntent::from_proposal(&proposal).unwrap();
 
-    assert_eq!(
-        intent.risk_classification,
-        "High"
-    );
+    assert_eq!(intent.risk_classification, "High");
 
-    assert_ne!(
-        intent.risk_classification,
-        "Permit"
-    );
+    assert_ne!(intent.risk_classification, "Permit");
 
-    assert_ne!(
-        intent.risk_classification,
-        "Deny"
-    );
+    assert_ne!(intent.risk_classification, "Deny");
 }
-
 
 #[test]
 fn test_normalized_intent_has_no_execution_surface() {
@@ -189,12 +142,9 @@ fn test_normalized_intent_has_no_execution_surface() {
         requested_scope: "single_customer".to_string(),
     };
 
-    let intent =
-        NormalizedIntent::from_proposal(&proposal)
-            .unwrap();
+    let intent = NormalizedIntent::from_proposal(&proposal).unwrap();
 
-    let intent_size =
-        std::mem::size_of_val(&intent);
+    let intent_size = std::mem::size_of_val(&intent);
 
     assert!(
         intent_size > 0,

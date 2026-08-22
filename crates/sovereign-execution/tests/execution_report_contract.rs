@@ -1,8 +1,4 @@
-use sovereign_execution::{
-    ExecutionAttempt,
-    ExecutionOutcome,
-    ExecutionReport,
-};
+use sovereign_execution::{ExecutionAttempt, ExecutionOutcome, ExecutionReport};
 
 #[test]
 fn execution_report_contains_attempt_and_outcome() {
@@ -19,15 +15,9 @@ fn execution_report_contains_attempt_and_outcome() {
         outcome: ExecutionOutcome::Created,
     };
 
-    assert_eq!(
-        report.attempt.execution_id,
-        "exec-report-001"
-    );
+    assert_eq!(report.attempt.execution_id, "exec-report-001");
 
-    assert_eq!(
-        report.outcome,
-        ExecutionOutcome::Created
-    );
+    assert_eq!(report.outcome, ExecutionOutcome::Created);
 }
 
 #[test]
@@ -38,21 +28,14 @@ fn execution_report_preserves_rejection_without_authority() {
         execution_id: "exec-report-002".into(),
         receipt_reference: "receipt-002".into(),
         operation_reference: "operation-002".into(),
-        outcome: ExecutionOutcome::Rejected(
-            ExecutionError::OperationMismatch
-        ),
+        outcome: ExecutionOutcome::Rejected(ExecutionError::OperationMismatch),
         timestamp: 2001,
     };
 
     let report = ExecutionReport {
         attempt,
-        outcome: ExecutionOutcome::Rejected(
-            ExecutionError::OperationMismatch
-        ),
+        outcome: ExecutionOutcome::Rejected(ExecutionError::OperationMismatch),
     };
 
-    assert_eq!(
-        report.attempt.receipt_reference,
-        "receipt-002"
-    );
+    assert_eq!(report.attempt.receipt_reference, "receipt-002");
 }
