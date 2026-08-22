@@ -1,4 +1,5 @@
 use crate::governance_admission::{AdmissionDecision, AdmissionOutcome};
+use ed25519_dalek::{Signer, SigningKey};
 
 /// Represents the trusted governance node issuing authority artifacts.
 #[derive(Debug, PartialEq, Eq, Clone)]
@@ -166,6 +167,24 @@ impl SignaturePayloadV1 {
         output.extend_from_slice(bytes);
     }
 }
+impl SignaturePayloadV1 {
+    /// Signs the canonical signature payload bytes.
+    ///
+    /// This operation:
+    /// - consumes canonical payload representation
+    /// - performs Ed25519 signing
+    /// - returns the resulting signature
+    ///
+    /// This operation does not:
+    /// - verify signatures
+    /// - resolve issuers
+    /// - mutate receipts
+    /// - grant authority
+    pub fn sign(&self, signing_key: &SigningKey) -> ed25519_dalek::Signature {
+        let canonical_bytes = self.to_canonical_bytes();
+        signing_key.sign(&canonical_bytes)
+    }
+}
 /// Passive authority artifact.
 /// Contains no execution capability.
 #[derive(Debug, PartialEq, Eq, Clone)]
@@ -324,5 +343,57 @@ impl AuthorizationReceipt {
         }
 
         Ok(())
+    }
+}
+
+
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn test_signature_payload() -> SignaturePayloadV1 {
+        SignaturePayloadV1 {
+            receipt_reference: "receipt-001".into(),
+            subject_reference: "subject-001".into(),
+            intent_reference: "intent-001".into(),
+            admission_reference: "admission-001".into(),
+            policy_reference: "policy-001".into(),
+            governance_context_reference: "context-001".into(),
+            authorized_operation: "operation-001".into(),
+            authorized_target: "target-001".into(),
+            authorized_scope: "scope-001".into(),
+            constraints: vec!["constraint-001".into()],
+            issued_at: 1000,
+            expires_at: 2000,
+            issuer_reference: "issuer-001".into(),
+            nonce: "nonce-001".into(),
+            revocation_reference: "revocation-001".into(),
+        }
+    }
+
+    #[test]
+    fn signature_payload_signing_is_deterministic() {
+        let payload = test_signature_payload();
+        let signing_key = SigningKey::from_bytes(&[7u8; 32]);
+
+        let first = payload.sign(&signing_key);
+        let second = payload.sign(&signing_key);
+
+        assert_eq!(first, second);
+    }
+
+    #[test]
+    fn signature_payload_mutation_changes_signature() {
+        let mut payload = test_signature_payload();
+        let signing_key = SigningKey::from_bytes(&[7u8; 32]);
+
+        let original = payload.sign(&signing_key);
+
+        payload.authorized_scope = "modified-scope".into();
+
+        let modified = payload.sign(&signing_key);
+
+        assert_ne!(original, modified);
     }
 }
