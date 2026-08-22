@@ -1,4 +1,4 @@
-use crate::Digest;
+use crate::{AuditLedgerEntry, Digest};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ReconstructionStatus {
@@ -53,5 +53,33 @@ impl AuditReconstructionReport {
             status: ReconstructionStatus::Valid,
             anomalies: Vec::new(),
         }
+    }
+
+    pub fn reconstruct_entries(entries: &[AuditLedgerEntry]) -> Self {
+        let mut report = Self::empty();
+
+        report.total_entries_inspected = entries.len();
+
+        if let Some(first) = entries.first() {
+            report.genesis_digest = Some(first.entry_digest.clone());
+        }
+
+        if let Some(last) = entries.last() {
+            report.head_digest = Some(last.entry_digest.clone());
+        }
+
+        for entry in entries {
+            if !entry.verify_integrity() {
+                report.status = ReconstructionStatus::Invalid;
+
+                report
+                    .anomalies
+                    .push(ReconstructionAnomaly::EntryIntegrityFailure {
+                        sequence: entry.sequence,
+                    });
+            }
+        }
+
+        report
     }
 }
