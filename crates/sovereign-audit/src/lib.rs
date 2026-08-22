@@ -9,6 +9,7 @@ use std::collections::HashSet;
 use std::fmt;
 
 pub mod authorization_receipt;
+pub mod execution_receipt;
 pub mod governance_admission;
 pub mod governance_projection;
 
@@ -26,6 +27,8 @@ mod reconstruction;
 mod reviewer_finding;
 mod source;
 mod uncertainty;
+
+
 pub use admission::{
     evaluate_admission, AdmittedRecordEquivalence, AuthoritativeA05ReferenceActivation,
     AuthoritativeCanonicalIdentity, AuthoritativeDisputeResolution, AuthoritativeIndependence,
@@ -34,7 +37,6 @@ pub use admission::{
     EvidenceAdmissionResult, EvidenceAdmissionStateRef, EvidenceRelationshipKind,
     ExternalIdentityKind, RecordKindRequirement, ReviewerIndependenceRequirement,
 };
-
 pub use claim::{ClaimError, ClaimKind, ClaimPayload, Substantiation};
 
 pub use disposition::{DispositionDecision, DispositionError, DispositionPayload};
