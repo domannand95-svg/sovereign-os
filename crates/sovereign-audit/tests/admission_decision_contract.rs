@@ -162,3 +162,45 @@ fn test_admission_decision_is_deterministic() {
 
     assert_eq!(first, second);
 }
+
+#[test]
+fn test_lockdown_context_overrides_permit_condition() {
+    let context = GovernanceContext {
+        governance_mode: GovernanceMode::Lockdown,
+    };
+
+    let decision = AdmissionDecision::decide(
+        &EvaluationClassification::ConditionsSatisfied,
+        &context,
+    );
+
+    assert_eq!(
+        decision.outcome,
+        AdmissionOutcome::Deny
+    );
+}
+
+#[test]
+fn test_lockdown_context_overrides_all_positive_classifications() {
+    let context = GovernanceContext {
+        governance_mode: GovernanceMode::Lockdown,
+    };
+
+    let classifications = vec![
+        EvaluationClassification::ConditionsSatisfied,
+        EvaluationClassification::ConditionsUnmet,
+        EvaluationClassification::MissingEvidence,
+    ];
+
+    for classification in classifications {
+        let decision = AdmissionDecision::decide(
+            &classification,
+            &context,
+        );
+
+        assert_eq!(
+            decision.outcome,
+            AdmissionOutcome::Deny
+        );
+    }
+}
