@@ -1,4 +1,5 @@
 #[derive(Debug, PartialEq, Eq, Clone)]
+#[allow(dead_code)]
 enum EvaluationClassification {
     ConditionsSatisfied,
     ConditionsUnmet,
