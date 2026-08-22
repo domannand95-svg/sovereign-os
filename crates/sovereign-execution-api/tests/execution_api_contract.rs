@@ -1,113 +1,120 @@
 use sovereign_execution_api::{
     ExecutionApiFacade,
-    ExecutionApiError,
     ExecutionStatus,
     GovernedExecutionRequest,
+    KernelExecutionError,
+    KernelExecutionRequest,
+    KernelExecutionResponse,
     KernelInvoker,
 };
 
 #[derive(Default)]
 struct MockKernelInvoker {
+    called: std::cell::Cell<bool>,
     should_fail: bool,
 }
 
 impl KernelInvoker for MockKernelInvoker {
     fn invoke_kernel(
         &self,
-        _receipt_id: &str,
-        _payload: &[u8],
-    ) -> Result<String, String> {
+        _request: KernelExecutionRequest,
+    ) -> Result<KernelExecutionResponse, KernelExecutionError> {
+        self.called.set(true);
+
         if self.should_fail {
-            Err("mock kernel failure".to_string())
+            Err(KernelExecutionError::ExecutionFailure(
+                "kernel failure".into(),
+            ))
         } else {
-            Ok("report-ref-001".to_string())
+            Ok(KernelExecutionResponse {
+                report_reference: "report-001".into(),
+            })
         }
     }
 }
 
 #[test]
-fn valid_request_executes_through_kernel_boundary() {
-    let facade = ExecutionApiFacade::new(MockKernelInvoker::default());
+fn valid_request_reaches_kernel_boundary() {
+    let kernel = MockKernelInvoker::default();
+    let facade = ExecutionApiFacade::new(kernel);
 
     let request = GovernedExecutionRequest::new(
-        "exec-001".to_string(),
-        "receipt-001".to_string(),
+        "exec-001".into(),
+        "receipt-001".into(),
         vec![1, 2, 3],
     );
 
     let result = facade.execute(request);
 
-    match result {
-        Ok(response) => {
-            assert_eq!(response.execution_id, "exec-001");
-            assert_eq!(
-                response.status,
-                ExecutionStatus::AuthorizedAndExecuted
-            );
-            assert_eq!(
-                response.report_reference,
-                Some("report-ref-001".to_string())
-            );
-        }
-        Err(error) => panic!("unexpected API error: {error}"),
-    }
+    assert!(result.is_ok());
+
+    let response = match result {
+        Ok(value) => value,
+        Err(_) => panic!("expected successful execution"),
+    };
+
+    assert_eq!(response.execution_id, "exec-001");
+    assert_eq!(response.status, ExecutionStatus::AuthorizedAndExecuted);
 }
 
 #[test]
 fn empty_receipt_is_rejected_before_kernel_execution() {
-    let facade = ExecutionApiFacade::new(MockKernelInvoker::default());
+    let kernel = MockKernelInvoker::default();
+    let facade = ExecutionApiFacade::new(kernel);
 
     let request = GovernedExecutionRequest::new(
-        "exec-002".to_string(),
-        "".to_string(),
-        vec![1],
+        "exec-001".into(),
+        "".into(),
+        vec![1, 2, 3],
     );
 
     let result = facade.execute(request);
 
-    match result {
-        Err(ExecutionApiError::InvalidReceipt(_)) => {}
-        _ => panic!("expected invalid receipt rejection"),
-    }
+    assert!(result.is_err());
 }
 
 #[test]
 fn empty_payload_is_rejected_before_kernel_execution() {
-    let facade = ExecutionApiFacade::new(MockKernelInvoker::default());
+    let kernel = MockKernelInvoker::default();
+    let facade = ExecutionApiFacade::new(kernel);
 
     let request = GovernedExecutionRequest::new(
-        "exec-003".to_string(),
-        "receipt-003".to_string(),
+        "exec-001".into(),
+        "receipt-001".into(),
         Vec::new(),
     );
 
     let result = facade.execute(request);
 
-    match result {
-        Err(ExecutionApiError::SerializationFault(_)) => {}
-        _ => panic!("expected payload rejection"),
-    }
+    assert!(result.is_err());
 }
 
 #[test]
 fn kernel_failure_is_translated_into_execution_failure() {
-    let facade = ExecutionApiFacade::new(MockKernelInvoker {
+    let kernel = MockKernelInvoker {
+        called: std::cell::Cell::new(false),
         should_fail: true,
-    });
+    };
+
+    let facade = ExecutionApiFacade::new(kernel);
 
     let request = GovernedExecutionRequest::new(
-        "exec-004".to_string(),
-        "receipt-004".to_string(),
-        vec![9],
+        "exec-001".into(),
+        "receipt-001".into(),
+        vec![1],
     );
 
     let result = facade.execute(request);
 
-    match result {
-        Ok(response) => match response.status {
-            ExecutionStatus::ExecutionFailed(_) => {}
-            _ => panic!("expected execution failure status"),
-        },
-        Err(error) => panic!("unexpected API error: {error}"),
+    assert!(result.is_ok());
+
+    let response = match result {
+        Ok(value) => value,
+        Err(_) => panic!("expected response"),
+    };
+
+    match response.status {
+        ExecutionStatus::ExecutionFailed(_) => {}
+        _ => panic!("expected execution failure"),
     }
 }

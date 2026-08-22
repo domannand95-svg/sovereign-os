@@ -1,5 +1,11 @@
 use sovereign_execution_api::{
-    ExecutionApiFacade, ExecutionStatus, GovernedExecutionRequest, KernelInvoker,
+    ExecutionApiFacade,
+    ExecutionStatus,
+    GovernedExecutionRequest,
+    KernelExecutionError,
+    KernelExecutionRequest,
+    KernelExecutionResponse,
+    KernelInvoker,
 };
 
 #[derive(Default)]
@@ -9,13 +15,20 @@ struct MockKernelInvoker {
 }
 
 impl KernelInvoker for MockKernelInvoker {
-    fn invoke_kernel(&self, _receipt_id: &str, _payload: &[u8]) -> Result<String, String> {
+    fn invoke_kernel(
+        &self,
+        _request: KernelExecutionRequest,
+    ) -> Result<KernelExecutionResponse, KernelExecutionError> {
         self.called.set(true);
 
         if self.should_fail {
-            Err("kernel failure".into())
+            Err(KernelExecutionError::ExecutionFailure(
+                "kernel failure".into(),
+            ))
         } else {
-            Ok("report-001".into())
+            Ok(KernelExecutionResponse {
+                report_reference: "report-001".into(),
+            })
         }
     }
 }
