@@ -1,14 +1,23 @@
 //! Deterministic directive-admission policy primitives for Sovereign OS.
 
+// ============================================================================
+// BETA-015 Governance Boundaries
+// ============================================================================
+
 pub mod decision;
 pub mod intent;
 pub mod proposal;
 pub mod risk;
 
+// Public governance primitives
 pub use decision::*;
 pub use intent::*;
 pub use proposal::*;
 pub use risk::*;
+
+// ============================================================================
+// Legacy Directive Admission Boundary
+// ============================================================================
 
 use sovereign_ledger::EventType;
 
