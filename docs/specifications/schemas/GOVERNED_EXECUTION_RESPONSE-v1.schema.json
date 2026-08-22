@@ -1,0 +1,35 @@
+﻿{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "sovereign-os://schemas/governed-execution-response-v1.json",
+  "title": "GovernedExecutionResponse",
+  "description": "BETA-026 Frozen v1.0 — Execution API Response Contract",
+  "type": "object",
+  "properties": {
+    "execution_id": {
+      "type": "string",
+      "description": "Echoes the execution identifier from the request."
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "AuthorizedAndExecuted",
+        "AuthenticationFailed",
+        "ExecutionFailed"
+      ],
+      "description": "Sanitized execution outcome. Failure diagnostics are not exposed through this boundary."
+    },
+    "report_reference": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "description": "Optional reference to audit execution details."
+    }
+  },
+  "required": [
+    "execution_id",
+    "status",
+    "report_reference"
+  ],
+  "additionalProperties": false
+}

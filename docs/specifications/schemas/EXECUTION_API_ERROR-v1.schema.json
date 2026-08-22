@@ -1,0 +1,36 @@
+﻿{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "sovereign-os://schemas/execution-api-error-v1.json",
+  "title": "ExecutionApiError",
+  "description": "BETA-026 Frozen v1.0 — Execution API Error Taxonomy",
+  "type": "object",
+  "properties": {
+    "error_type": {
+      "type": "string",
+      "enum": [
+        "ValidationFailure",
+        "AuthorizationFailure",
+        "KernelRejection",
+        "ExecutionFailure",
+        "TransportFailure"
+      ],
+      "description": "Governance error category following the execution precedence chain."
+    },
+    "message": {
+      "type": "string",
+      "description": "Sanitized human-readable error message."
+    },
+    "details": {
+      "type": [
+        "object",
+        "null"
+      ],
+      "description": "Optional internal diagnostic context. Not exposed through execution status."
+    }
+  },
+  "required": [
+    "error_type",
+    "message"
+  ],
+  "additionalProperties": false
+}
