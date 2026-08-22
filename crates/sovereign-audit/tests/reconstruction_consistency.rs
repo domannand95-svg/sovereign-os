@@ -80,3 +80,24 @@ fn test_reconstruction_consistency_does_not_mutate_input() {
         "reconstruction consistency observation must not mutate input evidence"
     );
 }
+
+#[test]
+fn test_reconstruction_consistency_remains_stable_across_iterations() {
+    let first = fixture_entry(0, genesis_digest());
+
+    let second = fixture_entry(1, first.entry_digest.clone());
+
+    let entries = vec![first, second];
+
+    let baseline = AuditReconstructionReport::reconstruct_entries(&entries);
+
+    for _ in 0..100 {
+        let report = AuditReconstructionReport::reconstruct_entries(&entries);
+
+        assert_eq!(
+            report,
+            baseline,
+            "identical historical evidence must yield identical reconstruction results"
+        );
+    }
+}
