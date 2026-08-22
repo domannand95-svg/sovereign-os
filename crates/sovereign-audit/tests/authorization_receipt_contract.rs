@@ -176,9 +176,8 @@ fn test_ar_008_identity_changes_with_canonical_input() {
     let first = AuthorizationReceiptIdentity::derive(&a);
     let second = AuthorizationReceiptIdentity::derive(&b);
 
-    assert_ne!(first.receipt_id, second.receipt_id);
+    assert_ne!(first.digest, second.digest);
 }
-
 // --- BETA-024-E: RECEIPT CONTRACT EXPANSION ---
 
 #[test]
@@ -196,9 +195,8 @@ fn test_ar_009_identity_mutates_on_admission_change() {
     let id_base = AuthorizationReceiptIdentity::derive(&base_payload);
     let id_mutated = AuthorizationReceiptIdentity::derive(&mutated_payload);
 
-    assert_ne!(id_base.receipt_id, id_mutated.receipt_id);
+    assert_ne!(id_base.digest, id_mutated.digest);
 }
-
 #[test]
 fn test_ar_010_identity_mutates_on_subject_change() {
     let base_payload = CanonicalAuthorizationReceiptIdentityPayloadV1 {
@@ -214,9 +212,8 @@ fn test_ar_010_identity_mutates_on_subject_change() {
     let id_base = AuthorizationReceiptIdentity::derive(&base_payload);
     let id_mutated = AuthorizationReceiptIdentity::derive(&mutated_payload);
 
-    assert_ne!(id_base.receipt_id, id_mutated.receipt_id);
+    assert_ne!(id_base.digest, id_mutated.digest);
 }
-
 #[test]
 fn test_ar_011_identity_mutates_on_issuance_time_change() {
     let base_payload = CanonicalAuthorizationReceiptIdentityPayloadV1 {
@@ -232,9 +229,8 @@ fn test_ar_011_identity_mutates_on_issuance_time_change() {
     let id_base = AuthorizationReceiptIdentity::derive(&base_payload);
     let id_mutated = AuthorizationReceiptIdentity::derive(&mutated_payload);
 
-    assert_ne!(id_base.receipt_id, id_mutated.receipt_id);
+    assert_ne!(id_base.digest, id_mutated.digest);
 }
-
 #[test]
 fn test_ar_012_receipt_is_passive_data_without_execution_surface() {
     fn assert_passive_data<T: Send + Sync + 'static + Clone + Eq>() {}
@@ -256,7 +252,25 @@ fn test_ar_013_identical_payloads_yield_identical_identity() {
     let second = first.clone();
 
     assert_eq!(
-        AuthorizationReceiptIdentity::derive(&first).receipt_id,
-        AuthorizationReceiptIdentity::derive(&second).receipt_id
+        AuthorizationReceiptIdentity::derive(&first).digest,
+        AuthorizationReceiptIdentity::derive(&second).digest
     );
+}
+
+// AR-014: Digest derivation is deterministic
+
+#[test]
+fn test_ar_014_digest_derivation_is_deterministic() {
+    let payload = CanonicalAuthorizationReceiptIdentityPayloadV1 {
+        admission_reference: "adm_01".to_string(),
+        subject_reference: "agent_42".to_string(),
+        issued_at: 1000,
+        nonce: "nonce_123".to_string(),
+    };
+
+    let first = AuthorizationReceiptIdentity::derive(&payload);
+    let second = AuthorizationReceiptIdentity::derive(&payload);
+
+    assert_eq!(first.digest, second.digest);
+    assert_eq!(first.digest.len(), 32);
 }

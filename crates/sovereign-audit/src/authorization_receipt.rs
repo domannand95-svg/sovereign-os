@@ -58,26 +58,30 @@ impl CanonicalAuthorizationReceiptIdentityPayloadV1 {
 }
 
 /// Deterministic receipt identity boundary.
+///
+/// Identity derivation is based only on canonical bytes.
+/// This provides deterministic identity, not authentication.
+///
+/// Digest != Signature.
+/// Identity != Authentication.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct AuthorizationReceiptIdentity {
-    pub receipt_id: String,
+    pub digest: [u8; 32],
 }
 
 impl AuthorizationReceiptIdentity {
-    pub fn derive(payload: &CanonicalAuthorizationReceiptIdentityPayloadV1) -> Self {
+    pub fn derive(
+        payload: &CanonicalAuthorizationReceiptIdentityPayloadV1,
+    ) -> Self {
         let canonical_bytes = payload.to_canonical_bytes();
 
-        let digest = format!(
-            "canonical::{:x?}",
-            canonical_bytes
-        );
+        let digest = blake3::hash(&canonical_bytes);
 
         Self {
-            receipt_id: digest,
+            digest: *digest.as_bytes(),
         }
     }
 }
-
 /// Deferred signing payload.
 /// Cryptographic signing is intentionally not implemented.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -164,8 +168,8 @@ impl AuthorizationReceipt {
 
         let identity = AuthorizationReceiptIdentity::derive(&identity_payload);
 
-        let receipt = Self {
-            receipt_reference: identity.receipt_id,
+let receipt = Self {
+    receipt_reference: hex::encode(identity.digest),
             subject_reference: subject.to_string(),
             intent_reference: intent_ref.to_string(),
             admission_reference: decision.decision_reference.clone(),
