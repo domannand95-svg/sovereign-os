@@ -70,9 +70,7 @@ pub struct AuthorizationReceiptIdentity {
 }
 
 impl AuthorizationReceiptIdentity {
-    pub fn derive(
-        payload: &CanonicalAuthorizationReceiptIdentityPayloadV1,
-    ) -> Self {
+    pub fn derive(payload: &CanonicalAuthorizationReceiptIdentityPayloadV1) -> Self {
         let canonical_bytes = payload.to_canonical_bytes();
 
         let digest = blake3::hash(&canonical_bytes);
@@ -82,17 +80,92 @@ impl AuthorizationReceiptIdentity {
         }
     }
 }
-/// Deferred signing payload.
-/// Cryptographic signing is intentionally not implemented.
+/// Canonical payload used for cryptographic receipt authentication.
+///
+/// This payload is separate from identity derivation.
+/// It binds the complete authorization context to the issuer signature.
+///
+/// SignaturePayloadV1:
+///     identity reference
+///     +
+///     authority context
+///
+/// Signature authenticity is implemented in a later boundary.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SignaturePayloadV1 {
     pub receipt_reference: String,
+
+    pub subject_reference: String,
+
     pub intent_reference: String,
+    pub admission_reference: String,
+    pub policy_reference: String,
+    pub governance_context_reference: String,
+
+    pub authorized_operation: String,
+    pub authorized_target: String,
     pub authorized_scope: String,
+
+    pub constraints: Vec<String>,
+
+    pub issued_at: u64,
     pub expires_at: u64,
+
     pub issuer_reference: String,
+    pub nonce: String,
+
+    pub revocation_reference: String,
 }
 
+impl SignaturePayloadV1 {
+    const DOMAIN_SEPARATOR: &'static [u8] = b"SOV:AR:SIG:V1";
+
+    /// Deterministic canonical signing payload encoding.
+    ///
+    /// This produces signing input only.
+    /// It does not sign or verify.
+    pub fn to_canonical_bytes(&self) -> Vec<u8> {
+        let mut output = Vec::new();
+
+        output.extend_from_slice(Self::DOMAIN_SEPARATOR);
+
+        Self::encode_string(&mut output, &self.receipt_reference);
+
+        Self::encode_string(&mut output, &self.subject_reference);
+
+        Self::encode_string(&mut output, &self.intent_reference);
+        Self::encode_string(&mut output, &self.admission_reference);
+        Self::encode_string(&mut output, &self.policy_reference);
+        Self::encode_string(&mut output, &self.governance_context_reference);
+
+        Self::encode_string(&mut output, &self.authorized_operation);
+        Self::encode_string(&mut output, &self.authorized_target);
+        Self::encode_string(&mut output, &self.authorized_scope);
+
+        output.extend_from_slice(&(self.constraints.len() as u32).to_be_bytes());
+
+        for constraint in &self.constraints {
+            Self::encode_string(&mut output, constraint);
+        }
+
+        output.extend_from_slice(&self.issued_at.to_be_bytes());
+        output.extend_from_slice(&self.expires_at.to_be_bytes());
+
+        Self::encode_string(&mut output, &self.issuer_reference);
+        Self::encode_string(&mut output, &self.nonce);
+        Self::encode_string(&mut output, &self.revocation_reference);
+
+        output
+    }
+
+    fn encode_string(output: &mut Vec<u8>, value: &str) {
+        let bytes = value.as_bytes();
+
+        output.extend_from_slice(&(bytes.len() as u32).to_be_bytes());
+
+        output.extend_from_slice(bytes);
+    }
+}
 /// Passive authority artifact.
 /// Contains no execution capability.
 #[derive(Debug, PartialEq, Eq, Clone)]
@@ -168,8 +241,8 @@ impl AuthorizationReceipt {
 
         let identity = AuthorizationReceiptIdentity::derive(&identity_payload);
 
-let receipt = Self {
-    receipt_reference: hex::encode(identity.digest),
+        let receipt = Self {
+            receipt_reference: hex::encode(identity.digest),
             subject_reference: subject.to_string(),
             intent_reference: intent_ref.to_string(),
             admission_reference: decision.decision_reference.clone(),
