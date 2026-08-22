@@ -1,9 +1,9 @@
 [package]
 name = "sovereign-execution-api"
 version = "0.1.0"
-edition = "2021"
+edition = "2021"`nlicense = "MIT"
 
 [dependencies]
-sovereign-audit = { path = "../sovereign-audit" }
-sovereign-execution = { path = "../sovereign-execution" }
+sovereign-audit = { version = "0.1.0", path = "../sovereign-audit" }
+sovereign-execution = { version = "0.1.0", path = "../sovereign-execution" }
 serde = { version = "1.0", features = ["derive"] }
