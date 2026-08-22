@@ -1,12 +1,12 @@
 ---
 Document: Engineering Handbook Index
 ID: DOC-INDEX-001
-Version: 2.4
+Version: 2.5
 Status: Stable
 Owner: Repository Maintainer
 Reviewers:
   - Core Reviewers
-Last Updated: 2026-08-11
+Last Updated: 2026-08-23
 Depends On:
   - GOV-CORE-001
 Supersedes:
@@ -48,6 +48,8 @@ The Engineering Handbook is the authoritative documentation set describing the p
   timestamps, and canonical binary-encoding rules
 - `integration/BKI-SOS-PROFILE-001.md` - proposed versioned metadata and
   language boundary for read-only BKI compatibility
+- `handover/SOVEREIGN_OS_BETA025_EXECUTION_BOUNDARY.md` - execution boundary
+  and API translation layer definition
 
 ---
 
@@ -102,6 +104,8 @@ Research documentation:
 ---
 
 ## Changelog
+
+- **v2.5 (2026-08-23)** Recorded the BETA-025 execution boundary and API translation layer implementation.
 
 - **v2.4 (2026-08-16)** Added the Authority-Epistemics Separation baseline.
 - **v2.3 (2026-08-11)** Recorded the owner-approved A04 v1 binary-encoding

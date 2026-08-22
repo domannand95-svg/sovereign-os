@@ -1,0 +1,9 @@
+[package]
+name = "sovereign-execution-api"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+sovereign-audit = { path = "../sovereign-audit" }
+sovereign-execution = { path = "../sovereign-execution" }
+serde = { version = "1.0", features = ["derive"] }
