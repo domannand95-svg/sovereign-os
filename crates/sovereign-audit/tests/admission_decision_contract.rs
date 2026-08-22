@@ -1,3 +1,4 @@
+#![allow(clippy::assertions_on_constants, clippy::eq_op)]
 #[derive(Debug, PartialEq, Eq, Clone)]
 enum EvaluationClassification {
     ConditionsSatisfied,

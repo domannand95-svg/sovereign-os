@@ -1,3 +1,4 @@
+#![allow(clippy::const_is_empty, clippy::assertions_on_constants)]
 #[derive(Debug, Clone, PartialEq, Eq)]
 struct AgentProposal {
     proposal_id: String,
