@@ -1,0 +1,105 @@
+use sovereign_audit::authorization_receipt::{
+    AuthorizationReceipt,
+    ReceiptAuthenticationResult,
+};
+
+use sovereign_execution::{
+    ExecutionError,
+    ExecutionResult,
+    FileCreationAdapter,
+    FileCreationOperation,
+    GovernedExecutor,
+};
+
+fn test_operation() -> FileCreationOperation {
+    FileCreationOperation {
+        path: "archive/test.md".to_string(),
+        content_hash: [1u8; 32],
+    }
+}
+
+fn test_receipt() -> AuthorizationReceipt {
+    AuthorizationReceipt {
+        receipt_reference: "receipt-001".into(),
+        subject_reference: "subject-001".into(),
+        intent_reference: "intent-001".into(),
+        admission_reference: "admission-001".into(),
+        policy_reference: "policy-001".into(),
+        governance_context_reference: "context-001".into(),
+        authorized_operation: "file_create".into(),
+        authorized_target: "archive/test.md".into(),
+        authorized_scope: "archive".into(),
+        constraints: vec![],
+        issued_at: 1000,
+        expires_at: 2000,
+        revocation_reference: "none".into(),
+        issuer_reference: "issuer-001".into(),
+        nonce: "nonce-001".into(),
+        signature: "signature".into(),
+    }
+}
+
+#[test]
+fn valid_authentication_is_accepted() {
+    let adapter = FileCreationAdapter;
+
+    let result = adapter.execute(
+        &test_receipt(),
+        ReceiptAuthenticationResult::Valid,
+        &test_operation(),
+        &test_operation(),
+    );
+
+    assert_eq!(result, Ok(ExecutionResult::Accepted));
+}
+
+#[test]
+fn invalid_authentication_is_rejected() {
+    let adapter = FileCreationAdapter;
+
+    let result = adapter.execute(
+        &test_receipt(),
+        ReceiptAuthenticationResult::Invalid,
+        &test_operation(),
+        &test_operation(),
+    );
+
+    assert_eq!(result, Err(ExecutionError::Unauthenticated));
+}
+
+#[test]
+fn matching_operation_is_accepted() {
+    let adapter = FileCreationAdapter;
+
+    let operation = test_operation();
+
+    let result = adapter.execute(
+        &test_receipt(),
+        ReceiptAuthenticationResult::Valid,
+        &operation,
+        &operation,
+    );
+
+    assert_eq!(result, Ok(ExecutionResult::Accepted));
+}
+
+#[test]
+fn mutated_operation_is_rejected() {
+    let adapter = FileCreationAdapter;
+
+    let governed = test_operation();
+
+    let requested = FileCreationOperation {
+        path: "archive/other.md".to_string(),
+        content_hash: [1u8; 32],
+    };
+
+    let result = adapter.execute(
+        &test_receipt(),
+        ReceiptAuthenticationResult::Valid,
+        &governed,
+        &requested,
+    );
+
+    assert_eq!(result, Err(ExecutionError::OperationMismatch));
+}
