@@ -189,3 +189,88 @@ mod tests {
         );
     }
 }
+
+#[cfg(test)]
+mod ledger_integration_tests {
+    use super::*;
+    use crate::chain::AuditLedgerChain;
+    use crate::execution_receipt::{
+        ExecutionReceipt,
+        ExecutionReceiptStatus,
+    };
+
+    fn digest(value: &str) -> Digest {
+        Digest(value.to_string())
+    }
+
+    fn identity(value: &str) -> AgentIdentityId {
+        AgentIdentityId(value.to_string())
+    }
+
+    fn receipt() -> ExecutionReceipt {
+        let operation_hash =
+            ExecutionReceipt::derive_operation_hash(
+                "FILE_WRITE",
+                "/data/test.txt",
+            );
+
+        ExecutionReceipt::new(
+            "exec-ledger-001".to_string(),
+            digest("authorization"),
+            ExecutionReceiptStatus::AuthorizedAndExecuted,
+            digest("payload"),
+            operation_hash,
+            1700000000,
+            None,
+        )
+    }
+
+    #[test]
+    fn projected_execution_receipt_appends_to_audit_chain() {
+        let receipt = receipt();
+
+        let entry =
+            ExecutionProjectionAdapter::project(
+                &receipt,
+                0,
+                digest("genesis"),
+                "2026-08-23T00:00:00Z".to_string(),
+                identity("agent-001"),
+            )
+            .expect("projection succeeds");
+
+        let mut chain = AuditLedgerChain::new();
+
+        chain
+            .append(entry)
+            .expect("ledger append succeeds");
+
+        assert_eq!(chain.len(), 1);
+        assert!(chain.verify_chain().is_ok());
+    }
+
+    #[test]
+    fn receipt_identity_is_preserved_in_ledger_subject() {
+        let receipt = receipt();
+
+        let entry =
+            ExecutionProjectionAdapter::project(
+                &receipt,
+                0,
+                digest("genesis"),
+                "2026-08-23T00:00:00Z".to_string(),
+                identity("agent-001"),
+            )
+            .expect("projection succeeds");
+
+        assert_eq!(
+            entry.subject_digest,
+            receipt.receipt_id
+        );
+
+        assert_eq!(
+            entry.payload_digest,
+            receipt.content_digest
+        );
+    }
+}
