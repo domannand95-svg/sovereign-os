@@ -10,6 +10,7 @@ use std::fmt;
 
 pub mod authorization_receipt;
 pub mod governance_admission;
+pub mod governance_projection;
 
 mod admission;
 mod chain;
