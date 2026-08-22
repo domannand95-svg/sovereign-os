@@ -246,3 +246,32 @@ fn test_missing_evidence_is_not_automatic_admission() {
         EvaluationClassification::ConditionsSatisfied
     );
 }
+
+#[test]
+fn test_policy_evaluation_does_not_mutate_policy() {
+    let intent = NormalizedIntent {
+        intent_reference: "intent-immutable".into(),
+        operation: "READ".into(),
+    };
+
+    let policy = GovernedPolicy {
+        policy_reference: "policy-immutable".into(),
+        requires_approval: false,
+    };
+
+    let context = EvaluationContext {
+        context_reference: "context-immutable".into(),
+        has_approval: false,
+    };
+
+    let before = policy.clone();
+
+    let _result =
+        PolicyEvaluationResult::evaluate(
+            &intent,
+            &policy,
+            &context,
+        );
+
+    assert_eq!(policy, before);
+}
