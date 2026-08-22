@@ -1,13 +1,14 @@
 //! Deterministic directive-admission policy primitives for Sovereign OS.
 
 pub mod decision;
+pub mod intent;
 pub mod proposal;
 
 pub use decision::*;
+pub use intent::*;
 pub use proposal::*;
 
 use sovereign_ledger::EventType;
-
 /// Immutable input evaluated before a directive may reach durable storage.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct DirectiveRequest<'a> {

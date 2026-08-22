@@ -159,10 +159,7 @@ mod tests {
             authority_expansion: 0,
         };
 
-        assert_eq!(
-            evaluation.decision,
-            DerivedPolicyDecision::Permit
-        );
+        assert_eq!(evaluation.decision, DerivedPolicyDecision::Permit);
 
         assert_eq!(proposal.status(), &ProposalStatus::Draft);
     }
@@ -175,12 +172,10 @@ mod tests {
 
         assert_eq!(proposal.status(), &ProposalStatus::Validated);
 
-        proposal.update_operation(
-            ProposedOperation::QuarantineEntity {
-                entity_id: "ENTITY-X".to_string(),
-                reason: "updated".to_string(),
-            },
-        );
+        proposal.update_operation(ProposedOperation::QuarantineEntity {
+            entity_id: "ENTITY-X".to_string(),
+            reason: "updated".to_string(),
+        });
 
         assert_eq!(proposal.status(), &ProposalStatus::Draft);
     }
