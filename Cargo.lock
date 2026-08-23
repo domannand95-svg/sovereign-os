@@ -1866,6 +1866,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "sovereign-base44-adapter"
+version = "0.1.0"
+dependencies = [
+ "hex",
+ "serde",
+ "serde_json",
+ "sha2",
+ "sovereign-execution-api",
+ "thiserror",
+]
+
+[[package]]
 name = "sovereign-core-asm"
 version = "0.1.0"
 

@@ -1,4 +1,4 @@
-[graph]
+﻿[graph]
 all-features = true
 
 [advisories]
@@ -112,3 +112,4 @@ allow = ["Unicode-3.0"]
 [[licenses.exceptions]]
 crate = "zerovec-derive@0.11.6"
 allow = ["Unicode-3.0"]
+

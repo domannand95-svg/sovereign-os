@@ -1,0 +1,36 @@
+﻿{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "sovereign-os://schemas/governed-execution-request-v1.json",
+  "title": "GovernedExecutionRequest",
+  "description": "BETA-026 Frozen v1.0 — Execution API Request Contract",
+  "type": "object",
+  "properties": {
+    "execution_id": {
+      "type": "string",
+      "description": "Caller-supplied execution identifier for traceability.",
+      "minLength": 1,
+      "maxLength": 128
+    },
+    "authorization_receipt_id": {
+      "type": "string",
+      "description": "Canonical authorization receipt reference.",
+      "pattern": "^[a-fA-F0-9]{64}$"
+    },
+    "operation_payload": {
+      "type": "array",
+      "description": "Operation payload bytes.",
+      "items": {
+        "type": "integer",
+        "minimum": 0,
+        "maximum": 255
+      },
+      "maxItems": 65536
+    }
+  },
+  "required": [
+    "execution_id",
+    "authorization_receipt_id",
+    "operation_payload"
+  ],
+  "additionalProperties": false
+}
