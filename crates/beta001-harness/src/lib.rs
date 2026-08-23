@@ -16,3 +16,4 @@ pub mod telemetry;
 pub mod replay;
 
 pub mod proposal;
+pub mod risk;
