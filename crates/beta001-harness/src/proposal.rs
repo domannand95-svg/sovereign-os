@@ -1,7 +1,7 @@
 //! ADAM-010-A: Governed Action Proposal
 //! 
 //! Canonical data contract representing an evaluated intelligence proposal.
-//! Invariant: Proposal != Execution (Δ Authority = 0)
+//! Invariant: Proposal != Execution (Î” Authority = 0)
 
 use serde::{Deserialize, Serialize};
 
@@ -55,7 +55,7 @@ impl GovernedActionProposal {
         
         // Lexicographical string comparison for strict ISO8601 dates
         let current_time = "2026-08-24T00:00:00Z";
-        if self.expiration_timestamp < current_time.to_string() {
+        if self.expiration_timestamp.as_str() < current_time {
             return Err(ProposalValidationError::ExpiredProposal);
         }
         
