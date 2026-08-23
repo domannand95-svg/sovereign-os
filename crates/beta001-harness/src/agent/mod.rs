@@ -217,3 +217,7 @@ impl AgentBackend for LocalOpenAiCompatibleBackend {
         })
     }
 }
+
+pub mod external;
+
+pub use external::ExternalApiBackend;
