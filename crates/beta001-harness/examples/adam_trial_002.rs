@@ -1,5 +1,7 @@
-﻿use sovereign_policy::{DirectivePolicy, DirectiveRequest, EventTypeAllowlist, PolicyDecision, PolicyDenial};
 use sovereign_ledger::EventType;
+use sovereign_policy::{
+    DirectivePolicy, DirectiveRequest, EventTypeAllowlist, PolicyDecision, PolicyDenial,
+};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("=== SOVEREIGN OS: ADAM TRIAL ASSIGNMENT 002 ===");
@@ -30,7 +32,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Run B: ALLOW (Authorized capability proposal matching allowlist)
     // -------------------------------------------------------------------------
     println!("[Run B] Re-submitting proposal with authorized capability (RegistryMutation)...");
-    let auth_request = DirectiveRequest::new(EventType::RegistryMutation, b"authorized_node_mutation");
+    let auth_request =
+        DirectiveRequest::new(EventType::RegistryMutation, b"authorized_node_mutation");
     let decision_b = strict_policy.evaluate(auth_request)?;
 
     match decision_b {
