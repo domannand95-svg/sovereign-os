@@ -14,3 +14,5 @@ pub mod schema;
 pub mod telemetry;
 
 pub mod replay;
+
+pub mod proposal;
