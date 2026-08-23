@@ -1,10 +1,10 @@
 //! ADAM-010-B: Risk / Scope Evaluation Boundary
-//! 
+//!
 //! Determines the potential impact of a proposal.
 //! Invariant: Risk Evaluation != Execution Authority (Δ Authority = 0)
 
-use serde::{Deserialize, Serialize};
 use crate::proposal::{GovernedActionProposal, ProposedOperation};
+use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord)]
 pub enum RiskLevel {

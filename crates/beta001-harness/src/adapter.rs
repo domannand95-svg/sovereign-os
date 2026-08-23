@@ -1,11 +1,11 @@
 //! ADAM-010-D: Execution Adapter Isolation
-//! 
+//!
 //! The final boundary before external capability invocation.
 //! Invariant: Adapter Capability != Authority (Δ Authority = 0)
 
+use crate::approval::{ApprovalLevel, ApprovalReceipt, ApprovalValidationError};
 use crate::proposal::GovernedActionProposal;
 use crate::risk::RiskEvaluationContext;
-use crate::approval::{ApprovalReceipt, ApprovalLevel, ApprovalValidationError};
 use std::collections::HashSet;
 use std::sync::Mutex;
 
@@ -43,7 +43,6 @@ impl ExecutionAdapterGate {
         risk_context: &RiskEvaluationContext,
         receipt: &ApprovalReceipt,
     ) -> Result<(), AdapterIsolationError> {
-        
         // 1. Enforce strict cryptographic binding between Receipt and Proposal
         if receipt.proposal_id != proposal.proposal_id {
             return Err(AdapterIsolationError::ProposalMismatch);
@@ -55,17 +54,21 @@ impl ExecutionAdapterGate {
         }
 
         // 3. Perform inherent cryptographic and temporal validation of the Receipt
-        receipt.validate_integrity()
+        receipt
+            .validate_integrity()
             .map_err(AdapterIsolationError::MissingOrInvalidApproval)?;
 
         // 4. Enforce Scope Boundaries strictly dictated by computed Risk Level
         let required_level = match risk_context.risk_level {
             crate::risk::RiskLevel::Low => ApprovalLevel::Peer,
             crate::risk::RiskLevel::Medium => ApprovalLevel::Operator,
-            crate::risk::RiskLevel::High | crate::risk::RiskLevel::Critical => ApprovalLevel::Governance,
+            crate::risk::RiskLevel::High | crate::risk::RiskLevel::Critical => {
+                ApprovalLevel::Governance
+            }
         };
 
-        receipt.verify_scope(required_level)
+        receipt
+            .verify_scope(required_level)
             .map_err(AdapterIsolationError::MissingOrInvalidApproval)?;
 
         // 5. Enforce Anti-Replay Nonce Constraint
@@ -73,7 +76,7 @@ impl ExecutionAdapterGate {
         if cache.contains(&proposal.proposal_id) {
             return Err(AdapterIsolationError::ReplayDetected);
         }
-        
+
         // Lock the execution nonce to immediately burn the approval token
         cache.insert(proposal.proposal_id.clone());
 

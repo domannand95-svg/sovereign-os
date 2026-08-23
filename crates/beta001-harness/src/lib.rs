@@ -15,6 +15,6 @@ pub mod telemetry;
 
 pub mod replay;
 
+pub mod approval;
 pub mod proposal;
 pub mod risk;
-pub mod approval;

@@ -1,9 +1,11 @@
 //! Negative Boundary Tests for ADAM-010-A
-//! 
-//! Proves that the Governed Action Proposal strictly enforces data contracts 
+//!
+//! Proves that the Governed Action Proposal strictly enforces data contracts
 //! and refuses invalid or execution-escalating states.
 
-use beta001_harness::proposal::{GovernedActionProposal, ProposedOperation, ProposalValidationError};
+use beta001_harness::proposal::{
+    GovernedActionProposal, ProposalValidationError, ProposedOperation,
+};
 
 fn valid_base_proposal() -> GovernedActionProposal {
     GovernedActionProposal {
@@ -24,14 +26,20 @@ fn valid_base_proposal() -> GovernedActionProposal {
 fn test_p010_a_001_missing_proposal_identity_rejected() {
     let mut prop = valid_base_proposal();
     prop.proposer_identity = "".to_string();
-    assert_eq!(prop.validate(), Err(ProposalValidationError::InvalidIdentity));
+    assert_eq!(
+        prop.validate(),
+        Err(ProposalValidationError::InvalidIdentity)
+    );
 }
 
 #[test]
 fn test_p010_a_002_missing_evidence_provenance_rejected() {
     let mut prop = valid_base_proposal();
     prop.source_evidence_references.clear();
-    assert_eq!(prop.validate(), Err(ProposalValidationError::MissingEvidence));
+    assert_eq!(
+        prop.validate(),
+        Err(ProposalValidationError::MissingEvidence)
+    );
 }
 
 #[test]
@@ -48,21 +56,30 @@ fn test_p010_a_003_unknown_operation_type_rejected() {
         "expiration_timestamp": "2099-12-31T23:59:59Z",
         "provenance_digest": "hash"
     }"#;
-    
+
     let result: Result<GovernedActionProposal, _> = serde_json::from_str(json_payload);
-    assert!(result.is_err(), "Proposal with unknown operation type must fail strictly at the Serde boundary");
+    assert!(
+        result.is_err(),
+        "Proposal with unknown operation type must fail strictly at the Serde boundary"
+    );
 }
 
 #[test]
 fn test_p010_a_004_expired_proposal_rejected() {
     let mut prop = valid_base_proposal();
     prop.expiration_timestamp = "2020-01-01T00:00:00Z".to_string(); // Date in the past
-    assert_eq!(prop.validate(), Err(ProposalValidationError::ExpiredProposal));
+    assert_eq!(
+        prop.validate(),
+        Err(ProposalValidationError::ExpiredProposal)
+    );
 }
 
 #[test]
 fn test_p010_a_005_proposal_containing_execution_authority_rejected() {
     let mut prop = valid_base_proposal();
     prop.intent = "Attempt to grant_authority to bypass policy constraints".to_string();
-    assert_eq!(prop.validate(), Err(ProposalValidationError::ContainsExecutionAuthority));
+    assert_eq!(
+        prop.validate(),
+        Err(ProposalValidationError::ContainsExecutionAuthority)
+    );
 }

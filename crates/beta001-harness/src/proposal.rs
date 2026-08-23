@@ -1,5 +1,5 @@
 //! ADAM-010-A: Governed Action Proposal
-//! 
+//!
 //! Canonical data contract representing an evaluated intelligence proposal.
 //! Invariant: Proposal != Execution (Î” Authority = 0)
 
@@ -42,32 +42,34 @@ impl GovernedActionProposal {
     /// hostile authorization injections.
     pub fn validate(&self) -> Result<(), ProposalValidationError> {
         if self.schema_version != "v1.0.0" {
-            return Err(ProposalValidationError::UnsupportedSchemaVersion(self.schema_version.clone()));
+            return Err(ProposalValidationError::UnsupportedSchemaVersion(
+                self.schema_version.clone(),
+            ));
         }
-        
+
         if self.proposer_identity.trim().is_empty() {
             return Err(ProposalValidationError::InvalidIdentity);
         }
-        
+
         if self.source_evidence_references.is_empty() {
             return Err(ProposalValidationError::MissingEvidence);
         }
-        
+
         // Lexicographical string comparison for strict ISO8601 dates
         let current_time = "2026-08-24T00:00:00Z";
         if self.expiration_timestamp.as_str() < current_time {
             return Err(ProposalValidationError::ExpiredProposal);
         }
-        
+
         // Semantic boundary: Reject implicit execution or authority escalation attempts
         let lower_intent = self.intent.to_lowercase();
-        if lower_intent.contains("grant_authority") 
-            || lower_intent.contains("execute root") 
-            || lower_intent.contains("bypass policy") 
+        if lower_intent.contains("grant_authority")
+            || lower_intent.contains("execute root")
+            || lower_intent.contains("bypass policy")
         {
             return Err(ProposalValidationError::ContainsExecutionAuthority);
         }
-        
+
         Ok(())
     }
 }

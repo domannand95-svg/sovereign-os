@@ -1,14 +1,21 @@
 //! Negative Boundary Tests for ADAM-010-D
-//! 
-//! Proves that the Execution Adapter Gate strictly enforces integrated governance 
+//!
+//! Proves that the Execution Adapter Gate strictly enforces integrated governance
 //! proofs and refuses bypassed, replayed, or scope-mismatched actions.
 
+use beta001_harness::adapter::{AdapterIsolationError, ExecutionAdapterGate};
+use beta001_harness::approval::{ApprovalLevel, ApprovalReceipt, ApprovalValidationError};
 use beta001_harness::proposal::{GovernedActionProposal, ProposedOperation};
-use beta001_harness::risk::{RiskEvaluator, RiskEvaluationContext};
-use beta001_harness::approval::{ApprovalReceipt, ApprovalLevel, ApprovalValidationError};
-use beta001_harness::adapter::{ExecutionAdapterGate, AdapterIsolationError};
+use beta001_harness::risk::{RiskEvaluationContext, RiskEvaluator};
 
-fn setup_fixtures(op: ProposedOperation, approval_level: ApprovalLevel) -> (GovernedActionProposal, RiskEvaluationContext, ApprovalReceipt) {
+fn setup_fixtures(
+    op: ProposedOperation,
+    approval_level: ApprovalLevel,
+) -> (
+    GovernedActionProposal,
+    RiskEvaluationContext,
+    ApprovalReceipt,
+) {
     let prop = GovernedActionProposal {
         schema_version: "v1.0.0".to_string(),
         proposal_id: "prop-010-d-001".to_string(),
@@ -40,38 +47,48 @@ fn setup_fixtures(op: ProposedOperation, approval_level: ApprovalLevel) -> (Gove
 
 #[test]
 fn test_e010_d_001_missing_or_invalid_approval_rejected() {
-    let (prop, ctx, mut receipt) = setup_fixtures(ProposedOperation::EmitNotification, ApprovalLevel::Peer);
+    let (prop, ctx, mut receipt) =
+        setup_fixtures(ProposedOperation::EmitNotification, ApprovalLevel::Peer);
     receipt.signature = "unsigned".to_string(); // Invalid signature
 
     let gate = ExecutionAdapterGate::new();
     assert_eq!(
         gate.verify_execution_readiness(&prop, &ctx, &receipt),
-        Err(AdapterIsolationError::MissingOrInvalidApproval(ApprovalValidationError::InvalidSignature))
+        Err(AdapterIsolationError::MissingOrInvalidApproval(
+            ApprovalValidationError::InvalidSignature
+        ))
     );
 }
 
 #[test]
 fn test_e010_d_002_wrong_scope_rejected() {
-    // High risk (RequestStateMutation) structurally maps to System BlastRadius and requires Governance approval. 
+    // High risk (RequestStateMutation) structurally maps to System BlastRadius and requires Governance approval.
     // We attempt to bypass by providing Peer approval.
-    let (prop, ctx, receipt) = setup_fixtures(ProposedOperation::RequestStateMutation, ApprovalLevel::Peer);
+    let (prop, ctx, receipt) =
+        setup_fixtures(ProposedOperation::RequestStateMutation, ApprovalLevel::Peer);
 
     let gate = ExecutionAdapterGate::new();
     assert_eq!(
         gate.verify_execution_readiness(&prop, &ctx, &receipt),
-        Err(AdapterIsolationError::MissingOrInvalidApproval(ApprovalValidationError::InsufficientApprovalScope))
+        Err(AdapterIsolationError::MissingOrInvalidApproval(
+            ApprovalValidationError::InsufficientApprovalScope
+        ))
     );
 }
 
 #[test]
 fn test_e010_d_003_replay_rejected() {
-    let (prop, ctx, receipt) = setup_fixtures(ProposedOperation::RequestReview, ApprovalLevel::Operator);
+    let (prop, ctx, receipt) =
+        setup_fixtures(ProposedOperation::RequestReview, ApprovalLevel::Operator);
 
     let gate = ExecutionAdapterGate::new();
-    
+
     // First execution authorization attempt must succeed and burn the token
-    assert_eq!(gate.verify_execution_readiness(&prop, &ctx, &receipt), Ok(()));
-    
+    assert_eq!(
+        gate.verify_execution_readiness(&prop, &ctx, &receipt),
+        Ok(())
+    );
+
     // Immediate replay of the identical evidence package must be rejected
     assert_eq!(
         gate.verify_execution_readiness(&prop, &ctx, &receipt),
@@ -81,8 +98,9 @@ fn test_e010_d_003_replay_rejected() {
 
 #[test]
 fn test_e010_d_004_proposal_mismatch_rejected() {
-    let (prop, ctx, mut receipt) = setup_fixtures(ProposedOperation::EmitNotification, ApprovalLevel::Peer);
-    
+    let (prop, ctx, mut receipt) =
+        setup_fixtures(ProposedOperation::EmitNotification, ApprovalLevel::Peer);
+
     // Receipt points to an alternate proposal identifier
     receipt.proposal_id = "rogue-proposal-xyz".to_string();
 

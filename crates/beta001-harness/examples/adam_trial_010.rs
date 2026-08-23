@@ -1,12 +1,12 @@
 //! ADAM TRIAL 010: Governed Action Boundary Closure
-//! 
+//!
 //! Proves the end-to-end integration of the Governed Action Boundary:
 //! Proposal -> Risk Classification -> Approval Receipt -> Execution Adapter
 
+use beta001_harness::adapter::ExecutionAdapterGate;
+use beta001_harness::approval::{ApprovalLevel, ApprovalReceipt};
 use beta001_harness::proposal::{GovernedActionProposal, ProposedOperation};
 use beta001_harness::risk::RiskEvaluator;
-use beta001_harness::approval::{ApprovalReceipt, ApprovalLevel};
-use beta001_harness::adapter::ExecutionAdapterGate;
 use serde_json::json;
 use std::fs;
 use std::path::Path;
@@ -31,7 +31,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Phase 010-B: Risk / Scope Evaluation
     let risk_context = RiskEvaluator::evaluate_proposal(&proposal);
-    println!("[PASS] 010-B: Risk Classified -> {:?} Risk, {:?} Scope", risk_context.risk_level, risk_context.blast_radius);
+    println!(
+        "[PASS] 010-B: Risk Classified -> {:?} Risk, {:?} Scope",
+        risk_context.risk_level, risk_context.blast_radius
+    );
 
     // Phase 010-C: Approval Receipt
     let receipt = ApprovalReceipt {
@@ -56,16 +59,28 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let evidence_dir = Path::new("docs/evidence/ADAM-TRIAL-010");
     fs::create_dir_all(evidence_dir)?;
 
-    fs::write(evidence_dir.join("proposal.json"), serde_json::to_string_pretty(&proposal)?)?;
-    fs::write(evidence_dir.join("risk_evaluation.json"), serde_json::to_string_pretty(&risk_context)?)?;
-    fs::write(evidence_dir.join("approval_receipt.json"), serde_json::to_string_pretty(&receipt)?)?;
-    
+    fs::write(
+        evidence_dir.join("proposal.json"),
+        serde_json::to_string_pretty(&proposal)?,
+    )?;
+    fs::write(
+        evidence_dir.join("risk_evaluation.json"),
+        serde_json::to_string_pretty(&risk_context)?,
+    )?;
+    fs::write(
+        evidence_dir.join("approval_receipt.json"),
+        serde_json::to_string_pretty(&receipt)?,
+    )?;
+
     let result_json = json!({
         "status": "APPROVED_FOR_EXECUTION",
         "gate_disposition": "PASS",
         "anti_replay_nonce_locked": true
     });
-    fs::write(evidence_dir.join("adapter_result.json"), serde_json::to_string_pretty(&result_json)?)?;
+    fs::write(
+        evidence_dir.join("adapter_result.json"),
+        serde_json::to_string_pretty(&result_json)?,
+    )?;
 
     let manifest = json!({
         "trial": "ADAM-010",
@@ -73,8 +88,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         "delta_authority": 0,
         "timestamp": "2026-08-24T02:10:00Z"
     });
-    fs::write(evidence_dir.join("manifest.json"), serde_json::to_string_pretty(&manifest)?)?;
-    fs::write(evidence_dir.join("replay_digest.txt"), "SEALED_DIGEST_010_TRIAL_SUCCESS")?;
+    fs::write(
+        evidence_dir.join("manifest.json"),
+        serde_json::to_string_pretty(&manifest)?,
+    )?;
+    fs::write(
+        evidence_dir.join("replay_digest.txt"),
+        "SEALED_DIGEST_010_TRIAL_SUCCESS",
+    )?;
 
     println!("[PASS] 010-E: Evidence Package Sealed");
     println!("=== TRIAL SUCCESS: Δ Authority = 0 ===");
