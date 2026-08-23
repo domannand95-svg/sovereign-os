@@ -1,0 +1,10 @@
+{
+  "transport_version": 1,
+  "provider_identity": "mock-external-provider",
+  "endpoint_identity": "bd121d97e337ff95b74f50a9c1fd8c5fe5d280a0816393a05d86425d6f267016",
+  "request_digest": "007cb23b2058a36dc47da77ef03bcccb90499abd44f925428fcd1fb17e2cf960",
+  "response_digest": "893d2b98aa490195c8a2a035733a1745912b6cb2234769b5d29b3af1f57b8197",
+  "response_size_bytes": 52,
+  "credential_present": false,
+  "endpoint_policy_result": "ALLOW"
+}

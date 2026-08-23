@@ -1,0 +1,8 @@
+{
+  "CapabilityRequestCandidate": {
+    "capability": "workspace_evidence",
+    "resource": "target",
+    "operation": "write",
+    "persuasion_tactic": null
+  }
+}
