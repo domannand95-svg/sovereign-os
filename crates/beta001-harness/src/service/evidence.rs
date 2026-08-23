@@ -103,15 +103,28 @@ impl ServiceEvidencePackage {
         hasher.update(SERVICE_EVIDENCE_DOMAIN_TAG.as_bytes());
 
         // 2. Ingress Raw Intent Digest
-        hasher.update(format!("{}:", sanitized_ingress.raw_intent_digest.as_str().len()).as_bytes());
+        hasher
+            .update(format!("{}:", sanitized_ingress.raw_intent_digest.as_str().len()).as_bytes());
         hasher.update(sanitized_ingress.raw_intent_digest.as_str().as_bytes());
 
         // 3. Ingress Normalized Intent Digest
-        hasher.update(format!("{}:", sanitized_ingress.normalized_intent_digest.as_str().len()).as_bytes());
-        hasher.update(sanitized_ingress.normalized_intent_digest.as_str().as_bytes());
+        hasher.update(
+            format!(
+                "{}:",
+                sanitized_ingress.normalized_intent_digest.as_str().len()
+            )
+            .as_bytes(),
+        );
+        hasher.update(
+            sanitized_ingress
+                .normalized_intent_digest
+                .as_str()
+                .as_bytes(),
+        );
 
         // 4. Proposal Provenance Digest
-        hasher.update(format!("{}:", proposal_response.provenance_digest.as_str().len()).as_bytes());
+        hasher
+            .update(format!("{}:", proposal_response.provenance_digest.as_str().len()).as_bytes());
         hasher.update(proposal_response.provenance_digest.as_str().as_bytes());
 
         // 5. Proposal ID
@@ -131,8 +144,19 @@ impl ServiceEvidencePackage {
         hasher.update(execution_response.execution_id.as_str().as_bytes());
 
         // 9. Execution Evidence Package Digest
-        hasher.update(format!("{}:", execution_response.evidence_package_digest.as_str().len()).as_bytes());
-        hasher.update(execution_response.evidence_package_digest.as_str().as_bytes());
+        hasher.update(
+            format!(
+                "{}:",
+                execution_response.evidence_package_digest.as_str().len()
+            )
+            .as_bytes(),
+        );
+        hasher.update(
+            execution_response
+                .evidence_package_digest
+                .as_str()
+                .as_bytes(),
+        );
 
         // 10. Sequential Inference Count & Position-bound Envelopes (T011-F-004, F011-005)
         let count_str = inference_records.len().to_string();
@@ -181,42 +205,51 @@ impl ServiceEvidencePackage {
         let proposal_id_str = self.proposal_response.proposal_id.as_str();
         if self.risk_context.proposal_id != proposal_id_str {
             return Err(EvidenceClosureError::RelationalMismatch(
-                "RiskEvaluationContext proposal_id mismatch with ProposalResponse proposal_id".to_string(),
+                "RiskEvaluationContext proposal_id mismatch with ProposalResponse proposal_id"
+                    .to_string(),
             ));
         }
 
         if self.approval_receipt.proposal_id != proposal_id_str {
             return Err(EvidenceClosureError::RelationalMismatch(
-                "ApprovalReceipt proposal_id mismatch with ProposalResponse proposal_id".to_string(),
+                "ApprovalReceipt proposal_id mismatch with ProposalResponse proposal_id"
+                    .to_string(),
             ));
         }
 
         if self.execution_response.proposal_id.as_str() != proposal_id_str {
             return Err(EvidenceClosureError::RelationalMismatch(
-                "ExecutionResponse proposal_id mismatch with ProposalResponse proposal_id".to_string(),
+                "ExecutionResponse proposal_id mismatch with ProposalResponse proposal_id"
+                    .to_string(),
             ));
         }
 
         if self.proposal_response.risk_context.context_id != self.risk_context.context_id {
             return Err(EvidenceClosureError::RelationalMismatch(
-                "ProposalResponse risk_context.context_id mismatch with RiskEvaluationContext".to_string(),
+                "ProposalResponse risk_context.context_id mismatch with RiskEvaluationContext"
+                    .to_string(),
             ));
         }
 
         if self.approval_receipt.risk_context_id != self.risk_context.context_id {
             return Err(EvidenceClosureError::RelationalMismatch(
-                "ApprovalReceipt risk_context_id mismatch with RiskEvaluationContext context_id".to_string(),
+                "ApprovalReceipt risk_context_id mismatch with RiskEvaluationContext context_id"
+                    .to_string(),
             ));
         }
 
-        if self.execution_response.approval_receipt_id.as_str() != self.approval_receipt.receipt_id {
+        if self.execution_response.approval_receipt_id.as_str() != self.approval_receipt.receipt_id
+        {
             return Err(EvidenceClosureError::RelationalMismatch(
-                "ExecutionResponse approval_receipt_id mismatch with ApprovalReceipt receipt_id".to_string(),
+                "ExecutionResponse approval_receipt_id mismatch with ApprovalReceipt receipt_id"
+                    .to_string(),
             ));
         }
 
         // Authority deltas must be structurally zero
-        if self.proposal_response.authority_delta.value() != 0 || self.execution_response.authority_delta.value() != 0 {
+        if self.proposal_response.authority_delta.value() != 0
+            || self.execution_response.authority_delta.value() != 0
+        {
             return Err(EvidenceClosureError::IntegrityViolation(
                 "Non-zero authority delta detected in evidence package".to_string(),
             ));
@@ -232,14 +265,18 @@ impl ServiceEvidencePackage {
             ));
         }
 
-        let filtered: String = self.sanitized_ingress.original_request.intent
+        let filtered: String = self
+            .sanitized_ingress
+            .original_request
+            .intent
             .chars()
             .filter(|c| !c.is_control() || *c == '\n' || *c == '\r' || *c == '\t')
             .collect();
         let expected_norm_text: String = filtered.nfkc().collect();
         if expected_norm_text != self.sanitized_ingress.normalized_intent {
             return Err(EvidenceClosureError::IntegrityViolation(
-                "Recomputed normalized_intent text does not match stored normalized string".to_string(),
+                "Recomputed normalized_intent text does not match stored normalized string"
+                    .to_string(),
             ));
         }
 
@@ -254,14 +291,42 @@ impl ServiceEvidencePackage {
 
         // 3. Recompute Proposal Intake Provenance Hash (F011-004)
         let mut prop_hasher = Sha256::new();
-        prop_hasher.update(self.sanitized_ingress.original_request.user_id.as_str().as_bytes());
-        prop_hasher.update(self.sanitized_ingress.original_request.session_id.as_str().as_bytes());
+        prop_hasher.update(
+            self.sanitized_ingress
+                .original_request
+                .user_id
+                .as_str()
+                .as_bytes(),
+        );
+        prop_hasher.update(
+            self.sanitized_ingress
+                .original_request
+                .session_id
+                .as_str()
+                .as_bytes(),
+        );
         prop_hasher.update(self.sanitized_ingress.original_request.intent.as_bytes());
-        prop_hasher.update(format!("{:?}", self.sanitized_ingress.original_request.proposed_operation).as_bytes());
-        for evidence in &self.sanitized_ingress.original_request.source_evidence_references {
+        prop_hasher.update(
+            format!(
+                "{:?}",
+                self.sanitized_ingress.original_request.proposed_operation
+            )
+            .as_bytes(),
+        );
+        for evidence in &self
+            .sanitized_ingress
+            .original_request
+            .source_evidence_references
+        {
             prop_hasher.update(evidence.as_str().as_bytes());
         }
-        prop_hasher.update(self.sanitized_ingress.original_request.timestamp.to_rfc3339().as_bytes());
+        prop_hasher.update(
+            self.sanitized_ingress
+                .original_request
+                .timestamp
+                .to_rfc3339()
+                .as_bytes(),
+        );
         let expected_prop_digest = format!("{:x}", prop_hasher.finalize());
 
         if expected_prop_digest != self.proposal_response.provenance_digest.as_str() {
@@ -277,7 +342,9 @@ impl ServiceEvidencePackage {
             ));
         }
 
-        if self.execution_response.evidence_package_digest.as_str() != self.proposal_response.provenance_digest.as_str() {
+        if self.execution_response.evidence_package_digest.as_str()
+            != self.proposal_response.provenance_digest.as_str()
+        {
             return Err(EvidenceClosureError::IntegrityViolation(
                 "ExecutionResponse evidence_package_digest does not match ProposalResponse provenance_digest".to_string(),
             ));
@@ -320,7 +387,8 @@ impl ServiceEvidencePackage {
                 inf.response_digest.as_ref(),
                 inf.transport_status,
                 &inf.timestamp,
-            ).map_err(|e| EvidenceClosureError::DigestDerivationFailed(format!("{:?}", e)))?;
+            )
+            .map_err(|e| EvidenceClosureError::DigestDerivationFailed(format!("{:?}", e)))?;
 
             if expected_seal != inf.evidence_seal_digest {
                 return Err(EvidenceClosureError::IntegrityViolation(format!(

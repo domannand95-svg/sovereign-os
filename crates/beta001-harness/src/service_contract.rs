@@ -10,7 +10,10 @@ use std::str::FromStr;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ServiceContractError {
-    InvalidIdentifierPrefix { expected: &'static str, found: String },
+    InvalidIdentifierPrefix {
+        expected: &'static str,
+        found: String,
+    },
     InvalidSha256Digest(String),
     InvalidAuthorityDelta(i64),
     InvalidSchemaVersion(String),
@@ -21,7 +24,11 @@ impl fmt::Display for ServiceContractError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::InvalidIdentifierPrefix { expected, found } => {
-                write!(f, "Invalid identifier prefix: expected '{}', found '{}'", expected, found)
+                write!(
+                    f,
+                    "Invalid identifier prefix: expected '{}', found '{}'",
+                    expected, found
+                )
             }
             Self::InvalidSha256Digest(s) => write!(f, "Invalid SHA-256 digest: '{}'", s),
             Self::InvalidAuthorityDelta(d) => write!(f, "Authority delta must be 0, found {}", d),
@@ -98,7 +105,10 @@ pub struct Sha256Digest(String);
 impl Sha256Digest {
     pub fn new(value: impl Into<String>) -> Result<Self, ServiceContractError> {
         let s = value.into();
-        if s.len() == 64 && s.chars().all(|c| c.is_ascii_hexdigit() && !c.is_ascii_uppercase()) {
+        if s.len() == 64
+            && s.chars()
+                .all(|c| c.is_ascii_hexdigit() && !c.is_ascii_uppercase())
+        {
             Ok(Self(s))
         } else {
             Err(ServiceContractError::InvalidSha256Digest(s))
@@ -359,7 +369,9 @@ impl From<ExecutionResponse> for RawExecutionResponse {
 impl TryFrom<RawExecutionResponse> for ExecutionResponse {
     type Error = ServiceContractError;
     fn try_from(raw: RawExecutionResponse) -> Result<Self, Self::Error> {
-        if raw.dispatch_state == DispatchState::NotDispatched && raw.outcome_state != OutcomeState::Pending {
+        if raw.dispatch_state == DispatchState::NotDispatched
+            && raw.outcome_state != OutcomeState::Pending
+        {
             return Err(ServiceContractError::ValidationError(
                 "NotDispatched execution response must have outcome_state Pending".to_string(),
             ));
@@ -446,7 +458,8 @@ impl TryFrom<RawInferenceGateway> for InferenceGateway {
             TransportStatus::Success => {
                 if raw.response_digest.is_none() || raw.raw_model_output.is_none() {
                     return Err(ServiceContractError::ValidationError(
-                        "TransportStatus::Success requires response_digest and raw_model_output".to_string(),
+                        "TransportStatus::Success requires response_digest and raw_model_output"
+                            .to_string(),
                     ));
                 }
             }

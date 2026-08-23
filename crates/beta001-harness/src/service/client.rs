@@ -11,7 +11,7 @@ use sha2::digest::Digest;
 use sha2::Sha256;
 use unicode_normalization::UnicodeNormalization;
 
-use crate::service_contract::{ProposalRequest, UserId, SessionId, Sha256Digest};
+use crate::service_contract::{ProposalRequest, SessionId, Sha256Digest, UserId};
 
 pub const MAX_INTENT_BYTES: usize = 65_536;
 pub const MAX_EVIDENCE_REFERENCES: usize = 32;
@@ -68,7 +68,9 @@ impl ClientSanitizer {
         server_intake_time: DateTime<Utc>,
     ) -> Result<SanitizedProposalRequest, ClientSanitizationError> {
         // 1. Authenticated Session & Identity Context Binding (D011-005)
-        if req.user_id != auth_ctx.authenticated_user_id || req.session_id != auth_ctx.authenticated_session_id {
+        if req.user_id != auth_ctx.authenticated_user_id
+            || req.session_id != auth_ctx.authenticated_session_id
+        {
             return Err(ClientSanitizationError::SessionIdentityMismatch {
                 claimed_user: req.user_id.as_str().to_string(),
                 authenticated_user: auth_ctx.authenticated_user_id.as_str().to_string(),
@@ -112,7 +114,8 @@ impl ClientSanitizer {
             .map_err(|_| ClientSanitizationError::ProhibitedCharactersDetected)?;
 
         // 5. Deterministic Unicode NFKC Normalization & Control Character Filtering (D011-001)
-        let filtered: String = req.intent
+        let filtered: String = req
+            .intent
             .chars()
             .filter(|c| !c.is_control() || *c == '\n' || *c == '\r' || *c == '\t')
             .collect();

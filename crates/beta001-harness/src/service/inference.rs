@@ -10,7 +10,7 @@ use sha2::digest::Digest;
 use sha2::Sha256;
 
 use crate::service_contract::{
-    InferenceGateway, SessionId, Sha256Digest, SchemaVersionV1, TransportStatus,
+    InferenceGateway, SchemaVersionV1, SessionId, Sha256Digest, TransportStatus,
 };
 
 pub const INFERENCE_DOMAIN_TAG: &str = "SOVEREIGN_OS:INFERENCE_GATEWAY:v1";
@@ -60,7 +60,11 @@ impl InferenceGatewayAdapter {
                 let resp_digest_hex = format!("{:x}", resp_hasher.finalize());
                 let resp_digest = Sha256Digest::new(resp_digest_hex)
                     .map_err(|e| InferenceGatewayError::DigestDerivationFailed(e.to_string()))?;
-                (TransportStatus::Success, Some(resp_digest), Some(raw_model_output))
+                (
+                    TransportStatus::Success,
+                    Some(resp_digest),
+                    Some(raw_model_output),
+                )
             }
             RecordedTransportOutcome::Failed => (TransportStatus::Failed, None, None),
             RecordedTransportOutcome::Timeout => (TransportStatus::Timeout, None, None),

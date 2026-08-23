@@ -3,16 +3,18 @@
 //! Validates criteria F011-001 through F011-007 covering end-to-end evidence aggregation,
 //! domain-separated package sealing, relational integrity, digest recomputation, and anti-tamper falsification.
 
-use chrono::Utc;
-use beta001_harness::service::client::{ClientSanitizer, AuthenticatedClientContext};
-use beta001_harness::service::admission::{ProposalAdmissionGate, ExecutionAdmissionGate};
-use beta001_harness::service::inference::{InferenceGatewayAdapter, RecordedTransportOutcome};
-use beta001_harness::service::evidence::{ServiceEvidencePackage, EvidenceClosureError, SERVICE_EVIDENCE_DOMAIN_TAG};
-use beta001_harness::service_contract::{
-    ProposalRequest, ExecutionRequest, ProposedOperation, UserId, SessionId,
-    ApprovalReceiptId, Sha256Digest, SchemaVersionV1,
+use beta001_harness::approval::{ApprovalLevel, ApprovalReceipt};
+use beta001_harness::service::admission::{ExecutionAdmissionGate, ProposalAdmissionGate};
+use beta001_harness::service::client::{AuthenticatedClientContext, ClientSanitizer};
+use beta001_harness::service::evidence::{
+    EvidenceClosureError, ServiceEvidencePackage, SERVICE_EVIDENCE_DOMAIN_TAG,
 };
-use beta001_harness::approval::{ApprovalReceipt, ApprovalLevel};
+use beta001_harness::service::inference::{InferenceGatewayAdapter, RecordedTransportOutcome};
+use beta001_harness::service_contract::{
+    ApprovalReceiptId, ExecutionRequest, ProposalRequest, ProposedOperation, SchemaVersionV1,
+    SessionId, Sha256Digest, UserId,
+};
+use chrono::Utc;
 
 fn setup_end_to_end_fixtures() -> (
     beta001_harness::service::client::SanitizedProposalRequest,
@@ -34,20 +36,26 @@ fn setup_end_to_end_fixtures() -> (
         session_id: auth_ctx.authenticated_session_id.clone(),
         intent: "Execute controlled diagnostic query".to_string(),
         proposed_operation: ProposedOperation::RequestReview,
-        source_evidence_references: vec![
-            Sha256Digest::new("e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855".to_string()).unwrap(),
-        ],
+        source_evidence_references: vec![Sha256Digest::new(
+            "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855".to_string(),
+        )
+        .unwrap()],
         timestamp: now,
     };
 
     // 011-D Sanitized Ingress
-    let sanitized_ingress = ClientSanitizer::sanitize_proposal_request(raw_req.clone(), &auth_ctx, now)
-        .expect("Sanitization failed");
+    let sanitized_ingress =
+        ClientSanitizer::sanitize_proposal_request(raw_req.clone(), &auth_ctx, now)
+            .expect("Sanitization failed");
 
     // 011-C Proposal Admission
     let prop_gate = ProposalAdmissionGate::new();
-    let prop_res = prop_gate.admit_proposal(&raw_req).expect("Proposal admission failed");
-    let (_, risk_ctx) = prop_gate.get_admitted(prop_res.proposal_id.as_str()).unwrap();
+    let prop_res = prop_gate
+        .admit_proposal(&raw_req)
+        .expect("Proposal admission failed");
+    let (_, risk_ctx) = prop_gate
+        .get_admitted(prop_res.proposal_id.as_str())
+        .unwrap();
 
     // 010 Approval Receipt
     let receipt = ApprovalReceipt {
@@ -73,7 +81,8 @@ fn setup_end_to_end_fixtures() -> (
         signature: "caller_sig_xyz".to_string(),
         timestamp: now,
     };
-    let exec_res = exec_gate.admit_execution(&exec_req, &prop_gate, &receipt)
+    let exec_res = exec_gate
+        .admit_execution(&exec_req, &prop_gate, &receipt)
         .expect("Execution claim failed");
 
     // 011-E Inference Records
@@ -86,7 +95,8 @@ fn setup_end_to_end_fixtures() -> (
             raw_model_output: "Analysis: Low risk.".to_string(),
         },
         now,
-    ).expect("Inference capture 1 failed");
+    )
+    .expect("Inference capture 1 failed");
 
     let inf2 = InferenceGatewayAdapter::record_transport(
         auth_ctx.authenticated_session_id.clone(),
@@ -97,9 +107,17 @@ fn setup_end_to_end_fixtures() -> (
             raw_model_output: "Report finalized.".to_string(),
         },
         now,
-    ).expect("Inference capture 2 failed");
+    )
+    .expect("Inference capture 2 failed");
 
-    (sanitized_ingress, prop_res, risk_ctx, receipt, exec_res, vec![inf1, inf2])
+    (
+        sanitized_ingress,
+        prop_res,
+        risk_ctx,
+        receipt,
+        exec_res,
+        vec![inf1, inf2],
+    )
 }
 
 #[test]
@@ -115,10 +133,14 @@ fn test_f011_001_and_002_build_package_and_verify_seal() {
         exec,
         inferences,
         closed_time,
-    ).expect("Service evidence package build failed");
+    )
+    .expect("Service evidence package build failed");
 
     assert_eq!(package.closed_timestamp, closed_time);
-    assert_eq!(SERVICE_EVIDENCE_DOMAIN_TAG, "SOVEREIGN_OS:SERVICE_EVIDENCE:v1");
+    assert_eq!(
+        SERVICE_EVIDENCE_DOMAIN_TAG,
+        "SOVEREIGN_OS:SERVICE_EVIDENCE:v1"
+    );
     assert!(package.verify_chain().is_ok());
 }
 
@@ -140,7 +162,10 @@ fn test_f011_003_relational_mismatches_fail_verification() {
         closed_time,
     );
 
-    assert!(matches!(result, Err(EvidenceClosureError::RelationalMismatch(_))));
+    assert!(matches!(
+        result,
+        Err(EvidenceClosureError::RelationalMismatch(_))
+    ));
 }
 
 #[test]
@@ -161,7 +186,10 @@ fn test_f011_004_raw_intent_tampering_fails_verification() {
         closed_time,
     );
 
-    assert!(matches!(result, Err(EvidenceClosureError::IntegrityViolation(_))));
+    assert!(matches!(
+        result,
+        Err(EvidenceClosureError::IntegrityViolation(_))
+    ));
 }
 
 #[test]
@@ -182,7 +210,10 @@ fn test_f011_004_inference_output_tampering_fails_verification() {
         closed_time,
     );
 
-    assert!(matches!(result, Err(EvidenceClosureError::IntegrityViolation(_))));
+    assert!(matches!(
+        result,
+        Err(EvidenceClosureError::IntegrityViolation(_))
+    ));
 }
 
 #[test]
@@ -198,7 +229,8 @@ fn test_f011_005_zero_inference_records_builds_and_verifies() {
         exec,
         vec![], // inference_count = 0
         closed_time,
-    ).expect("Zero-inference evidence package build failed");
+    )
+    .expect("Zero-inference evidence package build failed");
 
     assert_eq!(package.inference_records.len(), 0);
     assert!(package.verify_chain().is_ok());
@@ -217,14 +249,18 @@ fn test_f011_005_inference_permutation_fails_package_verification() {
         exec,
         inferences,
         closed_time,
-    ).unwrap();
+    )
+    .unwrap();
 
     // Swap inference record ordering post-sealing
     package.inference_records.swap(0, 1);
 
     // Chain verification must detect permutation and fail closed
     let verify_result = package.verify_chain();
-    assert!(matches!(verify_result, Err(EvidenceClosureError::IntegrityViolation(_))));
+    assert!(matches!(
+        verify_result,
+        Err(EvidenceClosureError::IntegrityViolation(_))
+    ));
 }
 
 #[test]
@@ -240,7 +276,8 @@ fn test_f011_007_authority_invariance() {
         exec,
         inferences,
         closed_time,
-    ).unwrap();
+    )
+    .unwrap();
 
     assert_eq!(package.proposal_response.authority_delta.value(), 0);
     assert_eq!(package.execution_response.authority_delta.value(), 0);

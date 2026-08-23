@@ -4,26 +4,26 @@
 //! Enforces relational binding, deterministic risk mapping, anti-replay, and pre-dispatch claim state.
 //! Invariant: Admission Gate != Execution Capability (Δ Authority = 0)
 
-use std::collections::{HashMap, HashSet};
-use std::sync::Mutex;
 use sha2::digest::Digest;
 use sha2::Sha256;
+use std::collections::{HashMap, HashSet};
+use std::sync::Mutex;
 
+use crate::approval::{
+    ApprovalLevel as CoreApprovalLevel, ApprovalReceipt, ApprovalValidationError,
+};
 use crate::proposal::{
-    GovernedActionProposal, ProposedOperation as CoreProposedOperation, ProposalValidationError,
+    GovernedActionProposal, ProposalValidationError, ProposedOperation as CoreProposedOperation,
 };
 use crate::risk::{
-    RiskEvaluator, RiskEvaluationContext, RiskLevel as CoreRiskLevel, BlastRadius as CoreBlastRadius,
-};
-use crate::approval::{
-    ApprovalReceipt, ApprovalLevel as CoreApprovalLevel, ApprovalValidationError,
+    BlastRadius as CoreBlastRadius, RiskEvaluationContext, RiskEvaluator,
+    RiskLevel as CoreRiskLevel,
 };
 use crate::service_contract::{
-    ProposalRequest, ProposalResponse, ExecutionRequest, ExecutionResponse,
-    RiskContext, ProposalId, ExecutionId, Sha256Digest,
-    SchemaVersionV1, AuthorityDeltaZero, ProposedOperation,
-    LifecycleState, RiskLevel, BlastRadius, RequiredApprovalLevel,
-    ClaimState, DispatchState, OutcomeState,
+    AuthorityDeltaZero, BlastRadius, ClaimState, DispatchState, ExecutionId, ExecutionRequest,
+    ExecutionResponse, LifecycleState, OutcomeState, ProposalId, ProposalRequest, ProposalResponse,
+    ProposedOperation, RequiredApprovalLevel, RiskContext, RiskLevel, SchemaVersionV1,
+    Sha256Digest,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -70,7 +70,10 @@ impl ProposalAdmissionGate {
     }
 
     /// Admits an untrusted proposal request into the deterministic governance kernel.
-    pub fn admit_proposal(&self, req: &ProposalRequest) -> Result<ProposalResponse, AdmissionError> {
+    pub fn admit_proposal(
+        &self,
+        req: &ProposalRequest,
+    ) -> Result<ProposalResponse, AdmissionError> {
         // 1. Compute deterministic hash for provenance & proposal ID
         let mut hasher = Sha256::new();
         hasher.update(req.user_id.as_str().as_bytes());
@@ -100,13 +103,19 @@ impl ProposalAdmissionGate {
             schema_version: "v1.0.0".to_string(),
             proposal_id: proposal_id_str.clone(),
             proposer_identity: req.user_id.as_str().to_string(),
-            source_evidence_references: req.source_evidence_references.iter().map(|e| e.as_str().to_string()).collect(),
+            source_evidence_references: req
+                .source_evidence_references
+                .iter()
+                .map(|e| e.as_str().to_string())
+                .collect(),
             intent: req.intent.clone(),
             proposed_operation: match req.proposed_operation {
                 ProposedOperation::EmitNotification => CoreProposedOperation::EmitNotification,
                 ProposedOperation::RequestReview => CoreProposedOperation::RequestReview,
                 ProposedOperation::RequestApproval => CoreProposedOperation::RequestApproval,
-                ProposedOperation::RequestStateMutation => CoreProposedOperation::RequestStateMutation,
+                ProposedOperation::RequestStateMutation => {
+                    CoreProposedOperation::RequestStateMutation
+                }
             },
             risk_evaluation_reference: None,
             created_timestamp: req.timestamp.to_rfc3339(),
@@ -169,7 +178,10 @@ impl ProposalAdmissionGate {
     }
 
     /// Retrieve admitted proposal and risk context for downstream execution binding
-    pub fn get_admitted(&self, proposal_id: &str) -> Option<(GovernedActionProposal, RiskEvaluationContext)> {
+    pub fn get_admitted(
+        &self,
+        proposal_id: &str,
+    ) -> Option<(GovernedActionProposal, RiskEvaluationContext)> {
         let store = self.admitted_proposals.lock().unwrap();
         store.get(proposal_id).cloned()
     }
@@ -209,19 +221,22 @@ impl ExecutionAdmissionGate {
         // 2. Relational Matching: Request vs Proposal vs Receipt
         if req.proposal_id.as_str() != proposal.proposal_id {
             return Err(AdmissionError::RelationalMismatch(
-                "ExecutionRequest.proposal_id does not match GovernedActionProposal.proposal_id".to_string(),
+                "ExecutionRequest.proposal_id does not match GovernedActionProposal.proposal_id"
+                    .to_string(),
             ));
         }
 
         if req.approval_receipt_id.as_str() != receipt.receipt_id {
             return Err(AdmissionError::RelationalMismatch(
-                "ExecutionRequest.approval_receipt_id does not match ApprovalReceipt.receipt_id".to_string(),
+                "ExecutionRequest.approval_receipt_id does not match ApprovalReceipt.receipt_id"
+                    .to_string(),
             ));
         }
 
         if receipt.proposal_id != proposal.proposal_id {
             return Err(AdmissionError::RelationalMismatch(
-                "ApprovalReceipt.proposal_id does not match GovernedActionProposal.proposal_id".to_string(),
+                "ApprovalReceipt.proposal_id does not match GovernedActionProposal.proposal_id"
+                    .to_string(),
             ));
         }
 
@@ -239,7 +254,8 @@ impl ExecutionAdmissionGate {
             CoreRiskLevel::Medium => CoreApprovalLevel::Operator,
             CoreRiskLevel::High | CoreRiskLevel::Critical => CoreApprovalLevel::Governance,
         };
-        receipt.verify_scope(required_level)
+        receipt
+            .verify_scope(required_level)
             .map_err(|_| AdmissionError::InsufficientApprovalScope)?;
 
         // 6. Anti-Replay: Consume (proposal_id, approval_receipt_id) tuple

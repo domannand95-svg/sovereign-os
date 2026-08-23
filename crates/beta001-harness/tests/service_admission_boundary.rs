@@ -3,15 +3,16 @@
 //! Validates criteria C011-001 through C011-010 covering proposal admission,
 //! deterministic risk evaluation, relational binding, and anti-replay execution claim acquisition.
 
-use chrono::Utc;
-use beta001_harness::service::admission::{ProposalAdmissionGate, ExecutionAdmissionGate, AdmissionError};
-use beta001_harness::service_contract::{
-    ProposalRequest, ExecutionRequest, ProposedOperation,
-    LifecycleState, RiskLevel, BlastRadius, RequiredApprovalLevel,
-    ClaimState, DispatchState, OutcomeState, UserId, SessionId,
-    ProposalId, ApprovalReceiptId, Sha256Digest, SchemaVersionV1,
+use beta001_harness::approval::{ApprovalLevel as CoreApprovalLevel, ApprovalReceipt};
+use beta001_harness::service::admission::{
+    AdmissionError, ExecutionAdmissionGate, ProposalAdmissionGate,
 };
-use beta001_harness::approval::{ApprovalReceipt, ApprovalLevel as CoreApprovalLevel};
+use beta001_harness::service_contract::{
+    ApprovalReceiptId, BlastRadius, ClaimState, DispatchState, ExecutionRequest, LifecycleState,
+    OutcomeState, ProposalId, ProposalRequest, ProposedOperation, RequiredApprovalLevel, RiskLevel,
+    SchemaVersionV1, SessionId, Sha256Digest, UserId,
+};
+use chrono::Utc;
 
 fn sample_proposal_request(op: ProposedOperation) -> ProposalRequest {
     ProposalRequest {
@@ -20,9 +21,10 @@ fn sample_proposal_request(op: ProposedOperation) -> ProposalRequest {
         session_id: SessionId::new("ses_portal_123".to_string()).unwrap(),
         intent: "Perform routine diagnostic verification".to_string(),
         proposed_operation: op,
-        source_evidence_references: vec![
-            Sha256Digest::new("e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855".to_string()).unwrap(),
-        ],
+        source_evidence_references: vec![Sha256Digest::new(
+            "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855".to_string(),
+        )
+        .unwrap()],
         timestamp: Utc::now(),
     }
 }
@@ -32,15 +34,22 @@ fn test_c011_001_to_003_proposal_admission_and_deterministic_risk() {
     let gate = ProposalAdmissionGate::new();
     let req = sample_proposal_request(ProposedOperation::RequestStateMutation);
 
-    let res = gate.admit_proposal(&req).expect("Proposal admission failed");
+    let res = gate
+        .admit_proposal(&req)
+        .expect("Proposal admission failed");
 
     assert_eq!(res.lifecycle_state, LifecycleState::AwaitingApproval);
     assert_eq!(res.risk_context.risk_level, RiskLevel::High);
     assert_eq!(res.risk_context.blast_radius, BlastRadius::System);
-    assert_eq!(res.required_approval_level, RequiredApprovalLevel::Governance);
+    assert_eq!(
+        res.required_approval_level,
+        RequiredApprovalLevel::Governance
+    );
     assert_eq!(res.authority_delta.value(), 0);
 
-    let (proposal, risk_ctx) = gate.get_admitted(res.proposal_id.as_str()).expect("Admitted proposal not stored");
+    let (proposal, risk_ctx) = gate
+        .get_admitted(res.proposal_id.as_str())
+        .expect("Admitted proposal not stored");
     assert_eq!(proposal.proposal_id, res.proposal_id.as_str());
     assert_eq!(risk_ctx.context_id, res.risk_context.context_id);
 }
@@ -83,7 +92,9 @@ fn test_c011_004_relational_mismatch_rejected() {
 
     let req = sample_proposal_request(ProposedOperation::EmitNotification);
     let prop_res = prop_gate.admit_proposal(&req).unwrap();
-    let (_, risk_ctx) = prop_gate.get_admitted(prop_res.proposal_id.as_str()).unwrap();
+    let (_, risk_ctx) = prop_gate
+        .get_admitted(prop_res.proposal_id.as_str())
+        .unwrap();
 
     let receipt = ApprovalReceipt {
         receipt_id: "apr_valid_123".to_string(),
@@ -153,7 +164,9 @@ fn test_c011_006_insufficient_approval_scope_rejected() {
     // High risk (RequestStateMutation) requires Governance approval
     let req = sample_proposal_request(ProposedOperation::RequestStateMutation);
     let prop_res = prop_gate.admit_proposal(&req).unwrap();
-    let (_, risk_ctx) = prop_gate.get_admitted(prop_res.proposal_id.as_str()).unwrap();
+    let (_, risk_ctx) = prop_gate
+        .get_admitted(prop_res.proposal_id.as_str())
+        .unwrap();
 
     let receipt = ApprovalReceipt {
         receipt_id: "apr_valid_123".to_string(),
@@ -188,7 +201,9 @@ fn test_c011_007_to_010_atomic_claim_and_anti_replay_lockout() {
 
     let req = sample_proposal_request(ProposedOperation::RequestApproval);
     let prop_res = prop_gate.admit_proposal(&req).unwrap();
-    let (_, risk_ctx) = prop_gate.get_admitted(prop_res.proposal_id.as_str()).unwrap();
+    let (_, risk_ctx) = prop_gate
+        .get_admitted(prop_res.proposal_id.as_str())
+        .unwrap();
 
     let receipt = ApprovalReceipt {
         receipt_id: "apr_valid_123".to_string(),
@@ -213,7 +228,8 @@ fn test_c011_007_to_010_atomic_claim_and_anti_replay_lockout() {
     };
 
     // First execution claim must succeed with pre-dispatch state
-    let exec_res = exec_gate.admit_execution(&exec_req, &prop_gate, &receipt)
+    let exec_res = exec_gate
+        .admit_execution(&exec_req, &prop_gate, &receipt)
         .expect("Execution admission failed");
 
     assert!(exec_res.execution_id.as_str().starts_with("exe_"));
@@ -239,12 +255,19 @@ fn test_c011_anti_poisoning_on_validation_failure() {
     invalid_req.source_evidence_references = vec![]; // Triggers ProposalValidationError::EmptyEvidence
 
     let first_attempt = prop_gate.admit_proposal(&invalid_req);
-    assert!(matches!(first_attempt, Err(AdmissionError::ProposalValidationFailed(_))));
+    assert!(matches!(
+        first_attempt,
+        Err(AdmissionError::ProposalValidationFailed(_))
+    ));
 
     // Fix the evidence on the same request payload; admission must proceed and NOT trigger ReplayDetected
-    invalid_req.source_evidence_references = vec![
-        Sha256Digest::new("e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855".to_string()).unwrap(),
-    ];
+    invalid_req.source_evidence_references = vec![Sha256Digest::new(
+        "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855".to_string(),
+    )
+    .unwrap()];
     let second_attempt = prop_gate.admit_proposal(&invalid_req);
-    assert!(second_attempt.is_ok(), "Replay set was poisoned by previous failed validation attempt");
+    assert!(
+        second_attempt.is_ok(),
+        "Replay set was poisoned by previous failed validation attempt"
+    );
 }
