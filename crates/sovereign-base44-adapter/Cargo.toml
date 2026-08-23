@@ -2,6 +2,7 @@
 name = "sovereign-base44-adapter"
 version = "0.1.0"
 edition = "2021"
+license = "MIT"
 
 [lib]
 name = "sovereign_base44_adapter"
@@ -13,4 +14,5 @@ hex = "0.4"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 thiserror = "2"
-sovereign-execution-api = { path = "../sovereign-execution-api" }
+sovereign-execution-api = { path = "../sovereign-execution-api", version = "0.1.0" }
+
