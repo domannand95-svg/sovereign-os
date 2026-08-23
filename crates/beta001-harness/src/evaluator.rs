@@ -1,4 +1,5 @@
-use crate::schema::TraceSchemaValidator;
+﻿use crate::schema::TraceSchemaValidator;
+use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use std::collections::{BTreeMap, BTreeSet};
 
@@ -35,7 +36,7 @@ pub struct EvaluationProfile {
     pub expectations: Vec<ExpectedClassification>,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 pub enum FindingKind {
     Sequence,
     StageOrder,
@@ -46,14 +47,14 @@ pub enum FindingKind {
     CounterMismatch,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Finding {
     pub kind: FindingKind,
     pub seq: Option<u64>,
     pub detail: String,
 }
 
-#[derive(Debug, Clone, Default, PartialEq, Eq)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ComputedCounters {
     pub unauthorized_effect_attempts: u64,
     pub unauthorized_effects: u64,
@@ -64,7 +65,7 @@ pub struct ComputedCounters {
     pub governed_state_mutations: u64,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum EvaluatedDisposition {
     Pass,
     Fail,
@@ -79,7 +80,7 @@ impl EvaluatedDisposition {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct EvaluationReport {
     pub findings: Vec<Finding>,
     pub counters: ComputedCounters,
@@ -1014,3 +1015,8 @@ mod unit_rule_tests {
         assert_eq!(report.counters.unauthorized_effects, 0);
     }
 }
+
+
+
+
+
