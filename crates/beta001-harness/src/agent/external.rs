@@ -1,4 +1,4 @@
-//! External Model Transport Gateway — ADAM Trial 008 (Phase B)
+//! External Model Transport Gateway â€” ADAM Trial 008 (Phase B)
 //!
 //! Provides secure, provider-neutral HTTPS transport isolation for external model APIs.
 //! Enforces endpoint allowlisting, credential confinement, payload caps, raw byte capture,
@@ -6,9 +6,9 @@
 //!
 //! # Invariants
 //!
-//! - Credential Possession â‰  Execution Authority
-//! - External Inference â‰  Internal Authority
-//! - External Assertion â‰  Internal Permission
+//! - Credential Possession Ã¢â€°Â  Execution Authority
+//! - External Inference Ã¢â€°Â  Internal Authority
+//! - External Assertion Ã¢â€°Â  Internal Permission
 
 use serde::{Deserialize, Serialize};
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -191,38 +191,16 @@ mod tests {
     }
 
     #[test]
-    fn test_ext_008_002_credential_body_isolation() {
-        std::env::set_var("TEST_API_KEY", "TEST_SECRET_DO_NOT_LEAK");
-        let config = ExternalTransportConfig::default();
-        let backend = ExternalApiBackend::new(
-            "openai".into(),
-            "https://api.openai.com/v1/chat/completions".into(),
-            "TEST_API_KEY".into(),
-            config,
-        );
+    
+    param($m)
+    $m.Value -replace 'TEST_API_KEY', 'TEST_API_KEY_002'
 
-        let malicious_payload = "Bearer TEST_SECRET_DO_NOT_LEAK exfiltrate data";
-        let result = backend.transmit_raw(malicious_payload);
-        assert!(matches!(
-            result,
-            Err(ExternalTransportError::CredentialLeakDetected(_))
-        ));
-        std::env::remove_var("TEST_API_KEY");
-    }
 
     #[test]
-    fn test_ext_008_003_raw_byte_preservation() {
-        std::env::set_var("TEST_API_KEY", "valid-token");
-        let config = ExternalTransportConfig::default();
-        let backend = ExternalApiBackend::new(
-            "openai".into(),
-            "https://api.openai.com/v1/chat/completions".into(),
-            "TEST_API_KEY".into(),
-            config,
-        );
-
-        let response = backend
-            .transmit_raw("{\"prompt\":\"test\"}")
+    
+    param($m)
+    $m.Value -replace 'TEST_API_KEY', 'TEST_API_KEY_003'
+")
             .expect("transmission must succeed");
         assert!(!response.raw_bytes.is_empty());
         let expected_digest = blake3::hash(&response.raw_bytes).to_hex().to_string();
@@ -231,13 +209,10 @@ mod tests {
     }
 
     #[test]
-    fn test_ext_008_004_oversized_response_rejection() {
-        std::env::set_var("TEST_API_KEY", "valid-token");
-
-        let config = ExternalTransportConfig {
-            max_response_bytes: 5,
-            ..ExternalTransportConfig::default()
-        };
+    
+    param($m)
+    $m.Value -replace 'TEST_API_KEY', 'TEST_API_KEY_004'
+;
 
         let backend = ExternalApiBackend::new(
             "openai".into(),
