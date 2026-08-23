@@ -1,0 +1,72 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sovereign-os.internal/schemas/GOVERNED_ACTION_PROPOSAL-v1.schema.json",
+  "title": "Governed Action Proposal",
+  "description": "ADAM-010-A: Canonical data contract representing an evaluated intelligence proposal without granting authorization or execution capability.",
+  "type": "object",
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "v1.0.0",
+      "description": "Version of the proposal schema."
+    },
+    "proposal_id": {
+      "type": "string",
+      "description": "Unique cryptographic identifier for this proposal."
+    },
+    "proposer_identity": {
+      "type": "string",
+      "description": "Identity of the intelligence source generating the proposal."
+    },
+    "source_evidence_references": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "minItems": 1,
+      "description": "Cryptographic digests linking this proposal to prior evaluated evidence."
+    },
+    "intent": {
+      "type": "string",
+      "description": "Human-readable description of the proposed outcome."
+    },
+    "proposed_operation": {
+      "type": "string",
+      "enum": [
+        "EmitNotification",
+        "RequestReview",
+        "RequestApproval",
+        "RequestStateMutation"
+      ],
+      "description": "The constrained category of action being proposed."
+    },
+    "risk_evaluation_reference": {
+      "type": "string",
+      "description": "Reference to the Phase 010-B risk/scope classification context."
+    },
+    "created_timestamp": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "expiration_timestamp": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "provenance_digest": {
+      "type": "string",
+      "description": "Cryptographic seal of the proposal payload ensuring immutability."
+    }
+  },
+  "required": [
+    "schema_version",
+    "proposal_id",
+    "proposer_identity",
+    "source_evidence_references",
+    "intent",
+    "proposed_operation",
+    "created_timestamp",
+    "expiration_timestamp",
+    "provenance_digest"
+  ],
+  "additionalProperties": false
+}

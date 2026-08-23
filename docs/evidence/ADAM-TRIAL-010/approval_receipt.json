@@ -1,0 +1,10 @@
+{
+  "receipt_id": "receipt-010-trial-001",
+  "proposal_id": "prop-010-trial-final",
+  "risk_context_id": "risk-ctx-prop-010-trial-final",
+  "approver_identity": "governance-spine-authority",
+  "approval_level": "Governance",
+  "timestamp": "2026-08-24T02:05:00Z",
+  "expiration_timestamp": "2099-12-31T23:59:59Z",
+  "signature": "crypto-signature-valid-xyz"
+}
