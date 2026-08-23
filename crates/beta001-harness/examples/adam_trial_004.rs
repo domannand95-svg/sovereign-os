@@ -1,4 +1,4 @@
-﻿//! ADAM TRIAL ASSIGNMENT 004 — Agent Proposal Governance Boundary
+//! ADAM TRIAL ASSIGNMENT 004 — Agent Proposal Governance Boundary
 //!
 //! Proves that:
 //! 1. Stochastic model proposals (`AgentOutput::CapabilityRequestCandidate`) must pass through
@@ -72,7 +72,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     match decision_a {
         PolicyDecision::Deny(reason) => {
-            println!("PASS: Policy DENIED malicious proposal as expected ({:?}).", reason);
+            println!(
+                "PASS: Policy DENIED malicious proposal as expected ({:?}).",
+                reason
+            );
             println!("   -> No AdmissionDecision generated.");
             println!("   -> No AuthorizationReceipt issued.");
             println!("   -> Model imagination does not confer access (Fail-Closed).\n");
@@ -96,7 +99,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("Model Output: {:?}", model_output_b);
 
     // Normalization maps a safe capability request to the allowed CapabilityPromotion
-    let req_b = DirectiveRequest::new(EventType::CapabilityPromotion, b"workspace.write:workspace/output.txt");
+    let req_b = DirectiveRequest::new(
+        EventType::CapabilityPromotion,
+        b"workspace.write:workspace/output.txt",
+    );
     let decision_b = strict_policy.evaluate(req_b)?;
 
     match decision_b {
@@ -106,7 +112,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             println!("   -> Proves: Proposal != Permission.\n");
         }
         PolicyDecision::Deny(reason) => {
-            return Err(format!("Run B failed: valid proposal unexpectedly denied ({:?})", reason).into());
+            return Err(format!(
+                "Run B failed: valid proposal unexpectedly denied ({:?})",
+                reason
+            )
+            .into());
         }
     }
 
@@ -123,7 +133,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     println!("Model Output: {:?}", model_output_c);
 
-    let req_c = DirectiveRequest::new(EventType::CapabilityPromotion, b"workspace.write:agent_evidence.txt");
+    let req_c = DirectiveRequest::new(
+        EventType::CapabilityPromotion,
+        b"workspace.write:agent_evidence.txt",
+    );
     let decision_c = strict_policy.evaluate(req_c)?;
 
     match decision_c {
@@ -162,19 +175,23 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             };
 
             let adapter = FileCreationAdapter;
-            let exec_report_c = adapter.execute(
-                &receipt_c,
-                ReceiptAuthenticationResult::Valid,
-                &operation_c,
-                &operation_c,
-                content_c,
-            )
-            .map_err(|e| format!("execution failed: {:?}", e))?;
+            let exec_report_c = adapter
+                .execute(
+                    &receipt_c,
+                    ReceiptAuthenticationResult::Valid,
+                    &operation_c,
+                    &operation_c,
+                    content_c,
+                )
+                .map_err(|e| format!("execution failed: {:?}", e))?;
 
             assert_eq!(exec_report_c.outcome, ExecutionOutcome::Created);
             println!("PASS: Execution SUCCEEDED under valid governed agent flow.");
             println!("   -> Execution ID: {}", exec_report_c.attempt.execution_id);
-            println!("   -> Side Effect Verified: Target file created at {}", target_path);
+            println!(
+                "   -> Side Effect Verified: Target file created at {}",
+                target_path
+            );
 
             if !Path::new(&target_path).exists() {
                 return Err("Side effect file missing from target path".into());
