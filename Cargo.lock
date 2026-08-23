@@ -114,6 +114,10 @@ dependencies = [
  "serde_json",
  "sovereign-agent-runtime",
  "sovereign-audit",
+ "sovereign-execution",
+ "sovereign-ledger",
+ "sovereign-policy",
+ "sovereign-registry",
  "tempfile",
 ]
 

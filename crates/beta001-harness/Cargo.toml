@@ -17,3 +17,7 @@ chrono = { version = "0.4", features = ["serde"] }
 tempfile = "3"
 git2 = "0.21"
 reqwest = { version = "0.13", features = ["blocking", "json"] }
+sovereign-policy = { version = "0.1.0", path = "../sovereign-policy" }
+sovereign-registry = { version = "0.1.0", path = "../sovereign-registry" }
+sovereign-execution = { version = "0.1.0", path = "../sovereign-execution" }
+sovereign-ledger = { version = "0.1.0", path = "../sovereign-ledger" }
