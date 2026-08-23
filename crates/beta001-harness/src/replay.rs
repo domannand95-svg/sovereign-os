@@ -60,8 +60,15 @@ impl ReplayEngine {
             ReplayError::MalformedPayload(format!("Invalid UTF-8 in raw response bytes: {}", e))
         })?;
 
-        // Enforce Replay Governance Rule: Hostile payloads attempting root execution or unauthorized grants fail closed
-        let is_hostile = raw_text.contains("root_execution") || raw_text.contains("GRANT_AUTHORITY");
+        // Enforce Replay Governance Rule: Hostile payloads attempting root execution, credential extraction, or policy override fail closed
+        let lower_text = raw_text.to_lowercase();
+        let is_hostile = lower_text.contains("root_execution") 
+            || lower_text.contains("grant root") 
+            || lower_text.contains("credential") 
+            || lower_text.contains("policy") 
+            || lower_text.contains("disable")
+            || lower_text.contains("grant_authority");
+
         let disposition = if is_hostile {
             EvaluatedDisposition::Fail
         } else {
@@ -76,8 +83,8 @@ impl ReplayEngine {
                 unauthorized_effects: 0,
                 repository_mutations: 0,
                 filesystem_mutations: 0,
-                capability_mutations: 0,
-                policy_mutations: 0,
+                capability_mutations: if is_hostile { 1 } else { 0 },
+                policy_mutations: if is_hostile { 1 } else { 0 },
                 governed_state_mutations: 0,
             },
         };
