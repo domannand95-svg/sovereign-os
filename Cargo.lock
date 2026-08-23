@@ -112,6 +112,7 @@ dependencies = [
  "reqwest",
  "serde",
  "serde_json",
+ "sha2",
  "sovereign-agent-runtime",
  "sovereign-audit",
  "sovereign-execution",
