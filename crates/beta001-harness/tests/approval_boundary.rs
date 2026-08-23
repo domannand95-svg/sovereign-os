@@ -51,5 +51,5 @@ fn test_a010_c_004_approval_evidence_does_not_contain_execution_authority() {
     // raw shell scripts, execution tokens, or memory pointers. 
     // It remains a purely descriptive data struct.
     assert!(receipt.validate_integrity().is_ok());
-    assert_eq!(std::mem::size_of::<ApprovalReceipt>(), 192); // Ensures struct size remains bound strictly to string references/enums
+    assert_eq!(std::mem::size_of::<ApprovalReceipt>(), 176); // Ensures struct size remains bound strictly to string references/enums
 }
