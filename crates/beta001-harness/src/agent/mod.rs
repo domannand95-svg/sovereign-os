@@ -123,6 +123,22 @@ impl LocalOpenAiCompatibleBackend {
         self
     }
 
+    /// Executes the local model request and returns both raw evidence
+    /// and parsed inert AgentOutput.
+    pub fn respond_with_capture(
+        &self,
+        input: &AgentInput,
+    ) -> Result<(String, AgentOutput), AgentBackendError> {
+        let raw_text = self.response_text(input)?;
+
+        let output = serde_json::from_str(&raw_text).map_err(|error| {
+            AgentBackendError::MalformedResponse(format!(
+                "Local model output is not a valid AgentOutput: {error}"
+            ))
+        })?;
+
+        Ok((raw_text, output))
+    }
     fn response_text(&self, input: &AgentInput) -> Result<String, AgentBackendError> {
         if self.endpoint.is_empty() || self.model.is_empty() {
             return Err(AgentBackendError::ProviderUnavailable(
