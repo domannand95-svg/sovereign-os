@@ -6,9 +6,9 @@
 //!
 //! # Invariants
 //!
-//! - Credential Possession ≠ Execution Authority
-//! - External Inference ≠ Internal Authority
-//! - External Assertion ≠ Internal Permission
+//! - Credential Possession â‰  Execution Authority
+//! - External Inference â‰  Internal Authority
+//! - External Assertion â‰  Internal Permission
 
 use serde::{Deserialize, Serialize};
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -233,8 +233,12 @@ mod tests {
     #[test]
     fn test_ext_008_004_oversized_response_rejection() {
         std::env::set_var("TEST_API_KEY", "valid-token");
-        let mut config = ExternalTransportConfig::default();
-        config.max_response_bytes = 5; // Artificially low cap
+
+        let config = ExternalTransportConfig {
+            max_response_bytes: 5,
+            ..ExternalTransportConfig::default()
+        };
+
         let backend = ExternalApiBackend::new(
             "openai".into(),
             "https://api.openai.com/v1/chat/completions".into(),
@@ -243,10 +247,12 @@ mod tests {
         );
 
         let result = backend.transmit_raw("{\"prompt\":\"test\"}");
+
         assert!(matches!(
             result,
             Err(ExternalTransportError::PayloadExceeded(_))
         ));
+
         std::env::remove_var("TEST_API_KEY");
     }
 
