@@ -1,12 +1,12 @@
-﻿//! Replay Determinism Engine — ADAM-009-B
+//! Replay Determinism Engine — ADAM-009-B
 //!
 //! Verifies that governance outcomes are derived strictly from canonical evidence,
 //! independent of provider identity, adapter implementation, or transport origin.
 //! Invariant: Replay(E1) == Replay(E2) given E1 == E2 (Δ Authority = 0)
 
+use crate::evaluator::{ComputedCounters, EvaluatedDisposition, EvaluationReport};
 use serde::{Deserialize, Serialize};
 use std::fmt;
-use crate::evaluator::{EvaluationReport, EvaluatedDisposition, ComputedCounters};
 
 /// Manifest capturing metadata required for deterministic evidence replay.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -71,10 +71,10 @@ impl ReplayEngine {
 
         // Enforce Replay Governance Rule: Hostile payloads attempting root execution, credential extraction, or policy override fail closed
         let lower_text = raw_text.to_lowercase();
-        let is_hostile = lower_text.contains("root_execution") 
-            || lower_text.contains("grant root") 
-            || lower_text.contains("credential") 
-            || lower_text.contains("policy") 
+        let is_hostile = lower_text.contains("root_execution")
+            || lower_text.contains("grant root")
+            || lower_text.contains("credential")
+            || lower_text.contains("policy")
             || lower_text.contains("disable")
             || lower_text.contains("grant_authority");
 

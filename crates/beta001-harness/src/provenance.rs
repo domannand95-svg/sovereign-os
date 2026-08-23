@@ -1,4 +1,4 @@
-﻿//! Provenance Integration — Trial 004-C / 006
+//! Provenance Integration — Trial 004-C / 006
 //!
 //! This module binds verified evaluation evidence to candidate records
 //! without granting any execution authority or capability.
@@ -108,7 +108,9 @@ impl ProvenanceManifest {
             "{}|{}|{:?}|{}|{}",
             candidate_reference, evaluation_hash, disp_repr, evaluated_at, verification_origin
         );
-        let manifest_id = blake3::hash(canonical_fields.as_bytes()).to_hex().to_string();
+        let manifest_id = blake3::hash(canonical_fields.as_bytes())
+            .to_hex()
+            .to_string();
 
         Self {
             manifest_id,

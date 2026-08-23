@@ -1,11 +1,11 @@
-﻿//! Integration Tests for ADAM-009-A Provider Adapter Registry
+//! Integration Tests for ADAM-009-A Provider Adapter Registry
 //! Verifies registration, fail-closed resolution, and identity/trust isolation.
 
-use std::sync::Arc;
+use beta001_harness::agent::external::ExternalTransportResponse;
 use beta001_harness::agent::{
     AgentBackendError, AgentInput, ProviderAdapter, ProviderAdapterRegistry,
 };
-use beta001_harness::agent::external::ExternalTransportResponse;
+use std::sync::Arc;
 
 struct MockAdapter {
     provider_id: String,
@@ -31,10 +31,7 @@ impl ProviderAdapter for MockAdapter {
         &self.protocol
     }
 
-    fn execute(
-        &self,
-        _input: &AgentInput,
-    ) -> Result<ExternalTransportResponse, AgentBackendError> {
+    fn execute(&self, _input: &AgentInput) -> Result<ExternalTransportResponse, AgentBackendError> {
         Ok(ExternalTransportResponse {
             provider: self.provider_id.clone(),
             timestamp: 1724412000,
@@ -57,7 +54,10 @@ fn test_reg_009_001_provider_registration_succeeds() {
 
     registry.register(adapter);
     let resolved = registry.resolve("provider-alpha");
-    assert!(resolved.is_some(), "REG-009-001: Registered provider must be resolvable");
+    assert!(
+        resolved.is_some(),
+        "REG-009-001: Registered provider must be resolvable"
+    );
     assert_eq!(resolved.unwrap().provider_identity(), "provider-alpha");
 }
 
@@ -65,7 +65,10 @@ fn test_reg_009_001_provider_registration_succeeds() {
 fn test_reg_009_002_unknown_provider_fails_closed() {
     let registry = ProviderAdapterRegistry::new();
     let resolved = registry.resolve("non-existent-provider");
-    assert!(resolved.is_none(), "REG-009-002: Unknown provider must fail closed (None)");
+    assert!(
+        resolved.is_none(),
+        "REG-009-002: Unknown provider must fail closed (None)"
+    );
 }
 
 #[test]
@@ -106,8 +109,16 @@ fn test_reg_009_004_adapter_interchangeability() {
         prompt: "test".to_string(),
         task_reference: "task-001".to_string(),
     };
-    let res_a = registry.resolve("provider-one").unwrap().execute(&input).unwrap();
-    let res_b = registry.resolve("provider-two").unwrap().execute(&input).unwrap();
+    let res_a = registry
+        .resolve("provider-one")
+        .unwrap()
+        .execute(&input)
+        .unwrap();
+    let res_b = registry
+        .resolve("provider-two")
+        .unwrap()
+        .execute(&input)
+        .unwrap();
 
     assert_eq!(res_a.response_digest, res_b.response_digest);
 }

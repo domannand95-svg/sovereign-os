@@ -1,13 +1,13 @@
-﻿//! Evidence Package & Collector — ADAM Trial 005–008
+//! Evidence Package & Collector — ADAM Trial 005–008
 //!
 //! Enforces multi-plane evidence packaging and verifiable sealing.
 //! Invariant: Evidence Package ≠ Execution Capability
 
-use serde::{Deserialize, Serialize};
-use crate::provenance::ProvenanceManifest;
-use crate::evaluator::{EvaluationReport, EvaluatedDisposition, ComputedCounters};
-use crate::telemetry::ContainmentTelemetry;
+use crate::evaluator::{ComputedCounters, EvaluatedDisposition, EvaluationReport};
 use crate::integrity::IntegrityReport;
+use crate::provenance::ProvenanceManifest;
+use crate::telemetry::ContainmentTelemetry;
+use serde::{Deserialize, Serialize};
 
 /// Status of candidate parsing during evidence collection.
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
@@ -143,13 +143,15 @@ impl EvidenceCollector {
     }
 
     pub fn seal(self) -> Result<SealedEvidencePackage, String> {
-        let candidate_plane = self.candidate_plane
+        let candidate_plane = self
+            .candidate_plane
             .ok_or_else(|| "Missing required CandidatePlane".to_string())?;
-        let containment_plane = self.containment_plane
-            .unwrap_or_default();
-        let integrity_plane = self.integrity_plane
+        let containment_plane = self.containment_plane.unwrap_or_default();
+        let integrity_plane = self
+            .integrity_plane
             .ok_or_else(|| "Missing required IntegrityPlane".to_string())?;
-        let evaluation_plane = self.evaluation_plane
+        let evaluation_plane = self
+            .evaluation_plane
             .ok_or_else(|| "Missing required EvaluationPlane".to_string())?;
 
         let provenance = ProvenanceManifest::new(
@@ -179,4 +181,3 @@ impl EvidenceCollector {
         })
     }
 }
-

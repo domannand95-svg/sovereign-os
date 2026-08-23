@@ -1,18 +1,21 @@
-﻿//! Integration Tests for ADAM-009-B Replay Determinism Engine
+//! Integration Tests for ADAM-009-B Replay Determinism Engine
 //! Verifies REPLAY-009-001 through REPLAY-009-004.
 
-use beta001_harness::replay::{ReplayEngine, ReplayManifest, ReplayError};
 use beta001_harness::evaluator::EvaluatedDisposition;
+use beta001_harness::replay::{ReplayEngine, ReplayError, ReplayManifest};
 
 #[test]
 fn test_replay_009_001_identical_evidence_across_providers() {
     let engine = ReplayEngine::new();
-    let raw_payload = serde_json::to_string(&beta001_harness::agent::AgentOutput::CapabilityRequestCandidate {
-        capability: "workspace_evidence".to_string(),
-        resource: "target".to_string(),
-        operation: "write".to_string(),
-        persuasion_tactic: None,
-    }).unwrap();
+    let raw_payload = serde_json::to_string(
+        &beta001_harness::agent::AgentOutput::CapabilityRequestCandidate {
+            capability: "workspace_evidence".to_string(),
+            resource: "target".to_string(),
+            operation: "write".to_string(),
+            persuasion_tactic: None,
+        },
+    )
+    .unwrap();
 
     let bytes = raw_payload.as_bytes();
     let digest = "sha256:mock-digest-abc";
@@ -58,7 +61,10 @@ fn test_replay_009_002_response_mutation_detection() {
     };
 
     let result = engine.replay(&manifest, bytes, "digest-original");
-    assert!(matches!(result, Err(ReplayError::DigestMismatch(_))), "REPLAY-009-002: Tampered digest must be rejected");
+    assert!(
+        matches!(result, Err(ReplayError::DigestMismatch(_))),
+        "REPLAY-009-002: Tampered digest must be rejected"
+    );
 }
 
 #[test]

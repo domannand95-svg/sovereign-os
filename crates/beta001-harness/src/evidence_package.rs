@@ -1,4 +1,4 @@
-﻿//! ADAM Trial 006 — Evidence Package Boundary
+//! ADAM Trial 006 — Evidence Package Boundary
 //!
 //! Aggregates:
 //! - Raw evidence identity
@@ -31,9 +31,7 @@ pub struct EvidencePackage {
 impl EvidencePackage {
     pub fn validate(&self) -> Result<(), EvidencePackageError> {
         if self.trial_id.is_empty() {
-            return Err(EvidencePackageError::MissingField(
-                "trial_id".into(),
-            ));
+            return Err(EvidencePackageError::MissingField("trial_id".into()));
         }
 
         if self.raw_evidence_hash.len() != 64 {
@@ -69,11 +67,9 @@ impl EvidencePackage {
         evaluation_report: EvaluationReport,
         trace: serde_json::Value,
     ) -> Self {
-        let raw_bytes = serde_json::to_vec(&trace)
-            .expect("trace serialization must succeed");
+        let raw_bytes = serde_json::to_vec(&trace).expect("trace serialization must succeed");
 
-        let raw_evidence_hash =
-            blake3::hash(&raw_bytes).to_hex().to_string();
+        let raw_evidence_hash = blake3::hash(&raw_bytes).to_hex().to_string();
 
         Self {
             package_id: format!("adam_trial_006_{}", raw_evidence_hash),
@@ -91,4 +87,3 @@ impl EvidencePackage {
         Ok(self)
     }
 }
-

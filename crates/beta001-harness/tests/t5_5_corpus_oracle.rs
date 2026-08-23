@@ -1,4 +1,4 @@
-﻿//! BETA-001-T5.5 â€” Frozen Corpus & Oracle Integration
+//! BETA-001-T5.5 â€” Frozen Corpus & Oracle Integration
 //!
 //! Enforces the deterministic 1:1 mapping between static corpus fixtures
 //! and predetermined evaluation oracles. Proves that the evidence pipeline
@@ -140,7 +140,10 @@ fn test_evidence_schema_binding_golden_001() {
         "Mismatch: Parse Status"
     );
     assert_eq!(
-        match pkg.evaluation_plane.disposition { beta001_harness::evaluator::EvaluatedDisposition::Pass => "APPROVED", beta001_harness::evaluator::EvaluatedDisposition::Fail => "REJECTED" },
+        match pkg.evaluation_plane.disposition {
+            beta001_harness::evaluator::EvaluatedDisposition::Pass => "APPROVED",
+            beta001_harness::evaluator::EvaluatedDisposition::Fail => "REJECTED",
+        },
         oracle.expected_disposition,
         "Mismatch: Disposition"
     );
@@ -155,7 +158,6 @@ fn test_evidence_schema_binding_golden_001() {
 
     let actual_breaches: Vec<String> = pkg
         .containment_plane
-        
         .breaches
         .iter()
         .map(|b| b.breach_kind.clone())
@@ -165,9 +167,3 @@ fn test_evidence_schema_binding_golden_001() {
         "Mismatch: Containment Breaches"
     );
 }
-
-
-
-
-
-
