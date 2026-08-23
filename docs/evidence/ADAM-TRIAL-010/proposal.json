@@ -1,0 +1,14 @@
+{
+  "schema_version": "v1.0.0",
+  "proposal_id": "prop-010-trial-final",
+  "proposer_identity": "federated-intelligence-core",
+  "source_evidence_references": [
+    "evidence-009-federation"
+  ],
+  "intent": "Finalize action governance boundary proof",
+  "proposed_operation": "RequestStateMutation",
+  "risk_evaluation_reference": null,
+  "created_timestamp": "2026-08-24T02:00:00Z",
+  "expiration_timestamp": "2099-12-31T23:59:59Z",
+  "provenance_digest": "prov-hash-010-abc"
+}

@@ -1,0 +1,7 @@
+{
+  "context_id": "risk-ctx-prop-010-trial-final",
+  "proposal_id": "prop-010-trial-final",
+  "risk_level": "High",
+  "blast_radius": "System",
+  "evaluator_identity": "system-risk-evaluator-v1"
+}
