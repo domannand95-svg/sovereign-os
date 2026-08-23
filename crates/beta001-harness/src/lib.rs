@@ -17,3 +17,4 @@ pub mod replay;
 
 pub mod proposal;
 pub mod risk;
+pub mod approval;
