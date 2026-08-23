@@ -4,3 +4,4 @@
 //! to the deterministic governance kernel.
 
 pub mod admission;
+pub mod client;
