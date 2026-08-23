@@ -1,10 +1,10 @@
 //! Negative Boundary Tests for ADAM-010-B
-//! 
-//! Proves that risk evaluation is deterministic, immutable, and 
+//!
+//! Proves that risk evaluation is deterministic, immutable, and
 //! does not grant execution capability.
 
 use beta001_harness::proposal::{GovernedActionProposal, ProposedOperation};
-use beta001_harness::risk::{RiskEvaluator, RiskLevel, BlastRadius};
+use beta001_harness::risk::{BlastRadius, RiskEvaluator, RiskLevel};
 
 fn dummy_proposal(op: ProposedOperation) -> GovernedActionProposal {
     GovernedActionProposal {
@@ -25,7 +25,7 @@ fn dummy_proposal(op: ProposedOperation) -> GovernedActionProposal {
 fn test_r010_b_001_risk_escalation_cannot_be_lowered() {
     let prop = dummy_proposal(ProposedOperation::RequestStateMutation);
     let ctx = RiskEvaluator::evaluate_proposal(&prop);
-    
+
     // Ensure state mutations are structurally bound to High risk and System blast radius
     assert_eq!(ctx.risk_level, RiskLevel::High);
     assert_eq!(ctx.blast_radius, BlastRadius::System);
@@ -34,7 +34,7 @@ fn test_r010_b_001_risk_escalation_cannot_be_lowered() {
 #[test]
 fn test_r010_b_002_proposal_cannot_self_select_risk() {
     let prop = dummy_proposal(ProposedOperation::EmitNotification);
-    
+
     // The proposal struct inherently lacks fields to suggest its own risk.
     // The evaluation guarantees the mapping:
     let ctx = RiskEvaluator::evaluate_proposal(&prop);
@@ -46,7 +46,7 @@ fn test_r010_b_002_proposal_cannot_self_select_risk() {
 fn test_r010_b_004_risk_evaluation_cannot_authorize_execution() {
     let prop = dummy_proposal(ProposedOperation::RequestApproval);
     let ctx = RiskEvaluator::evaluate_proposal(&prop);
-    
+
     // The context is generated, but contains no execution tokens or capabilities,
     // preserving the Delta Authority = 0 invariant.
     assert_eq!(ctx.risk_level, RiskLevel::Medium);
