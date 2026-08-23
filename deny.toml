@@ -112,3 +112,11 @@ allow = ["Unicode-3.0"]
 [[licenses.exceptions]]
 crate = "zerovec-derive@0.11.6"
 allow = ["Unicode-3.0"]
+
+[[licenses.exceptions]]
+crate = "jni"
+allow = ["MIT", "Apache-2.0"]
+
+[[licenses.exceptions]]
+crate = "rustls-platform-verifier"
+allow = ["MIT", "Apache-2.0"]
