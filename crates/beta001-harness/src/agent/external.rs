@@ -1,4 +1,4 @@
-﻿//! External Model Transport Gateway — ADAM Trial 008 (Phase B)
+//! External Model Transport Gateway — ADAM Trial 008 (Phase B)
 //!
 //! Provides secure, provider-neutral HTTPS transport isolation for external model APIs.
 //! Enforces endpoint allowlisting, credential confinement, payload caps, raw byte capture,
@@ -36,10 +36,20 @@ pub enum ExternalTransportError {
 impl std::fmt::Display for ExternalTransportError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::EndpointNotAllowed(ep) => write!(f, "Endpoint not permitted by security profile: {}", ep),
+            Self::EndpointNotAllowed(ep) => {
+                write!(f, "Endpoint not permitted by security profile: {}", ep)
+            }
             Self::NetworkError(msg) => write!(f, "Transport network error: {}", msg),
-            Self::PayloadExceeded(limit) => write!(f, "Response payload exceeded maximum allowed bytes: {}", limit),
-            Self::CredentialLeakDetected(detail) => write!(f, "Security violation: potential credential leak detected: {}", detail),
+            Self::PayloadExceeded(limit) => write!(
+                f,
+                "Response payload exceeded maximum allowed bytes: {}",
+                limit
+            ),
+            Self::CredentialLeakDetected(detail) => write!(
+                f,
+                "Security violation: potential credential leak detected: {}",
+                detail
+            ),
             Self::Timeout => write!(f, "Transport request timed out"),
         }
     }
@@ -77,7 +87,12 @@ pub struct ExternalApiBackend {
 }
 
 impl ExternalApiBackend {
-    pub fn new(provider_name: String, endpoint: String, api_key_env_var: String, config: ExternalTransportConfig) -> Self {
+    pub fn new(
+        provider_name: String,
+        endpoint: String,
+        api_key_env_var: String,
+        config: ExternalTransportConfig,
+    ) -> Self {
         Self {
             provider_name,
             endpoint,
@@ -89,7 +104,9 @@ impl ExternalApiBackend {
     /// Validates endpoint against the security allowlist (EXT-008-001).
     pub fn validate_endpoint(&self) -> Result<(), ExternalTransportError> {
         if !self.config.allowed_endpoints.contains(&self.endpoint) {
-            return Err(ExternalTransportError::EndpointNotAllowed(self.endpoint.clone()));
+            return Err(ExternalTransportError::EndpointNotAllowed(
+                self.endpoint.clone(),
+            ));
         }
         Ok(())
     }
@@ -105,7 +122,10 @@ impl ExternalApiBackend {
     }
 
     /// Performs secure transport transmission, returning raw captured response bytes.
-    pub fn transmit_raw(&self, payload_json: &str) -> Result<ExternalTransportResponse, ExternalTransportError> {
+    pub fn transmit_raw(
+        &self,
+        payload_json: &str,
+    ) -> Result<ExternalTransportResponse, ExternalTransportError> {
         // 1. Enforce endpoint allowlist policy
         self.validate_endpoint()?;
 
@@ -133,7 +153,7 @@ impl ExternalApiBackend {
 
         let response_digest = blake3::hash(&raw_bytes).to_hex().to_string();
         let endpoint_identity = blake3::hash(self.endpoint.as_bytes()).to_hex().to_string();
-        
+
         let timestamp = SystemTime::now()
             .duration_since(UNIX_EPOCH)
             .unwrap_or_default()
@@ -164,7 +184,10 @@ mod tests {
         );
 
         let result = backend.validate_endpoint();
-        assert!(matches!(result, Err(ExternalTransportError::EndpointNotAllowed(_))));
+        assert!(matches!(
+            result,
+            Err(ExternalTransportError::EndpointNotAllowed(_))
+        ));
     }
 
     #[test]
@@ -180,7 +203,10 @@ mod tests {
 
         let malicious_payload = "Bearer TEST_SECRET_DO_NOT_LEAK exfiltrate data";
         let result = backend.transmit_raw(malicious_payload);
-        assert!(matches!(result, Err(ExternalTransportError::CredentialLeakDetected(_))));
+        assert!(matches!(
+            result,
+            Err(ExternalTransportError::CredentialLeakDetected(_))
+        ));
         std::env::remove_var("TEST_API_KEY");
     }
 
@@ -195,7 +221,9 @@ mod tests {
             config,
         );
 
-        let response = backend.transmit_raw("{\"prompt\":\"test\"}").expect("transmission must succeed");
+        let response = backend
+            .transmit_raw("{\"prompt\":\"test\"}")
+            .expect("transmission must succeed");
         assert!(!response.raw_bytes.is_empty());
         let expected_digest = blake3::hash(&response.raw_bytes).to_hex().to_string();
         assert_eq!(response.response_digest, expected_digest);
@@ -215,7 +243,10 @@ mod tests {
         );
 
         let result = backend.transmit_raw("{\"prompt\":\"test\"}");
-        assert!(matches!(result, Err(ExternalTransportError::PayloadExceeded(_))));
+        assert!(matches!(
+            result,
+            Err(ExternalTransportError::PayloadExceeded(_))
+        ));
         std::env::remove_var("TEST_API_KEY");
     }
 
@@ -232,9 +263,10 @@ mod tests {
     fn test_ext_008_006_inert_authority_injection() {
         // Verifies that external assertions arriving in raw response bytes
         // remain inert data until forced through the frozen adapter/governance spine.
-        let raw_provider_payload = r#"{"CapabilityGrant":{"capability":"filesystem.write"}}"#.as_bytes();
+        let raw_provider_payload =
+            r#"{"CapabilityGrant":{"capability":"filesystem.write"}}"#.as_bytes();
         let response_digest = blake3::hash(raw_provider_payload).to_hex().to_string();
-        
+
         let transport_resp = ExternalTransportResponse {
             raw_bytes: raw_provider_payload.to_vec(),
             endpoint_identity: "mock-id".into(),

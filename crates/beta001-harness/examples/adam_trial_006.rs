@@ -1,4 +1,4 @@
-﻿//! ADAM TRIAL ASSIGNMENT 006
+//! ADAM TRIAL ASSIGNMENT 006
 //!
 //! End-to-End Governed Pipeline Closure & Evidence Package Sealing
 //!
@@ -11,9 +11,9 @@
 //! Evidence Package ≠ Execution Capability
 
 use beta001_harness::{
-    evaluator::{evaluate_candidate, CandidateTrace, EvaluationProfile, EvaluatedDisposition},
-    provenance::ProvenanceManifest,
+    evaluator::{evaluate_candidate, CandidateTrace, EvaluatedDisposition, EvaluationProfile},
     evidence_package::EvidencePackage,
+    provenance::ProvenanceManifest,
     schema::TraceSchemaValidator,
 };
 
@@ -26,14 +26,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Step 1: Initialize Schema Validator
     let manifest_dir = env!("CARGO_MANIFEST_DIR");
-    let schema_path = Path::new(manifest_dir).join("../../docs/specifications/BETA-001-TRACE-v1.schema.json");
-    let validator = TraceSchemaValidator::new(schema_path)
-        .expect("canonical schema must compile");
+    let schema_path =
+        Path::new(manifest_dir).join("../../docs/specifications/BETA-001-TRACE-v1.schema.json");
+    let validator = TraceSchemaValidator::new(schema_path).expect("canonical schema must compile");
 
     // Step 2: Synthetic Candidate Trace
     let run_id = "run-trial-006".to_string();
     let task_id = "task-trial-006".to_string();
-    
+
     let events = vec![
         serde_json::json!({
             "seq": 1,
@@ -94,7 +94,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             events,
         },
         &EvaluationProfile::default(),
-    ).map_err(|e| format!("evaluation failed: {}", e.detail))?;
+    )
+    .map_err(|e| format!("evaluation failed: {}", e.detail))?;
 
     assert_eq!(evaluation.report.disposition, EvaluatedDisposition::Pass);
     println!("EvaluationReport PASS");
@@ -107,16 +108,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         "t5_9_evaluator".to_string(),
         1724410800,
     );
-    provenance.validate().expect("provenance manifest must validate");
+    provenance
+        .validate()
+        .expect("provenance manifest must validate");
     println!("ProvenanceManifest VALID");
     println!("        |");
     println!("        v");
 
-    let package = EvidencePackage::new(
-        provenance,
-        evaluation.report,
-        evaluation.trace,
-    );
+    let package = EvidencePackage::new(provenance, evaluation.report, evaluation.trace);
 
     let sealed = package.seal().expect("evidence package must seal cleanly");
     println!("EvidencePackage SEALED");

@@ -1,4 +1,4 @@
-﻿//! ADAM TRIAL ASSIGNMENT 007
+//! ADAM TRIAL ASSIGNMENT 007
 //!
 //! Live Model Governed Pipeline Closure & Multi-Plane Evidence Sealing
 //!
@@ -13,18 +13,18 @@
 //! - Capability Request ≠ Capability Grant
 
 use beta001_harness::{
-    agent::{AgentInput, LocalOpenAiCompatibleBackend, AgentOutput},
-    evaluator::{evaluate_candidate, CandidateTrace, EvaluationProfile, EvaluatedDisposition},
+    agent::{AgentInput, AgentOutput, LocalOpenAiCompatibleBackend},
+    evaluator::{evaluate_candidate, CandidateTrace, EvaluatedDisposition, EvaluationProfile},
+    evidence::{CandidateParseStatus, EvidenceCollector},
+    integrity::IntegrityReport,
     provenance::ProvenanceManifest,
     schema::TraceSchemaValidator,
-    evidence::{EvidenceCollector, CandidateParseStatus},
     telemetry::ContainmentTelemetry,
-    integrity::IntegrityReport,
 };
 
+use std::collections::BTreeMap;
 use std::fs;
 use std::path::Path;
-use std::collections::BTreeMap;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("=== SOVEREIGN OS: ADAM TRIAL 007 ===");
@@ -32,17 +32,20 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Step 1: Initialize Schema Validator
     let manifest_dir = env!("CARGO_MANIFEST_DIR");
-    let schema_path = Path::new(manifest_dir).join("../../docs/specifications/BETA-001-TRACE-v1.schema.json");
-    let validator = TraceSchemaValidator::new(schema_path)
-        .expect("canonical schema must compile");
+    let schema_path =
+        Path::new(manifest_dir).join("../../docs/specifications/BETA-001-TRACE-v1.schema.json");
+    let validator = TraceSchemaValidator::new(schema_path).expect("canonical schema must compile");
 
     // Step 2: Invoke Live Local Model Backend
     let endpoint = std::env::var("SOVEREIGN_LOCAL_MODEL_ENDPOINT")
         .unwrap_or_else(|_| "http://127.0.0.1:11434/v1/chat/completions".into());
-    let model = std::env::var("SOVEREIGN_LOCAL_MODEL_NAME")
-        .unwrap_or_else(|_| "qwen2.5-coder:7b".into());
+    let model =
+        std::env::var("SOVEREIGN_LOCAL_MODEL_NAME").unwrap_or_else(|_| "qwen2.5-coder:7b".into());
 
-    println!("-> Connecting to local model backend at {} ({})", endpoint, model);
+    println!(
+        "-> Connecting to local model backend at {} ({})",
+        endpoint, model
+    );
     let backend = LocalOpenAiCompatibleBackend::new(endpoint, model);
 
     let agent_input = AgentInput {
@@ -50,15 +53,27 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         task_reference: "adam-trial-007-live".into(),
     };
 
-    let (raw_text, agent_output) = backend.respond_with_capture(&agent_input)
+    let (raw_text, agent_output) = backend
+        .respond_with_capture(&agent_input)
         .map_err(|e| format!("live model backend failed: {:?}", e))?;
 
-    println!("   PASS: Raw model response captured ({} bytes)", raw_text.len());
+    println!(
+        "   PASS: Raw model response captured ({} bytes)",
+        raw_text.len()
+    );
     println!("   PASS: Parsed agent output: {:?}", agent_output);
 
     match agent_output {
-        AgentOutput::CapabilityRequestCandidate { capability, resource, operation, .. } => {
-            println!("   PASS: Inert capability candidate proposed: {} on {} ({})", capability, resource, operation);
+        AgentOutput::CapabilityRequestCandidate {
+            capability,
+            resource,
+            operation,
+            ..
+        } => {
+            println!(
+                "   PASS: Inert capability candidate proposed: {} on {} ({})",
+                capability, resource, operation
+            );
         }
         other => {
             return Err(format!("Unexpected agent output variant: {:?}", other).into());
@@ -123,7 +138,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             events,
         },
         &EvaluationProfile::default(),
-    ).map_err(|e| format!("evaluation failed: {}", e.detail))?;
+    )
+    .map_err(|e| format!("evaluation failed: {}", e.detail))?;
 
     assert_eq!(evaluation.report.disposition, EvaluatedDisposition::Pass);
     println!("   PASS: Deterministic evaluation disposition: PASS");
@@ -136,7 +152,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         "t5_9_evaluator".to_string(),
         1724411400,
     );
-    provenance.validate().expect("provenance manifest must validate");
+    provenance
+        .validate()
+        .expect("provenance manifest must validate");
 
     let mut collector = EvidenceCollector::new(
         "adam-trial-007".to_string(),
@@ -151,7 +169,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     );
 
     collector.set_containment_plane(ContainmentTelemetry::new());
-    
+
     let integrity_report = IntegrityReport {
         version: 1,
         pre_snapshots: BTreeMap::new(),
@@ -166,7 +184,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         Some(evaluation.report.disposition.as_str().to_string()),
     );
 
-    let sealed_package = collector.seal()
+    let sealed_package = collector
+        .seal()
         .map_err(|e| format!("evidence package sealing failed: {:?}", e))?;
 
     println!(
@@ -187,7 +206,3 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     Ok(())
 }
-
-
-
-

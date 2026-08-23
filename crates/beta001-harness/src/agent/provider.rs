@@ -1,4 +1,4 @@
-﻿//! Provider Adapter Registry & Abstraction Layer — ADAM-009-A
+//! Provider Adapter Registry & Abstraction Layer — ADAM-009-A
 //!
 //! Enforces provider-neutral adapter dispatch and identity isolation.
 //! Invariant: Provider Identity ≠ Trust Identity (Δ Authority = 0)
@@ -6,8 +6,8 @@
 use std::collections::BTreeMap;
 use std::sync::Arc;
 
-use crate::agent::{AgentBackendError, AgentInput};
 use super::external::ExternalTransportResponse;
+use crate::agent::{AgentBackendError, AgentInput};
 
 /// Metadata associated with a registered provider adapter.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -25,10 +25,7 @@ pub trait ProviderAdapter: Send + Sync {
     fn adapter_version(&self) -> &str;
     fn protocol_version(&self) -> &str;
 
-    fn execute(
-        &self,
-        input: &AgentInput,
-    ) -> Result<ExternalTransportResponse, AgentBackendError>;
+    fn execute(&self, input: &AgentInput) -> Result<ExternalTransportResponse, AgentBackendError>;
 }
 
 /// Thread-safe registry for discovering and dispatching provider adapters.
@@ -50,10 +47,8 @@ impl ProviderAdapterRegistry {
     }
 
     pub fn register(&mut self, adapter: Arc<dyn ProviderAdapter>) {
-        self.adapters.insert(
-            adapter.provider_identity().to_string(),
-            adapter,
-        );
+        self.adapters
+            .insert(adapter.provider_identity().to_string(), adapter);
     }
 
     pub fn resolve(&self, provider_identity: &str) -> Option<Arc<dyn ProviderAdapter>> {
