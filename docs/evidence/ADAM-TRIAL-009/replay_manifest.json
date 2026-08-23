@@ -1,0 +1,8 @@
+{
+  "replay_version": 1,
+  "request_digest": "dad8871bacd715edfdc15ca1e07337293d55d2c097687d7928cb2a691bc4868c",
+  "response_digest": "d9e7db5df6c8692f6679748dc8c85cad7fc7011e3a0b4b86cfab9b7a832607de",
+  "schema_version": "v1.0.0",
+  "adapter_identity": "anthropic-adapter-http",
+  "adapter_version": "v2.1.0"
+}

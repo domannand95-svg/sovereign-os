@@ -5,6 +5,7 @@
 //! Invariant: Replay(E1) == Replay(E2) given E1 == E2 (Δ Authority = 0)
 
 use serde::{Deserialize, Serialize};
+use std::fmt;
 use crate::evaluator::{EvaluationReport, EvaluatedDisposition, ComputedCounters};
 
 /// Manifest capturing metadata required for deterministic evidence replay.
@@ -25,6 +26,14 @@ pub enum ReplayError {
     MalformedPayload(String),
     EvaluationFailure(String),
 }
+
+impl fmt::Display for ReplayError {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(formatter, "{:?}", self)
+    }
+}
+
+impl std::error::Error for ReplayError {}
 
 /// Engine for executing deterministic replay evaluations over captured transport evidence.
 pub struct ReplayEngine;
