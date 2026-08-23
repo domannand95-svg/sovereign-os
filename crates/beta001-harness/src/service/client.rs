@@ -6,6 +6,7 @@
 //! Invariant: Sanitization != Trust (Δ Authority = 0)
 
 use chrono::{DateTime, Utc};
+use serde::{Deserialize, Serialize};
 use sha2::digest::Digest;
 use sha2::Sha256;
 use unicode_normalization::UnicodeNormalization;
@@ -41,14 +42,14 @@ pub enum ClientSanitizationError {
 }
 
 /// Authenticated context originating strictly from trusted gateway authentication mechanisms.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct AuthenticatedClientContext {
     pub authenticated_user_id: UserId,
     pub authenticated_session_id: SessionId,
 }
 
 /// Sanitized proposal envelope containing immutable raw evidence and unprivileged normalized intent.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct SanitizedProposalRequest {
     pub original_request: ProposalRequest,
     pub raw_intent_digest: Sha256Digest,

@@ -94,7 +94,7 @@ impl InferenceGatewayAdapter {
     }
 
     /// Derives canonical domain-separated evidence seal digest using length-prefixed preimage encoding.
-    fn derive_seal_digest(
+    pub fn derive_seal_digest(
         session_id: &SessionId,
         provider_id: &str,
         adapter_id: &str,
