@@ -1,6 +1,7 @@
 [workspace]
 resolver = "2"
 members = [
+    "crates/sovereign-base44-adapter",
     "crates/sovereign-ledger",
     "crates/sovereign-registry",
     "crates/sovereign-core-asm",
@@ -18,3 +19,4 @@ crc32c = "0.6"
 proptest = "1.4"
 tokio = { version = "1.35", features = ["sync", "rt"] }
 serde = { version = "1.0", features = ["derive"] }
+

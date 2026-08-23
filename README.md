@@ -1,4 +1,4 @@
-# Sovereign Operating Layer (SOL)
+﻿# Sovereign Operating Layer (SOL)
 
 > **Probabilistic intelligence; deterministic authority.**
 
@@ -24,7 +24,7 @@ Missing, ambiguous, stale, unresolved, or unverifiable authority inputs fail clo
 
 `sovereign-os` is the repository and long-term programme. The currently implemented architecture is the Sovereign Operating Layer (SOL): a governed control and state layer, not a general-purpose operating system.
 
-“Sovereign Operating System” remains a future architectural horizon contingent on the programme owning sufficient execution, lifecycle, resource, isolation, recovery, and hardware-facing responsibilities. The repository name does not claim those capabilities exist today.
+â€œSovereign Operating Systemâ€ remains a future architectural horizon contingent on the programme owning sufficient execution, lifecycle, resource, isolation, recovery, and hardware-facing responsibilities. The repository name does not claim those capabilities exist today.
 
 ## Current Authoritative Baseline
 
@@ -213,3 +213,4 @@ Research and experimental artifacts remain non-authoritative until separately re
 ## License
 
 See [`LICENSE`](LICENSE).
+
