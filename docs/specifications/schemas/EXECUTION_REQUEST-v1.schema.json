@@ -1,0 +1,52 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sovereign-os.internal/schemas/EXECUTION_REQUEST-v1.schema.json",
+  "title": "Execution Request",
+  "description": "ADAM-011-A: Explicit claim to execute an approved proposal requiring verifiable approval evidence binding.",
+  "type": "object",
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "v1.0.0"
+    },
+    "user_id": {
+      "type": "string",
+      "pattern": "^usr_[a-zA-Z0-9_-]+$"
+    },
+    "session_id": {
+      "type": "string",
+      "pattern": "^ses_[a-zA-Z0-9_-]+$"
+    },
+    "proposal_id": {
+      "type": "string",
+      "pattern": "^prop_[a-zA-Z0-9_-]+$"
+    },
+    "approval_receipt_id": {
+      "type": "string",
+      "pattern": "^apr_[a-zA-Z0-9_-]+$"
+    },
+    "caller_identity": {
+      "type": "string",
+      "minLength": 1
+    },
+    "signature": {
+      "type": "string",
+      "minLength": 1
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "required": [
+    "schema_version",
+    "user_id",
+    "session_id",
+    "proposal_id",
+    "approval_receipt_id",
+    "caller_identity",
+    "signature",
+    "timestamp"
+  ],
+  "additionalProperties": false
+}
