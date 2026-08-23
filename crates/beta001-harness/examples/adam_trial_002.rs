@@ -1,7 +1,5 @@
 use sovereign_ledger::EventType;
-use sovereign_policy::{
-    DirectivePolicy, DirectiveRequest, EventTypeAllowlist, PolicyDecision, PolicyDenial,
-};
+use sovereign_policy::{DirectivePolicy, DirectiveRequest, EventTypeAllowlist, PolicyDecision};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("=== SOVEREIGN OS: ADAM TRIAL ASSIGNMENT 002 ===");
