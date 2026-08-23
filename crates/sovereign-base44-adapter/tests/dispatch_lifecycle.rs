@@ -2,17 +2,10 @@
 
 use sha2::Digest;
 
-use sovereign_base44_adapter::{
-    Base44Dispatcher,
-    Base44ExecutionStatus,
-    Base44IngressRequest,
-};
+use sovereign_base44_adapter::{Base44Dispatcher, Base44ExecutionStatus, Base44IngressRequest};
 
 use sovereign_execution_api::{
-    ExecutionApiFacade,
-    KernelExecutionError,
-    KernelExecutionRequest,
-    KernelExecutionResponse,
+    ExecutionApiFacade, KernelExecutionError, KernelExecutionRequest, KernelExecutionResponse,
     KernelInvoker,
 };
 
@@ -59,10 +52,7 @@ fn test_full_dispatch_lifecycle_success() {
 
     let response = result.unwrap();
 
-    assert_eq!(
-        response.status,
-        Base44ExecutionStatus::Success
-    );
+    assert_eq!(response.status, Base44ExecutionStatus::Success);
 
     assert_eq!(
         response.report_reference,
@@ -118,10 +108,7 @@ fn test_oversized_payload_is_rejected_before_kernel_execution() {
 fn test_kernel_rejection_propagates_to_base44_egress() {
     use sha2::Digest;
     use sovereign_execution_api::{
-        ExecutionApiFacade,
-        KernelExecutionError,
-        KernelExecutionRequest,
-        KernelExecutionResponse,
+        ExecutionApiFacade, KernelExecutionError, KernelExecutionRequest, KernelExecutionResponse,
         KernelInvoker,
     };
 
@@ -167,10 +154,7 @@ fn test_kernel_rejection_propagates_to_base44_egress() {
 
     let response = result.unwrap();
 
-    assert_eq!(
-        response.status,
-        Base44ExecutionStatus::ExecutionFailed
-    );
+    assert_eq!(response.status, Base44ExecutionStatus::ExecutionFailed);
 
     assert!(response.report_reference.is_none());
 }

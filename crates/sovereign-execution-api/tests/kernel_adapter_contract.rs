@@ -1,11 +1,6 @@
-﻿use sovereign_execution_api::{
-    ExecutionApiFacade,
-    ExecutionStatus,
-    GovernedExecutionRequest,
-    KernelExecutionError,
-    KernelExecutionRequest,
-    KernelExecutionResponse,
-    KernelInvoker,
+use sovereign_execution_api::{
+    ExecutionApiFacade, ExecutionStatus, GovernedExecutionRequest, KernelExecutionError,
+    KernelExecutionRequest, KernelExecutionResponse, KernelInvoker,
 };
 
 #[derive(Default)]
@@ -38,11 +33,8 @@ fn valid_request_reaches_kernel_boundary() {
     let kernel = MockKernelInvoker::default();
     let facade = ExecutionApiFacade::new(kernel);
 
-    let request = GovernedExecutionRequest::new(
-        "exec-001".into(),
-        "receipt-001".into(),
-        vec![1, 2, 3],
-    );
+    let request =
+        GovernedExecutionRequest::new("exec-001".into(), "receipt-001".into(), vec![1, 2, 3]);
 
     let result = facade.execute(request);
 
@@ -62,11 +54,7 @@ fn empty_receipt_is_rejected_before_kernel_execution() {
     let kernel = MockKernelInvoker::default();
     let facade = ExecutionApiFacade::new(kernel);
 
-    let request = GovernedExecutionRequest::new(
-        "exec-001".into(),
-        "".into(),
-        vec![1, 2, 3],
-    );
+    let request = GovernedExecutionRequest::new("exec-001".into(), "".into(), vec![1, 2, 3]);
 
     let result = facade.execute(request);
 
@@ -78,11 +66,8 @@ fn empty_payload_is_rejected_before_kernel_execution() {
     let kernel = MockKernelInvoker::default();
     let facade = ExecutionApiFacade::new(kernel);
 
-    let request = GovernedExecutionRequest::new(
-        "exec-001".into(),
-        "receipt-001".into(),
-        Vec::new(),
-    );
+    let request =
+        GovernedExecutionRequest::new("exec-001".into(), "receipt-001".into(), Vec::new());
 
     let result = facade.execute(request);
 
@@ -98,11 +83,7 @@ fn kernel_failure_is_translated_into_execution_failure() {
 
     let facade = ExecutionApiFacade::new(kernel);
 
-    let request = GovernedExecutionRequest::new(
-        "exec-001".into(),
-        "receipt-001".into(),
-        vec![1],
-    );
+    let request = GovernedExecutionRequest::new("exec-001".into(), "receipt-001".into(), vec![1]);
 
     let result = facade.execute(request);
 

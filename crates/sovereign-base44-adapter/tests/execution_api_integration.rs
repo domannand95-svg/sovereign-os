@@ -1,13 +1,7 @@
-﻿use sovereign_base44_adapter::{
-    Base44Dispatcher,
-    Base44IngressRequest,
-};
+use sovereign_base44_adapter::{Base44Dispatcher, Base44IngressRequest};
 
 use sovereign_execution_api::{
-    ExecutionApiFacade,
-    KernelExecutionError,
-    KernelExecutionRequest,
-    KernelExecutionResponse,
+    ExecutionApiFacade, KernelExecutionError, KernelExecutionRequest, KernelExecutionResponse,
     KernelInvoker,
 };
 
@@ -28,12 +22,12 @@ impl KernelInvoker for MockKernel {
 fn base44_request_crosses_api_boundary() {
     let request = Base44IngressRequest {
         request_id: "req-001".to_string(),
-        receipt_reference:
-            "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa".to_string(),
+        receipt_reference: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            .to_string(),
         operation: "create".to_string(),
         target: "test.txt".to_string(),
-        content_digest:
-            "239f59ed55e737c77147cf55ad0c1b030b6d7ee748a7426952f9b852d5a935e5".to_string(),
+        content_digest: "239f59ed55e737c77147cf55ad0c1b030b6d7ee748a7426952f9b852d5a935e5"
+            .to_string(),
         content: b"payload".to_vec(),
         timestamp: std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)

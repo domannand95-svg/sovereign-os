@@ -1,4 +1,4 @@
-﻿//! Egress translation integration tests.
+//! Egress translation integration tests.
 
 extern crate sovereign_base44_adapter;
 
@@ -76,4 +76,3 @@ fn test_to_json_serialization() {
     assert!(json.contains("exec-004"));
     assert!(json.contains("Success"));
 }
-

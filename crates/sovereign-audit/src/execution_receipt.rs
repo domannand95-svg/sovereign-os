@@ -66,10 +66,7 @@ impl ExecutionReceipt {
         }
     }
 
-    pub fn derive_operation_hash(
-        operation_type: &str,
-        operation_target: &str,
-    ) -> Digest {
+    pub fn derive_operation_hash(operation_type: &str, operation_target: &str) -> Digest {
         let mut hasher = blake3::Hasher::new();
 
         hasher.update(b"SOV:EXECUTION_OPERATION:V1");
@@ -153,10 +150,7 @@ mod tests {
     #[test]
     fn receipt_identity_is_deterministic() {
         let operation_hash =
-            ExecutionReceipt::derive_operation_hash(
-                "FILE_WRITE",
-                "/data/test.txt",
-            );
+            ExecutionReceipt::derive_operation_hash("FILE_WRITE", "/data/test.txt");
 
         let receipt_a = ExecutionReceipt::new(
             "exec-001".into(),
