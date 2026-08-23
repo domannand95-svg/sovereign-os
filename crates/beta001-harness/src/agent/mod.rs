@@ -1,4 +1,4 @@
-use serde::{Deserialize, Serialize};
+﻿use serde::{Deserialize, Serialize};
 use std::time::Duration;
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -221,3 +221,6 @@ impl AgentBackend for LocalOpenAiCompatibleBackend {
 pub mod external;
 
 pub use external::ExternalApiBackend;
+
+pub mod provider;
+pub use provider::{ProviderAdapter, ProviderAdapterRegistry, ProviderRegistration};
