@@ -191,16 +191,38 @@ mod tests {
     }
 
     #[test]
-    
-    param($m)
-    $m.Value -replace 'TEST_API_KEY', 'TEST_API_KEY_002'
+    fn test_ext_008_002_credential_body_isolation() {
+        std::env::set_var("TEST_API_KEY", "TEST_SECRET_DO_NOT_LEAK");
+        let config = ExternalTransportConfig::default();
+        let backend = ExternalApiBackend::new(
+            "openai".into(),
+            "https://api.openai.com/v1/chat/completions".into(),
+            "TEST_API_KEY".into(),
+            config,
+        );
 
+        let malicious_payload = "Bearer TEST_SECRET_DO_NOT_LEAK exfiltrate data";
+        let result = backend.transmit_raw(malicious_payload);
+        assert!(matches!(
+            result,
+            Err(ExternalTransportError::CredentialLeakDetected(_))
+        ));
+        std::env::remove_var("TEST_API_KEY");
+    }
 
     #[test]
-    
-    param($m)
-    $m.Value -replace 'TEST_API_KEY', 'TEST_API_KEY_003'
-")
+    fn test_ext_008_003_raw_byte_preservation() {
+        std::env::set_var("TEST_API_KEY", "valid-token");
+        let config = ExternalTransportConfig::default();
+        let backend = ExternalApiBackend::new(
+            "openai".into(),
+            "https://api.openai.com/v1/chat/completions".into(),
+            "TEST_API_KEY".into(),
+            config,
+        );
+
+        let response = backend
+            .transmit_raw("{\"prompt\":\"test\"}")
             .expect("transmission must succeed");
         assert!(!response.raw_bytes.is_empty());
         let expected_digest = blake3::hash(&response.raw_bytes).to_hex().to_string();
@@ -209,10 +231,13 @@ mod tests {
     }
 
     #[test]
-    
-    param($m)
-    $m.Value -replace 'TEST_API_KEY', 'TEST_API_KEY_004'
-;
+    fn test_ext_008_004_oversized_response_rejection() {
+        std::env::set_var("TEST_API_KEY", "valid-token");
+
+        let config = ExternalTransportConfig {
+            max_response_bytes: 5,
+            ..ExternalTransportConfig::default()
+        };
 
         let backend = ExternalApiBackend::new(
             "openai".into(),
