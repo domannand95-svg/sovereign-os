@@ -20,3 +20,9 @@ crates/network-service/snapshot_metadata.json
 # Python compatibility-test artifacts
 **/__pycache__/
 *.py[cod]
+
+# Local model artifacts: preserve on disk, checkpoint identity by manifest.
+models/**/checkpoints/
+models/**/adapter_model.safetensors
+models/**/tokenizer.json
+models/**/lora_adapter/README.md

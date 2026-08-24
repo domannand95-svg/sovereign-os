@@ -1,0 +1,13 @@
+{
+  "base_model_id": "unsloth/Llama-3.2-3B-Instruct",
+  "dataset_canonical_digest": "79551cc7c424b3b851d6199f7049542bcad5d66d0bf239337a7dd5089efdebc1",
+  "adapter_digest": "7177c855ecc5cb560d5dfa7bb87e840e2fcb1bfa7256e6b481d8bbd4e0b40184",
+  "training_hyperparameters": {
+    "epochs": 3,
+    "batch_size": 2,
+    "gradient_accumulation_steps": 4,
+    "learning_rate": 0.0002,
+    "lora_r": 16,
+    "lora_alpha": 32
+  }
+}
