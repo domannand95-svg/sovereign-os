@@ -51,7 +51,7 @@ impl TransactionOrchestrator {
                         },
                         sequence_tick: ctx.logical_sequence_tick,
                     };
-                    store.record_terminal_receipt(receipt.clone());
+                    store.record_terminal_receipt(receipt);
                     return Err(DispatchError::WorkerFailed(
                         super::worker::WorkerError::ExecutionFailure(format!(
                             "Journal staging failed: {}",
@@ -95,8 +95,8 @@ impl TransactionOrchestrator {
                         let receipt = ExecutionReceipt {
                             execution_id: ctx.execution_id.clone(),
                             package_digest: ctx.package_digest.clone(),
-                            initial_state_root,
-                            final_state_root,
+                            initial_state_root: initial_root,
+                            final_state_root: final_root,
                             initial_revision: initial_rev,
                             final_revision: final_rev,
                             delta_digest,
