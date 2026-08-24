@@ -105,14 +105,21 @@ pub struct RecoveryReport {
     pub recovered_revision: u64,
 }
 
+struct TailTruncationContext<'a> {
+    file: &'a File,
+    file_len: u64,
+    last_verified_offset: u64,
+    records_count: usize,
+    last_sequence_tick: u64,
+    tree: &'a StateTree,
+    current_transition_root: String,
+    auto_truncate: bool,
+}
+
 pub struct CommitLogRecovery;
 
 impl CommitLogRecovery {
     /// Recovers and verifies state and transition lineage from an append-only commit log.
-    ///
-    /// If an incomplete frame is encountered at the physical tail of the file (TornTail),
-    /// it is safely truncated to the last verified frame boundary.
-    /// Any interior checksum failures, sequence gaps, or lineage discrepancies fail closed immediately.
     pub fn recover_from_log(
         log_path: impl AsRef<Path>,
         tree: &mut StateTree,
@@ -157,23 +164,21 @@ impl CommitLogRecovery {
                 break;
             }
 
-            // Check if remaining bytes are insufficient to contain a header
             let remaining = file_len - current_offset;
             if remaining < CommitLogFrame::HEADER_SIZE as u64 {
-                // Incomplete frame at tail
-                return Self::handle_tail_truncation(
-                    &file,
+                let ctx = TailTruncationContext {
+                    file: &file,
                     file_len,
                     last_verified_offset,
                     records_count,
                     last_sequence_tick,
                     tree,
                     current_transition_root,
-                    auto_truncate_torn_tail,
-                );
+                    auto_truncate: auto_truncate_torn_tail,
+                };
+                return Self::handle_tail_truncation(ctx);
             }
 
-            // Attempt to read the frame header
             let mut header_buf = [0u8; CommitLogFrame::HEADER_SIZE];
             if let Err(e) = file.read_exact(&mut header_buf) {
                 return Err(RecoveryError::IoError(e.to_string()));
@@ -186,47 +191,43 @@ impl CommitLogRecovery {
                 });
             }
 
-            let seq_tick = u64::from_be_bytes(header_buf[10..18].try_into().unwrap());
             let payload_len = u64::from_be_bytes(header_buf[18..26].try_into().unwrap());
-
             let total_frame_len = CommitLogFrame::HEADER_SIZE as u64
                 + payload_len
                 + CommitLogFrame::CHECKSUM_SIZE as u64;
 
             if remaining < total_frame_len {
-                // Partial frame write at EOF
-                return Self::handle_tail_truncation(
-                    &file,
+                let ctx = TailTruncationContext {
+                    file: &file,
                     file_len,
                     last_verified_offset,
                     records_count,
                     last_sequence_tick,
                     tree,
                     current_transition_root,
-                    auto_truncate_torn_tail,
-                );
+                    auto_truncate: auto_truncate_torn_tail,
+                };
+                return Self::handle_tail_truncation(ctx);
             }
 
-            // Read full frame
             file.seek(SeekFrom::Start(current_offset))
                 .map_err(|e| RecoveryError::IoError(e.to_string()))?;
             let frame = match CommitLogFrame::read_from(&mut file, DEFAULT_MAX_FRAME_PAYLOAD_BYTES)
             {
                 Ok(f) => f,
                 Err(FrameError::ChecksumMismatch { expected, actual }) => {
-                    // If checksum mismatch occurs on the final frame at the end of the file,
-                    // it is classified as a torn/corrupt terminal write.
                     if current_offset + total_frame_len == file_len && auto_truncate_torn_tail {
-                        return Self::handle_tail_truncation(
-                            &file,
+                        let ctx = TailTruncationContext {
+                            file: &file,
                             file_len,
                             last_verified_offset,
                             records_count,
                             last_sequence_tick,
                             tree,
                             current_transition_root,
-                            true,
-                        );
+                            auto_truncate: true,
+                        };
+                        return Self::handle_tail_truncation(ctx);
                     }
                     return Err(RecoveryError::InteriorCorruption {
                         offset: current_offset,
@@ -324,7 +325,6 @@ impl CommitLogRecovery {
                 });
             }
 
-            // Advance verified frontiers
             current_transition_root = computed_trans_root;
             last_sequence_tick = frame.sequence_tick;
             last_verified_offset += total_frame_len;
@@ -344,31 +344,26 @@ impl CommitLogRecovery {
     }
 
     fn handle_tail_truncation(
-        file: &File,
-        file_len: u64,
-        last_verified_offset: u64,
-        records_count: usize,
-        last_sequence_tick: u64,
-        tree: &StateTree,
-        current_transition_root: String,
-        auto_truncate: bool,
+        ctx: TailTruncationContext<'_>,
     ) -> Result<RecoveryReport, RecoveryError> {
-        let torn_bytes = file_len - last_verified_offset;
-        if auto_truncate && torn_bytes > 0 {
-            file.set_len(last_verified_offset)
+        let torn_bytes = ctx.file_len - ctx.last_verified_offset;
+        if ctx.auto_truncate && torn_bytes > 0 {
+            ctx.file
+                .set_len(ctx.last_verified_offset)
                 .map_err(|e| RecoveryError::IoError(e.to_string()))?;
-            file.sync_all()
+            ctx.file
+                .sync_all()
                 .map_err(|e| RecoveryError::IoError(e.to_string()))?;
         }
 
         Ok(RecoveryReport {
-            recovered_records_count: records_count,
-            last_sequence_tick,
-            last_verified_offset,
-            torn_tail_truncated_bytes: if auto_truncate { torn_bytes } else { 0 },
-            recovered_state_root: tree.compute_state_root(),
-            recovered_transition_root: current_transition_root,
-            recovered_revision: tree.revision(),
+            recovered_records_count: ctx.records_count,
+            last_sequence_tick: ctx.last_sequence_tick,
+            last_verified_offset: ctx.last_verified_offset,
+            torn_tail_truncated_bytes: if ctx.auto_truncate { torn_bytes } else { 0 },
+            recovered_state_root: ctx.tree.compute_state_root(),
+            recovered_transition_root: ctx.current_transition_root,
+            recovered_revision: ctx.tree.revision(),
         })
     }
 }

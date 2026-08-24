@@ -51,6 +51,7 @@ impl CommitLogWriter {
             .read(true)
             .write(true)
             .create(true)
+            .truncate(false)
             .open(&path_buf)
             .map_err(|e| FrameError::IoError(e.to_string()))?;
 
