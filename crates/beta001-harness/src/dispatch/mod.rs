@@ -9,3 +9,6 @@ pub use dispatcher::{
     DeterministicDispatcher, DispatchError, ExecutionReservationStore, ReservationState,
 };
 pub use worker::{invoke_sandboxed_worker, DeterministicWorker, WorkerError};
+
+pub mod transaction;
+pub use transaction::TransactionOrchestrator;
