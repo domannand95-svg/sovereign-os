@@ -14,8 +14,8 @@ use beta001_harness::service::client::{AuthenticatedClientContext, ClientSanitiz
 use beta001_harness::service::evidence::ServiceEvidencePackage;
 use beta001_harness::service::inference::{InferenceGatewayAdapter, RecordedTransportOutcome};
 use beta001_harness::service_contract::{
-    ApprovalReceiptId, ClaimState, DispatchState, ExecutionRequest, OutcomeState, ProposalRequest,
-    ProposedOperation, SchemaVersionV1, SessionId, Sha256Digest, UserId,
+    ApprovalReceiptId, DispatchState, ExecutionRequest, ProposalRequest, ProposedOperation,
+    SchemaVersionV1, SessionId, Sha256Digest, UserId,
 };
 use beta001_harness::state::{StateMutation, StateTree};
 
@@ -31,7 +31,7 @@ fn create_valid_evidence_package() -> ServiceEvidencePackage {
         user_id: auth_ctx.authenticated_user_id.clone(),
         session_id: auth_ctx.authenticated_session_id.clone(),
         intent: "Governed state transaction request".to_string(),
-        proposed_operation: ProposedOperation::StateTransition,
+        proposed_operation: ProposedOperation::RequestReview,
         source_evidence_references: vec![Sha256Digest::new(
             "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855".to_string(),
         )
@@ -209,7 +209,7 @@ fn test_b012_005_deterministic_context_and_seed_derivation() {
 
     assert_eq!(ctx.expected_revision, 0);
     assert_eq!(ctx.expected_state_root, tree.compute_state_root());
-    assert_eq!(ctx.granted_scope, ProposedOperation::StateTransition);
+    assert_eq!(ctx.granted_scope, ProposedOperation::RequestReview);
 
     let expected_seed = DeterministicExecutionContext::derive_seed(
         &package.package_digest,
