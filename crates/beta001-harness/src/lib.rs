@@ -27,3 +27,5 @@ pub mod state;
 pub mod dispatch;
 
 pub mod storage;
+
+pub mod network;
