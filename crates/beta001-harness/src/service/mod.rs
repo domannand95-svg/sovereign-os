@@ -9,3 +9,5 @@ pub mod client;
 pub mod inference;
 
 pub mod evidence;
+
+pub mod client_http;
