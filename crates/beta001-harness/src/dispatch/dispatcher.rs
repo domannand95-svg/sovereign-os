@@ -1,16 +1,14 @@
-//! ADAM-012-B: Deterministic Dispatcher & Reservation Gate
+//! ADAM-012-B / 012-D: Deterministic Dispatcher & Reservation Gate
 //!
 //! Validates service evidence packages, enforces lifecycle state prerequisites,
-//! and executes atomic CAS dispatch reservations.
-
-use std::collections::HashMap;
-use std::sync::Mutex;
+//! and executes atomic CAS dispatch reservations against the receipt store.
 
 use crate::service::evidence::{EvidenceClosureError, ServiceEvidencePackage};
 use crate::service_contract::{ClaimState, DispatchState, OutcomeState};
 use crate::state::StateTree;
 
 use super::context::DeterministicExecutionContext;
+use super::receipt_store::ExecutionReceiptStore;
 use super::worker::{invoke_sandboxed_worker, DeterministicWorker, WorkerError};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -43,42 +41,8 @@ impl From<WorkerError> for DispatchError {
     }
 }
 
-/// In-memory execution journal enforcing single-reservation CAS semantics.
-#[derive(Debug, Default)]
-pub struct ExecutionReservationStore {
-    reservations: Mutex<HashMap<String, ReservationState>>,
-}
-
-impl ExecutionReservationStore {
-    pub fn new() -> Self {
-        Self {
-            reservations: Mutex::new(HashMap::new()),
-        }
-    }
-
-    /// Atomically attempts to reserve an execution_id (CLAIMED -> DISPATCH_RESERVED).
-    pub fn reserve(&self, execution_id: &str) -> Result<(), DispatchError> {
-        let mut guard = self.reservations.lock().unwrap();
-        if let Some(state) = guard.get(execution_id) {
-            return match state {
-                ReservationState::DispatchReserved => Err(DispatchError::DispatchAlreadyReserved(
-                    execution_id.to_string(),
-                )),
-                ReservationState::Committed | ReservationState::RolledBack => Err(
-                    DispatchError::TerminalStateAlreadyExists(execution_id.to_string()),
-                ),
-            };
-        }
-        guard.insert(execution_id.to_string(), ReservationState::DispatchReserved);
-        Ok(())
-    }
-
-    /// Updates reservation state post-execution.
-    pub fn transition_to_terminal(&self, execution_id: &str, terminal_state: ReservationState) {
-        let mut guard = self.reservations.lock().unwrap();
-        guard.insert(execution_id.to_string(), terminal_state);
-    }
-}
+/// Type alias maintaining backwards-compatibility for reservation management.
+pub type ExecutionReservationStore = ExecutionReceiptStore;
 
 pub struct DeterministicDispatcher;
 
@@ -86,7 +50,7 @@ impl DeterministicDispatcher {
     /// Prepares, verifies, and reserves execution for a ServiceEvidencePackage against current state.
     pub fn prepare_dispatch(
         package: &ServiceEvidencePackage,
-        reservation_store: &ExecutionReservationStore,
+        reservation_store: &ExecutionReceiptStore,
         current_tree: &StateTree,
         logical_sequence_tick: u64,
     ) -> Result<DeterministicExecutionContext, DispatchError> {

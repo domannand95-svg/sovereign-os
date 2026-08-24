@@ -150,7 +150,7 @@ fn test_f012_001_end_to_end_governed_state_execution_lifecycle() {
     // Verify zero authority expansion at boundary
     assert_eq!(
         package.execution_response.authority_delta,
-        AuthorityDeltaZero::Zero
+        AuthorityDeltaZero
     );
 
     // 2. Prepare Dispatch
