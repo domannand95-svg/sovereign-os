@@ -1,4 +1,4 @@
-//! ADAM-012-A: Canonical Content-Addressed State Tree
+//! ADAM-012-A / 013-C: Canonical Content-Addressed State Tree
 //!
 //! Provides B-Tree backed deterministic key-value storage with explicit StateRoot derivation
 //! using length-prefixed big-endian encoding.
@@ -30,6 +30,11 @@ impl StateTree {
             entries: BTreeMap::new(),
             revision: 0,
         }
+    }
+
+    /// Hydrates a state tree directly from verified entries and revision.
+    pub fn from_entries(entries: BTreeMap<Vec<u8>, Vec<u8>>, revision: u64) -> Self {
+        Self { entries, revision }
     }
 
     pub fn revision(&self) -> u64 {
