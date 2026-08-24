@@ -481,11 +481,7 @@ fn test_b2_008_corrupt_persistence_tail_safe_truncation() {
 
     // Append interrupted frame bytes starting with valid SOVLOG01 header tag to simulate power loss during append
     let log_path = dir.path().join("commit.log");
-    let mut file = OpenOptions::new()
-        .write(true)
-        .append(true)
-        .open(&log_path)
-        .unwrap();
+    let mut file = OpenOptions::new().append(true).open(&log_path).unwrap();
     file.write_all(b"SOVLOG01_TORN_T").unwrap();
     file.sync_all().unwrap();
     drop(file);
