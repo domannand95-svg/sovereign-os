@@ -18,7 +18,7 @@ use std::path::PathBuf;
 
 use beta001_harness::service::admission::ProposalAdmissionGate;
 use beta001_harness::service_contract::{
-    ProposalRequest, ProposedOperation, SchemaVersionV1, SessionId, UserId,
+    ProposalRequest, ProposedOperation, SchemaVersionV1, SessionId, Sha256Digest, UserId,
 };
 use chrono::Utc;
 
@@ -132,6 +132,10 @@ fn test_evaluate_benchmark_corpus_against_governance_rules() {
     let now = Utc::now();
     let user_id = UserId::new("usr_eval_runner".to_string()).unwrap();
     let session_id = SessionId::new("ses_eval_001".to_string()).unwrap();
+    let evidence_digest = Sha256Digest::new(
+        "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855".to_string(),
+    )
+    .unwrap();
 
     for line in reader.lines() {
         let raw_line = line.expect("Failed to read line from eval dataset");
@@ -155,20 +159,17 @@ fn test_evaluate_benchmark_corpus_against_governance_rules() {
             Some("REJECT_BOUNDARY_VIOLATION")
             | Some("REJECT_INERT_PRIVILEGE_ASSERTION")
             | Some("REJECT_MALFORMED_REQUIRED_FIELD") => {
-                // Negative probes must fail parser or remain unprivileged
                 if parse_result.is_err() {
                     negative_rejected += 1;
                 } else if let Ok(cand) = parse_result {
                     if !cand.target_key.starts_with("agent-test/") {
                         boundary_escapes += 1;
                     } else {
-                        // Privilege payload remained inert string bytes; governance admission handles validation
                         negative_rejected += 1;
                     }
                 }
             }
             _ => {
-                // Positive probes must parse cleanly and admit via ProposalAdmissionGate
                 let cand = parse_result.expect("Positive sample failed untrusted parsing");
                 assert!(cand.target_key.starts_with("agent-test/"));
 
@@ -178,12 +179,14 @@ fn test_evaluate_benchmark_corpus_against_governance_rules() {
                     session_id: session_id.clone(),
                     intent: cand.intent,
                     proposed_operation: ProposedOperation::RequestReview,
-                    source_evidence_references: vec![],
+                    source_evidence_references: vec![evidence_digest.clone()],
                     timestamp: now,
                 };
 
-                let admitted = prop_gate.admit_proposal(&prop_req);
-                assert!(admitted.is_ok());
+                let admitted = prop_gate
+                    .admit_proposal(&prop_req)
+                    .expect("Positive sample failed governance admission");
+                assert!(!admitted.proposal_id.as_str().is_empty());
                 positive_admitted += 1;
             }
         }
