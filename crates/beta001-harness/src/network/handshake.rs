@@ -3,7 +3,7 @@
 //! Enforces cluster domain verification, protocol version alignment,
 //! and initial frontier exchange prior to state stream replication.
 
-use std::io::{Read, Write};
+use std::io::Read;
 
 pub const HANDSHAKE_PROTOCOL_VERSION_V1: u16 = 1;
 
