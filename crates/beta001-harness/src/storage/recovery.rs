@@ -1,7 +1,7 @@
-//! ADAM-013-B: Crash Recovery, Lineage Replay & Corrupted Tail Truncation
+//! ADAM-013-B / 013-D: Crash Recovery, Lineage Replay & Corrupted Tail Truncation
 //!
 //! Scans append-only commit logs, verifies semantic state and causal lineage transitions,
-//! safely truncates incomplete terminal writes (TornTail), and fails closed on interior corruptions.
+//! safely truncates incomplete terminal writes (TornTail), and supports snapshot frontier offsets.
 
 use std::fs::{File, OpenOptions};
 use std::io::{Read, Seek, SeekFrom};
@@ -119,10 +119,27 @@ struct TailTruncationContext<'a> {
 pub struct CommitLogRecovery;
 
 impl CommitLogRecovery {
-    /// Recovers and verifies state and transition lineage from an append-only commit log.
+    /// Recovers from log starting at Genesis.
     pub fn recover_from_log(
         log_path: impl AsRef<Path>,
         tree: &mut StateTree,
+        initial_transition_root: Option<String>,
+        auto_truncate_torn_tail: bool,
+    ) -> Result<RecoveryReport, RecoveryError> {
+        Self::recover_from_log_with_frontier(
+            log_path,
+            tree,
+            0,
+            initial_transition_root,
+            auto_truncate_torn_tail,
+        )
+    }
+
+    /// Recovers and replays state transitions occurring strictly after `snapshot_sequence_tick`.
+    pub fn recover_from_log_with_frontier(
+        log_path: impl AsRef<Path>,
+        tree: &mut StateTree,
+        snapshot_sequence_tick: u64,
         initial_transition_root: Option<String>,
         auto_truncate_torn_tail: bool,
     ) -> Result<RecoveryReport, RecoveryError> {
@@ -130,7 +147,7 @@ impl CommitLogRecovery {
         if !path.exists() {
             return Ok(RecoveryReport {
                 recovered_records_count: 0,
-                last_sequence_tick: 0,
+                last_sequence_tick: snapshot_sequence_tick,
                 last_verified_offset: 0,
                 torn_tail_truncated_bytes: 0,
                 recovered_state_root: tree.compute_state_root(),
@@ -154,8 +171,8 @@ impl CommitLogRecovery {
 
         let mut current_offset = 0u64;
         let mut last_verified_offset = 0u64;
-        let mut last_sequence_tick = 0u64;
-        let mut records_count = 0usize;
+        let mut last_sequence_tick = snapshot_sequence_tick;
+        let mut replayed_records_count = 0usize;
         let mut current_transition_root =
             initial_transition_root.unwrap_or_else(compute_genesis_transition_root);
 
@@ -170,7 +187,7 @@ impl CommitLogRecovery {
                     file: &file,
                     file_len,
                     last_verified_offset,
-                    records_count,
+                    records_count: replayed_records_count,
                     last_sequence_tick,
                     tree,
                     current_transition_root,
@@ -201,7 +218,7 @@ impl CommitLogRecovery {
                     file: &file,
                     file_len,
                     last_verified_offset,
-                    records_count,
+                    records_count: replayed_records_count,
                     last_sequence_tick,
                     tree,
                     current_transition_root,
@@ -221,7 +238,7 @@ impl CommitLogRecovery {
                             file: &file,
                             file_len,
                             last_verified_offset,
-                            records_count,
+                            records_count: replayed_records_count,
                             last_sequence_tick,
                             tree,
                             current_transition_root,
@@ -245,8 +262,15 @@ impl CommitLogRecovery {
                 }
             };
 
+            // If frame is part of a previous snapshot frontier, verify well-formedness and advance
+            if frame.sequence_tick <= snapshot_sequence_tick {
+                last_verified_offset += total_frame_len;
+                current_offset += total_frame_len;
+                continue;
+            }
+
             // 1. Verify sequence tick strict monotonicity
-            if records_count > 0 && frame.sequence_tick != last_sequence_tick + 1 {
+            if frame.sequence_tick != last_sequence_tick + 1 {
                 return Err(RecoveryError::SequenceGap {
                     expected: last_sequence_tick + 1,
                     actual: frame.sequence_tick,
@@ -329,11 +353,11 @@ impl CommitLogRecovery {
             last_sequence_tick = frame.sequence_tick;
             last_verified_offset += total_frame_len;
             current_offset += total_frame_len;
-            records_count += 1;
+            replayed_records_count += 1;
         }
 
         Ok(RecoveryReport {
-            recovered_records_count: records_count,
+            recovered_records_count: replayed_records_count,
             last_sequence_tick,
             last_verified_offset,
             torn_tail_truncated_bytes: 0,
