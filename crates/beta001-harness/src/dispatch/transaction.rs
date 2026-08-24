@@ -1,21 +1,23 @@
-//! ADAM-012-C / 012-D: Transaction Orchestrator & Idempotent Execution Pipeline
+//! ADAM-012-C / 012-E: Transaction Orchestrator & Transition Receipt Emitter
 
 use super::context::DeterministicExecutionContext;
 use super::dispatcher::{DeterministicDispatcher, DispatchError};
-use super::receipt_store::{ExecutionReceipt, ExecutionReceiptStore, TerminalExecutionStatus};
+use super::receipt_store::{ExecutionReceiptStore, TerminalExecutionStatus};
 use super::worker::DeterministicWorker;
-use crate::state::{StateJournal, StateTree};
+use crate::state::{
+    compute_delta_digest, compute_transition_root, StateJournal, StateTransitionReceipt, StateTree,
+};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ExecutionOutcome {
-    Executed(ExecutionReceipt),
-    CachedReceipt(ExecutionReceipt),
+    Executed(StateTransitionReceipt),
+    CachedReceipt(StateTransitionReceipt),
 }
 
 pub struct TransactionOrchestrator;
 
 impl TransactionOrchestrator {
-    /// Executes a transaction within the deterministic boundary and records an immutable receipt.
+    /// Executes a transaction within the deterministic boundary and emits a verified StateTransitionReceipt.
     pub fn execute_transaction<W: DeterministicWorker>(
         worker: &W,
         ctx: &DeterministicExecutionContext,
@@ -31,6 +33,7 @@ impl TransactionOrchestrator {
 
         let initial_root = ctx.expected_state_root.clone();
         let initial_rev = ctx.expected_revision;
+        let prev_transition_root = store.current_transition_root();
         let mut journal = StateJournal::new();
 
         // 2. Sandboxed Worker Execution
@@ -38,14 +41,25 @@ impl TransactionOrchestrator {
             Ok(mutations) => {
                 if let Err(e) = journal.stage_batch(mutations) {
                     journal.discard();
-                    let receipt = ExecutionReceipt {
-                        execution_id: ctx.execution_id.clone(),
-                        package_digest: ctx.package_digest.clone(),
+                    let delta_digest = compute_delta_digest(&[]);
+                    let transition_root = compute_transition_root(
+                        &prev_transition_root,
+                        &initial_root,
+                        &initial_root,
+                        ctx.package_digest.as_str(),
+                        exec_id_str,
+                        &delta_digest,
+                    );
+                    let receipt = StateTransitionReceipt {
+                        transition_root,
+                        previous_transition_root: prev_transition_root,
                         initial_state_root: initial_root.clone(),
                         final_state_root: initial_root,
                         initial_revision: initial_rev,
                         final_revision: initial_rev,
-                        delta_digest: None,
+                        execution_id: ctx.execution_id.clone(),
+                        package_digest: ctx.package_digest.clone(),
+                        delta_digest,
                         status: TerminalExecutionStatus::RolledBack {
                             reason: format!("Journal staging failed: {}", e),
                         },
@@ -62,17 +76,28 @@ impl TransactionOrchestrator {
 
                 // 3. Prepare and apply transaction
                 let delta_digest = match journal.prepare() {
-                    Ok((_, d)) => Some(d),
+                    Ok((_, d)) => d,
                     Err(e) => {
                         journal.discard();
-                        let receipt = ExecutionReceipt {
-                            execution_id: ctx.execution_id.clone(),
-                            package_digest: ctx.package_digest.clone(),
+                        let empty_delta = compute_delta_digest(&[]);
+                        let transition_root = compute_transition_root(
+                            &prev_transition_root,
+                            &initial_root,
+                            &initial_root,
+                            ctx.package_digest.as_str(),
+                            exec_id_str,
+                            &empty_delta,
+                        );
+                        let receipt = StateTransitionReceipt {
+                            transition_root,
+                            previous_transition_root: prev_transition_root,
                             initial_state_root: initial_root.clone(),
                             final_state_root: initial_root,
                             initial_revision: initial_rev,
                             final_revision: initial_rev,
-                            delta_digest: None,
+                            execution_id: ctx.execution_id.clone(),
+                            package_digest: ctx.package_digest.clone(),
+                            delta_digest: empty_delta,
                             status: TerminalExecutionStatus::RolledBack {
                                 reason: format!("Journal prepare failed: {}", e),
                             },
@@ -92,13 +117,23 @@ impl TransactionOrchestrator {
                     Ok(_) => {
                         let final_root = tree.compute_state_root();
                         let final_rev = tree.revision();
-                        let receipt = ExecutionReceipt {
-                            execution_id: ctx.execution_id.clone(),
-                            package_digest: ctx.package_digest.clone(),
-                            initial_state_root: initial_root,
-                            final_state_root: final_root,
+                        let transition_root = compute_transition_root(
+                            &prev_transition_root,
+                            &initial_root,
+                            &final_root,
+                            ctx.package_digest.as_str(),
+                            exec_id_str,
+                            &delta_digest,
+                        );
+                        let receipt = StateTransitionReceipt {
+                            transition_root,
+                            previous_transition_root: prev_transition_root,
+                            initial_state_root,
+                            final_state_root,
                             initial_revision: initial_rev,
                             final_revision: final_rev,
+                            execution_id: ctx.execution_id.clone(),
+                            package_digest: ctx.package_digest.clone(),
                             delta_digest,
                             status: TerminalExecutionStatus::Committed,
                             sequence_tick: ctx.logical_sequence_tick,
@@ -108,14 +143,24 @@ impl TransactionOrchestrator {
                     }
                     Err(e) => {
                         journal.discard();
-                        let receipt = ExecutionReceipt {
-                            execution_id: ctx.execution_id.clone(),
-                            package_digest: ctx.package_digest.clone(),
+                        let transition_root = compute_transition_root(
+                            &prev_transition_root,
+                            &initial_root,
+                            &initial_root,
+                            ctx.package_digest.as_str(),
+                            exec_id_str,
+                            &delta_digest,
+                        );
+                        let receipt = StateTransitionReceipt {
+                            transition_root,
+                            previous_transition_root: prev_transition_root,
                             initial_state_root: initial_root.clone(),
                             final_state_root: initial_root,
                             initial_revision: initial_rev,
                             final_revision: initial_rev,
-                            delta_digest: None,
+                            execution_id: ctx.execution_id.clone(),
+                            package_digest: ctx.package_digest.clone(),
+                            delta_digest,
                             status: TerminalExecutionStatus::RolledBack {
                                 reason: format!("Journal apply failed: {}", e),
                             },
@@ -133,14 +178,25 @@ impl TransactionOrchestrator {
             }
             Err(e) => {
                 journal.discard();
-                let receipt = ExecutionReceipt {
-                    execution_id: ctx.execution_id.clone(),
-                    package_digest: ctx.package_digest.clone(),
+                let delta_digest = compute_delta_digest(&[]);
+                let transition_root = compute_transition_root(
+                    &prev_transition_root,
+                    &initial_root,
+                    &initial_root,
+                    ctx.package_digest.as_str(),
+                    exec_id_str,
+                    &delta_digest,
+                );
+                let receipt = StateTransitionReceipt {
+                    transition_root,
+                    previous_transition_root: prev_transition_root,
                     initial_state_root: initial_root.clone(),
                     final_state_root: initial_root,
                     initial_revision: initial_rev,
                     final_revision: initial_rev,
-                    delta_digest: None,
+                    execution_id: ctx.execution_id.clone(),
+                    package_digest: ctx.package_digest.clone(),
+                    delta_digest,
                     status: TerminalExecutionStatus::RolledBack {
                         reason: format!("{:?}", e),
                     },

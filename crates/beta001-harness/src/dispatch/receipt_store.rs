@@ -1,14 +1,11 @@
-//! ADAM-012-D: Idempotent Execution Receipt Store & Anti-Replay Journal
-//!
-//! Enforces single-execution invariants across all claimed execution IDs,
-//! caching terminal receipts to guarantee idempotent replay responses.
+//! ADAM-012-D / 012-E: Execution Receipt Store & Causal Lineage Journal
 
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::Mutex;
 
 use super::dispatcher::{DispatchError, ReservationState};
-use crate::service_contract::{ExecutionId, Sha256Digest};
+use crate::state::{compute_genesis_transition_root, StateTransitionReceipt};
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum TerminalExecutionStatus {
@@ -16,25 +13,18 @@ pub enum TerminalExecutionStatus {
     RolledBack { reason: String },
 }
 
-/// Canonical receipt recording the outcome of a dispatched transaction.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct ExecutionReceipt {
-    pub execution_id: ExecutionId,
-    pub package_digest: Sha256Digest,
-    pub initial_state_root: String,
-    pub final_state_root: String,
-    pub initial_revision: u64,
-    pub final_revision: u64,
-    pub delta_digest: Option<String>,
-    pub status: TerminalExecutionStatus,
-    pub sequence_tick: u64,
-}
-
-/// Unified journal managing in-flight reservations and immutable terminal receipts.
-#[derive(Debug, Default)]
+/// Unified journal managing in-flight reservations, lineage roots, and immutable transition receipts.
+#[derive(Debug)]
 pub struct ExecutionReceiptStore {
     reservations: Mutex<HashMap<String, ReservationState>>,
-    receipts: Mutex<HashMap<String, ExecutionReceipt>>,
+    receipts: Mutex<HashMap<String, StateTransitionReceipt>>,
+    current_transition_root: Mutex<String>,
+}
+
+impl Default for ExecutionReceiptStore {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl ExecutionReceiptStore {
@@ -42,17 +32,22 @@ impl ExecutionReceiptStore {
         Self {
             reservations: Mutex::new(HashMap::new()),
             receipts: Mutex::new(HashMap::new()),
+            current_transition_root: Mutex::new(compute_genesis_transition_root()),
         }
     }
 
-    /// Checks if a terminal receipt already exists for this execution_id.
-    pub fn get_receipt(&self, execution_id: &str) -> Option<ExecutionReceipt> {
+    /// Retrieves the current causal transition root.
+    pub fn current_transition_root(&self) -> String {
+        self.current_transition_root.lock().unwrap().clone()
+    }
+
+    /// Checks if a terminal transition receipt already exists for this execution_id.
+    pub fn get_receipt(&self, execution_id: &str) -> Option<StateTransitionReceipt> {
         let receipts = self.receipts.lock().unwrap();
         receipts.get(execution_id).cloned()
     }
 
     /// Atomically attempts to reserve dispatch (CLAIMED -> DISPATCH_RESERVED).
-    /// If already reserved in-flight or completed, fails closed.
     pub fn reserve(&self, execution_id: &str) -> Result<(), DispatchError> {
         let mut guard = self.reservations.lock().unwrap();
         if let Some(state) = guard.get(execution_id) {
@@ -69,8 +64,8 @@ impl ExecutionReceiptStore {
         Ok(())
     }
 
-    /// Commits an immutable terminal receipt and transitions reservation status.
-    pub fn record_terminal_receipt(&self, receipt: ExecutionReceipt) {
+    /// Commits an immutable terminal transition receipt, advances transition root, and transitions reservation status.
+    pub fn record_terminal_receipt(&self, receipt: StateTransitionReceipt) {
         let exec_str = receipt.execution_id.as_str().to_string();
         let target_state = match receipt.status {
             TerminalExecutionStatus::Committed => ReservationState::Committed,
@@ -79,7 +74,9 @@ impl ExecutionReceiptStore {
 
         let mut reservations = self.reservations.lock().unwrap();
         let mut receipts = self.receipts.lock().unwrap();
+        let mut root_guard = self.current_transition_root.lock().unwrap();
 
+        *root_guard = receipt.transition_root.clone();
         reservations.insert(exec_str.clone(), target_state);
         receipts.insert(exec_str, receipt);
     }
