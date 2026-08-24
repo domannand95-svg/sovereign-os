@@ -1,12 +1,17 @@
 //! ADAM-013 Storage, Persistence, Snapshotting, and Crash-Recovery Subsystem
 
 pub mod engine;
+pub mod export;
 pub mod frame;
 pub mod log;
 pub mod recovery;
 pub mod snapshot;
 
 pub use engine::{CompactionReport, EngineError, StorageEngine};
+pub use export::{
+    ExportError, ExportableSnapshotBundle, SnapshotExporter, VerifiedSnapshotAttestation,
+    SNAPSHOT_BUNDLE_DOMAIN_TAG,
+};
 pub use frame::{
     CommitLogFrame, CommitRecordPayload, FrameError, COMMIT_LOG_FORMAT_VERSION_V1,
     COMMIT_LOG_FRAME_DOMAIN_TAG, COMMIT_LOG_MAGIC,

@@ -12,9 +12,9 @@ use super::frame::{CommitLogFrame, CommitRecordPayload, FrameError};
 use super::log::{
     CommitLogWriter, DurabilityAcknowledgement, SyncPolicy, DEFAULT_MAX_FRAME_PAYLOAD_BYTES,
 };
-use super::recovery::{CommitLogRecovery, RecoveryError, RecoveryReport};
+use super::recovery::{CommitLogRecovery, RecoveryError};
 use super::snapshot::{SnapshotError, SnapshotManifest, StateSnapshot};
-use crate::state::{compute_genesis_transition_root, StateMutation, StateTree};
+use crate::state::{compute_genesis_transition_root, StateTree};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum EngineError {
