@@ -4,7 +4,6 @@
 //! sync policies, and bit-level canonical encoding (A013-001..A013-006).
 
 use std::fs::File;
-use std::io::{Read, Seek, SeekFrom, Write};
 use tempfile::tempdir;
 
 use beta001_harness::service_contract::{ExecutionId, Sha256Digest};
@@ -50,10 +49,8 @@ fn test_a013_001_canonical_binary_frame_roundtrip() {
     let written = frame.write_to(&mut encoded).unwrap();
     assert_eq!(written, encoded.len());
 
-    // Assert Magic
     assert_eq!(&encoded[0..8], COMMIT_LOG_MAGIC);
 
-    // Read back
     let decoded = CommitLogFrame::read_from(encoded.as_slice(), 1024 * 1024).unwrap();
     assert_eq!(decoded, frame);
     assert_eq!(decoded.payload.mutations.len(), 2);
@@ -74,7 +71,6 @@ fn test_a013_002_corrupted_payload_checksum_fails_closed() {
     let mut encoded = Vec::new();
     frame.write_to(&mut encoded).unwrap();
 
-    // Corrupt one byte in the payload area
     let corrupt_idx = CommitLogFrame::HEADER_SIZE + 4;
     encoded[corrupt_idx] ^= 0xFF;
 
@@ -97,7 +93,6 @@ fn test_a013_003_invalid_magic_fails_closed() {
     let mut encoded = Vec::new();
     frame.write_to(&mut encoded).unwrap();
 
-    // Corrupt magic
     encoded[0] = b'X';
 
     let res = CommitLogFrame::read_from(encoded.as_slice(), 1024 * 1024);
@@ -121,7 +116,6 @@ fn test_a013_004_durability_frontier_fsync_on_commit() {
         }
     ));
 
-    // Read directly from disk
     let mut file = File::open(&log_path).unwrap();
     let frame = CommitLogFrame::read_from(&mut file, 1024 * 1024).unwrap();
     assert_eq!(frame.sequence_tick, 1);
@@ -145,7 +139,6 @@ fn test_a013_005_durability_frontier_periodic_sync_requires_explicit_sync() {
         }
     ));
 
-    // Explicit fsync completes durability barrier
     assert!(writer.sync().is_ok());
 }
 

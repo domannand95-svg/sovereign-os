@@ -54,7 +54,6 @@ impl CommitLogWriter {
             .open(&path_buf)
             .map_err(|e| FrameError::IoError(e.to_string()))?;
 
-        // Position file pointer at current tail
         file.seek(SeekFrom::End(0))
             .map_err(|e| FrameError::IoError(e.to_string()))?;
 
@@ -77,6 +76,15 @@ impl CommitLogWriter {
         let mut tick_guard = self.current_tick.lock().unwrap();
 
         let payload_bytes = payload.encode_canonical();
+        let payload_len = payload_bytes.len() as u64;
+
+        if payload_len > self.max_payload_bytes {
+            return Err(FrameError::PayloadLengthExceeded {
+                length: payload_len,
+                max: self.max_payload_bytes,
+            });
+        }
+
         let checksum = CommitLogFrame::compute_checksum(sequence_tick, &payload_bytes);
 
         let frame = CommitLogFrame {
@@ -120,6 +128,10 @@ impl CommitLogWriter {
         file_guard
             .sync_all()
             .map_err(|e| FrameError::IoError(e.to_string()))
+    }
+
+    pub fn max_payload_bytes(&self) -> u64 {
+        self.max_payload_bytes
     }
 
     pub fn path(&self) -> &Path {
