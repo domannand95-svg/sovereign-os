@@ -71,16 +71,20 @@ fn create_mock_context(
 fn test_c012_001_and_003_successful_worker_commits_atomically() {
     let mut tree = StateTree::new();
     let store = ExecutionReservationStore::new();
-    store.reserve("exec_1").unwrap();
+    store.reserve("exe_trans_001").unwrap();
 
-    let ctx = create_mock_context("exec_1", &tree.compute_state_root(), tree.revision());
+    let ctx = create_mock_context("exe_trans_001", &tree.compute_state_root(), tree.revision());
     let worker = ConfigWorker;
 
     let res = TransactionOrchestrator::execute_transaction(&worker, &ctx, &mut tree, &store);
 
     assert!(res.is_ok());
     assert_eq!(tree.revision(), 1);
-    assert_eq!(tree.get(b"log:exec_1"), Some(b"executing".as_slice()));
+    assert_eq!(
+        tree.get(b"log:exe_trans_001"),
+        Some(b"executing".as_slice())
+    );
+    assert_eq!(tree.get(b"global:status"), Some(b"active".as_slice()));
 }
 
 #[test]
@@ -90,17 +94,17 @@ fn test_c012_002_worker_error_rolls_back_atomically() {
     let root_before = tree.compute_state_root();
 
     let store = ExecutionReservationStore::new();
-    store.reserve("exec_2").unwrap();
+    store.reserve("exe_trans_002").unwrap();
 
-    let ctx = create_mock_context("exec_2", &root_before, tree.revision());
+    let ctx = create_mock_context("exe_trans_002", &root_before, tree.revision());
     let worker = FailingWorker;
 
     let res = TransactionOrchestrator::execute_transaction(&worker, &ctx, &mut tree, &store);
 
     assert!(res.is_err());
-    // Root and revision MUST remain unchanged
     assert_eq!(tree.revision(), 1);
     assert_eq!(tree.compute_state_root(), root_before);
+    assert_eq!(tree.get(b"base"), Some(b"root".as_slice()));
 }
 
 #[test]
@@ -110,15 +114,15 @@ fn test_c012_004_worker_panic_rolls_back_atomically() {
     let root_before = tree.compute_state_root();
 
     let store = ExecutionReservationStore::new();
-    store.reserve("exec_3").unwrap();
+    store.reserve("exe_trans_003").unwrap();
 
-    let ctx = create_mock_context("exec_3", &root_before, tree.revision());
+    let ctx = create_mock_context("exe_trans_003", &root_before, tree.revision());
     let worker = PanickingWorker;
 
     let res = TransactionOrchestrator::execute_transaction(&worker, &ctx, &mut tree, &store);
 
     assert!(res.is_err());
-    // Root and revision MUST remain unchanged despite the panic
     assert_eq!(tree.revision(), 1);
     assert_eq!(tree.compute_state_root(), root_before);
+    assert_eq!(tree.get(b"base"), Some(b"root".as_slice()));
 }
