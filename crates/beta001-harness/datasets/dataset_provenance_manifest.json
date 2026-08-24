@@ -1,0 +1,6 @@
+{
+  "dataset_canonical_train_digest": "79551cc7c424b3b851d6199f7049542bcad5d66d0bf239337a7dd5089efdebc1",
+  "dataset_canonical_eval_digest": "614fc72ec9c6f245219df4f9db4dc941187f2dcfd72737d3e3880c5f6b88bbab",
+  "train_sample_count": 500,
+  "eval_sample_count": 124
+}
