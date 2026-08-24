@@ -1,4 +1,4 @@
-//! External Model Transport Gateway — ADAM Trial 008 (Phase B)
+//! External Model Transport Gateway â€” ADAM Trial 008 (Phase B)
 //!
 //! Provides secure, provider-neutral HTTPS transport isolation for external model APIs.
 //! Enforces endpoint allowlisting, credential confinement, payload caps, raw byte capture,
@@ -6,11 +6,12 @@
 //!
 //! # Invariants
 //!
-//! - Credential Possession ≠ Execution Authority
-//! - External Inference ≠ Internal Authority
-//! - External Assertion ≠ Internal Permission
+//! - Credential Possession â‰  Execution Authority
+//! - External Inference â‰  Internal Authority
+//! - External Assertion â‰  Internal Permission
 
 use serde::{Deserialize, Serialize};
+use std::fmt;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 /// Transport response artifact preserving raw provider bytes before parsing.
