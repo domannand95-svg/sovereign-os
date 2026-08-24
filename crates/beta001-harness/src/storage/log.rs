@@ -54,9 +54,8 @@ impl CommitLogWriter {
             .open(&path_buf)
             .map_err(|e| FrameError::IoError(e.to_string()))?;
 
-        // Determine current tail sequence tick by scanning or seeking to end
-        let end_offset = file
-            .seek(SeekFrom::End(0))
+        // Position file pointer at current tail
+        file.seek(SeekFrom::End(0))
             .map_err(|e| FrameError::IoError(e.to_string()))?;
 
         Ok(Self {

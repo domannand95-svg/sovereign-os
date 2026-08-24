@@ -98,15 +98,19 @@ impl CommitRecordPayload {
         // 5. Mutations
         buf.extend_from_slice(&(self.mutations.len() as u32).to_be_bytes());
         for m in &self.mutations {
-            let key = m.key();
-            buf.extend_from_slice(&(key.len() as u32).to_be_bytes());
-            buf.extend_from_slice(key);
-            if let Some(val) = m.value() {
-                buf.push(1u8); // Put
-                buf.extend_from_slice(&(val.len() as u32).to_be_bytes());
-                buf.extend_from_slice(val);
-            } else {
-                buf.push(0u8); // Delete
+            match m {
+                StateMutation::Put { key, value } => {
+                    buf.extend_from_slice(&(key.len() as u32).to_be_bytes());
+                    buf.extend_from_slice(key);
+                    buf.push(1u8); // Put operation tag
+                    buf.extend_from_slice(&(value.len() as u32).to_be_bytes());
+                    buf.extend_from_slice(value);
+                }
+                StateMutation::Delete { key } => {
+                    buf.extend_from_slice(&(key.len() as u32).to_be_bytes());
+                    buf.extend_from_slice(key);
+                    buf.push(0u8); // Delete operation tag
+                }
             }
         }
 
