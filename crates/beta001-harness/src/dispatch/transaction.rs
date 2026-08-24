@@ -1,41 +1,57 @@
-//! ADAM-012-C: Transaction Orchestrator & Two-Phase Commit
-//!
-//! Binds panic-contained worker execution with the CoW transaction journal
-//! to provide atomic prepare, commit, and rollback semantics.
+//! ADAM-012-C / 012-D: Transaction Orchestrator & Idempotent Execution Pipeline
 
 use super::context::DeterministicExecutionContext;
-use super::dispatcher::{
-    DeterministicDispatcher, DispatchError, ExecutionReservationStore, ReservationState,
-};
+use super::dispatcher::{DeterministicDispatcher, DispatchError};
+use super::receipt_store::{ExecutionReceipt, ExecutionReceiptStore, TerminalExecutionStatus};
 use super::worker::DeterministicWorker;
 use crate::state::{StateJournal, StateTree};
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum ExecutionOutcome {
+    Executed(ExecutionReceipt),
+    CachedReceipt(ExecutionReceipt),
+}
 
 pub struct TransactionOrchestrator;
 
 impl TransactionOrchestrator {
-    /// Executes a deterministic worker within a transactional boundary.
-    ///
-    /// 1. Dispatches the sandboxed worker to generate mutations.
-    /// 2. Stages mutations in a Copy-on-Write journal.
-    /// 3. Upon success, atomically applies the journal (COMMITTED).
-    /// 4. Upon failure or panic, discards the journal and rolls back (ROLLED_BACK).
+    /// Executes a transaction within the deterministic boundary and records an immutable receipt.
     pub fn execute_transaction<W: DeterministicWorker>(
         worker: &W,
         ctx: &DeterministicExecutionContext,
         tree: &mut StateTree,
-        reservation_store: &ExecutionReservationStore,
-    ) -> Result<bool, DispatchError> {
-        let exec_id = ctx.execution_id.as_str();
+        store: &ExecutionReceiptStore,
+    ) -> Result<ExecutionOutcome, DispatchError> {
+        let exec_id_str = ctx.execution_id.as_str();
 
+        // 1. Check for cached terminal receipt (Anti-Replay / Idempotency)
+        if let Some(cached) = store.get_receipt(exec_id_str) {
+            return Ok(ExecutionOutcome::CachedReceipt(cached));
+        }
+
+        let initial_root = ctx.expected_state_root.clone();
+        let initial_rev = ctx.expected_revision;
         let mut journal = StateJournal::new();
 
-        // 1. Invoke panic-contained worker (B012-006, C012-002)
+        // 2. Sandboxed Worker Execution
         match DeterministicDispatcher::dispatch_sandboxed(worker, ctx, tree) {
             Ok(mutations) => {
-                // 2. Stage mutations into CoW journal (C012-001)
                 if let Err(e) = journal.stage_batch(mutations) {
                     journal.discard();
-                    reservation_store.transition_to_terminal(exec_id, ReservationState::RolledBack);
+                    let receipt = ExecutionReceipt {
+                        execution_id: ctx.execution_id.clone(),
+                        package_digest: ctx.package_digest.clone(),
+                        initial_state_root: initial_root.clone(),
+                        final_state_root: initial_root,
+                        initial_revision: initial_rev,
+                        final_revision: initial_rev,
+                        delta_digest: None,
+                        status: TerminalExecutionStatus::RolledBack {
+                            reason: format!("Journal staging failed: {}", e),
+                        },
+                        sequence_tick: ctx.logical_sequence_tick,
+                    };
+                    store.record_terminal_receipt(receipt.clone());
                     return Err(DispatchError::WorkerFailed(
                         super::worker::WorkerError::ExecutionFailure(format!(
                             "Journal staging failed: {}",
@@ -44,17 +60,68 @@ impl TransactionOrchestrator {
                     ));
                 }
 
-                // 3. Atomically apply journal to state tree (C012-003)
+                // 3. Prepare and apply transaction
+                let delta_digest = match journal.prepare() {
+                    Ok((_, d)) => Some(d),
+                    Err(e) => {
+                        journal.discard();
+                        let receipt = ExecutionReceipt {
+                            execution_id: ctx.execution_id.clone(),
+                            package_digest: ctx.package_digest.clone(),
+                            initial_state_root: initial_root.clone(),
+                            final_state_root: initial_root,
+                            initial_revision: initial_rev,
+                            final_revision: initial_rev,
+                            delta_digest: None,
+                            status: TerminalExecutionStatus::RolledBack {
+                                reason: format!("Journal prepare failed: {}", e),
+                            },
+                            sequence_tick: ctx.logical_sequence_tick,
+                        };
+                        store.record_terminal_receipt(receipt);
+                        return Err(DispatchError::WorkerFailed(
+                            super::worker::WorkerError::ExecutionFailure(format!(
+                                "Journal prepare failed: {}",
+                                e
+                            )),
+                        ));
+                    }
+                };
+
                 match journal.apply(tree) {
-                    Ok(changed) => {
-                        reservation_store
-                            .transition_to_terminal(exec_id, ReservationState::Committed);
-                        Ok(changed)
+                    Ok(_) => {
+                        let final_root = tree.compute_state_root();
+                        let final_rev = tree.revision();
+                        let receipt = ExecutionReceipt {
+                            execution_id: ctx.execution_id.clone(),
+                            package_digest: ctx.package_digest.clone(),
+                            initial_state_root,
+                            final_state_root,
+                            initial_revision: initial_rev,
+                            final_revision: final_rev,
+                            delta_digest,
+                            status: TerminalExecutionStatus::Committed,
+                            sequence_tick: ctx.logical_sequence_tick,
+                        };
+                        store.record_terminal_receipt(receipt.clone());
+                        Ok(ExecutionOutcome::Executed(receipt))
                     }
                     Err(e) => {
                         journal.discard();
-                        reservation_store
-                            .transition_to_terminal(exec_id, ReservationState::RolledBack);
+                        let receipt = ExecutionReceipt {
+                            execution_id: ctx.execution_id.clone(),
+                            package_digest: ctx.package_digest.clone(),
+                            initial_state_root: initial_root.clone(),
+                            final_state_root: initial_root,
+                            initial_revision: initial_rev,
+                            final_revision: initial_rev,
+                            delta_digest: None,
+                            status: TerminalExecutionStatus::RolledBack {
+                                reason: format!("Journal apply failed: {}", e),
+                            },
+                            sequence_tick: ctx.logical_sequence_tick,
+                        };
+                        store.record_terminal_receipt(receipt);
                         Err(DispatchError::WorkerFailed(
                             super::worker::WorkerError::ExecutionFailure(format!(
                                 "Journal apply failed: {}",
@@ -65,9 +132,21 @@ impl TransactionOrchestrator {
                 }
             }
             Err(e) => {
-                // 4. Rollback on worker failure/panic (C012-004)
                 journal.discard();
-                reservation_store.transition_to_terminal(exec_id, ReservationState::RolledBack);
+                let receipt = ExecutionReceipt {
+                    execution_id: ctx.execution_id.clone(),
+                    package_digest: ctx.package_digest.clone(),
+                    initial_state_root: initial_root.clone(),
+                    final_state_root: initial_root,
+                    initial_revision: initial_rev,
+                    final_revision: initial_rev,
+                    delta_digest: None,
+                    status: TerminalExecutionStatus::RolledBack {
+                        reason: format!("{:?}", e),
+                    },
+                    sequence_tick: ctx.logical_sequence_tick,
+                };
+                store.record_terminal_receipt(receipt);
                 Err(e)
             }
         }

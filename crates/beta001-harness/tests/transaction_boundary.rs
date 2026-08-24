@@ -1,10 +1,10 @@
-//! Boundary Tests for ADAM-012-C
+//! Boundary Tests for ADAM-012-C / 012-D
 //!
 //! Validates atomic transaction processing, commit, and rollback semantics (C012-001..C012-004).
 
 use beta001_harness::dispatch::{
-    DeterministicExecutionContext, DeterministicWorker, ExecutionReservationStore,
-    TransactionOrchestrator, WorkerError,
+    DeterministicExecutionContext, DeterministicWorker, ExecutionOutcome, ExecutionReceiptStore,
+    TerminalExecutionStatus, TransactionOrchestrator, WorkerError,
 };
 use beta001_harness::service_contract::{ExecutionId, ProposedOperation, Sha256Digest};
 use beta001_harness::state::{StateMutation, StateTree};
@@ -70,7 +70,7 @@ fn create_mock_context(
 #[test]
 fn test_c012_001_and_003_successful_worker_commits_atomically() {
     let mut tree = StateTree::new();
-    let store = ExecutionReservationStore::new();
+    let store = ExecutionReceiptStore::new();
     store.reserve("exe_trans_001").unwrap();
 
     let ctx = create_mock_context("exe_trans_001", &tree.compute_state_root(), tree.revision());
@@ -78,13 +78,17 @@ fn test_c012_001_and_003_successful_worker_commits_atomically() {
 
     let res = TransactionOrchestrator::execute_transaction(&worker, &ctx, &mut tree, &store);
 
-    assert!(res.is_ok());
+    assert!(matches!(res, Ok(ExecutionOutcome::Executed(_))));
     assert_eq!(tree.revision(), 1);
     assert_eq!(
         tree.get(b"log:exe_trans_001"),
         Some(b"executing".as_slice())
     );
     assert_eq!(tree.get(b"global:status"), Some(b"active".as_slice()));
+
+    let receipt = store.get_receipt("exe_trans_001").unwrap();
+    assert_eq!(receipt.status, TerminalExecutionStatus::Committed);
+    assert_eq!(receipt.final_revision, 1);
 }
 
 #[test]
@@ -93,7 +97,7 @@ fn test_c012_002_worker_error_rolls_back_atomically() {
     tree.apply_raw_mutations(&[StateMutation::put(b"base", b"root")]);
     let root_before = tree.compute_state_root();
 
-    let store = ExecutionReservationStore::new();
+    let store = ExecutionReceiptStore::new();
     store.reserve("exe_trans_002").unwrap();
 
     let ctx = create_mock_context("exe_trans_002", &root_before, tree.revision());
@@ -105,6 +109,12 @@ fn test_c012_002_worker_error_rolls_back_atomically() {
     assert_eq!(tree.revision(), 1);
     assert_eq!(tree.compute_state_root(), root_before);
     assert_eq!(tree.get(b"base"), Some(b"root".as_slice()));
+
+    let receipt = store.get_receipt("exe_trans_002").unwrap();
+    assert!(matches!(
+        receipt.status,
+        TerminalExecutionStatus::RolledBack { .. }
+    ));
 }
 
 #[test]
@@ -113,7 +123,7 @@ fn test_c012_004_worker_panic_rolls_back_atomically() {
     tree.apply_raw_mutations(&[StateMutation::put(b"base", b"root")]);
     let root_before = tree.compute_state_root();
 
-    let store = ExecutionReservationStore::new();
+    let store = ExecutionReceiptStore::new();
     store.reserve("exe_trans_003").unwrap();
 
     let ctx = create_mock_context("exe_trans_003", &root_before, tree.revision());
@@ -125,4 +135,10 @@ fn test_c012_004_worker_panic_rolls_back_atomically() {
     assert_eq!(tree.revision(), 1);
     assert_eq!(tree.compute_state_root(), root_before);
     assert_eq!(tree.get(b"base"), Some(b"root".as_slice()));
+
+    let receipt = store.get_receipt("exe_trans_003").unwrap();
+    assert!(matches!(
+        receipt.status,
+        TerminalExecutionStatus::RolledBack { .. }
+    ));
 }
