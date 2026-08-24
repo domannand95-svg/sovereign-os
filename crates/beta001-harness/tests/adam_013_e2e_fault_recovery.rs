@@ -165,7 +165,6 @@ fn test_f013_002_fault_injection_torn_tail_truncation_and_resumption() {
     // 4. Commit tick 4 cleanly
     let mutations_4 = vec![StateMutation::put(b"node:4", b"online")];
     let payload_4 = build_test_payload("exe_4", &mock_tree, &mock_trans, mutations_4);
-    mock_trans = payload_4.transition_root.clone();
     mock_tree.apply_raw_mutations(&payload_4.mutations);
 
     engine.commit_record(4, payload_4).unwrap();
