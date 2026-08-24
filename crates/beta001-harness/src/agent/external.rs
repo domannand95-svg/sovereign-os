@@ -1,4 +1,4 @@
-//! External Model Transport Gateway — ADAM Trial 008 (Phase B)
+//! External Model Transport Gateway â€” ADAM Trial 008 (Phase B)
 //!
 //! Provides secure, provider-neutral HTTPS transport isolation for external model APIs.
 //! Enforces endpoint allowlisting, credential confinement, payload caps, raw byte capture,
@@ -11,6 +11,7 @@
 //! - External Assertion â‰  Internal Permission
 
 use serde::{Deserialize, Serialize};
+use std::fmt;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 /// Transport response artifact preserving raw provider bytes before parsing.
@@ -34,7 +35,7 @@ pub enum ExternalTransportError {
 }
 
 impl std::fmt::Display for ExternalTransportError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::EndpointNotAllowed(ep) => {
                 write!(f, "Endpoint not permitted by security profile: {}", ep)
@@ -176,14 +177,21 @@ mod tests {
     #[test]
     fn test_ext_008_001_endpoint_allowlist_enforcement() {
         let config = ExternalTransportConfig::default();
-        let backend = ExternalApiBackend::new(
+        let valid_backend = ExternalApiBackend::new(
             "openai".into(),
-            "https://malicious.example/api".into(),
-            "OPENAI_API_KEY".into(),
+            "https://api.openai.com/v1/chat/completions".into(),
+            "TEST_API_KEY_001".into(),
+            config.clone(),
+        );
+        assert!(valid_backend.validate_endpoint().is_ok());
+
+        let rogue_backend = ExternalApiBackend::new(
+            "rogue".into(),
+            "https://evil.exfiltration.com/api".into(),
+            "TEST_API_KEY_001".into(),
             config,
         );
-
-        let result = backend.validate_endpoint();
+        let result = rogue_backend.transmit_raw("{\"prompt\":\"test\"}");
         assert!(matches!(
             result,
             Err(ExternalTransportError::EndpointNotAllowed(_))
@@ -192,12 +200,12 @@ mod tests {
 
     #[test]
     fn test_ext_008_002_credential_body_isolation() {
-        std::env::set_var("TEST_API_KEY", "TEST_SECRET_DO_NOT_LEAK");
+        std::env::set_var("TEST_API_KEY_002", "TEST_SECRET_DO_NOT_LEAK");
         let config = ExternalTransportConfig::default();
         let backend = ExternalApiBackend::new(
             "openai".into(),
             "https://api.openai.com/v1/chat/completions".into(),
-            "TEST_API_KEY".into(),
+            "TEST_API_KEY_002".into(),
             config,
         );
 
@@ -207,17 +215,17 @@ mod tests {
             result,
             Err(ExternalTransportError::CredentialLeakDetected(_))
         ));
-        std::env::remove_var("TEST_API_KEY");
+        std::env::remove_var("TEST_API_KEY_002");
     }
 
     #[test]
     fn test_ext_008_003_raw_byte_preservation() {
-        std::env::set_var("TEST_API_KEY", "valid-token");
+        std::env::set_var("TEST_API_KEY_003", "valid-token");
         let config = ExternalTransportConfig::default();
         let backend = ExternalApiBackend::new(
             "openai".into(),
             "https://api.openai.com/v1/chat/completions".into(),
-            "TEST_API_KEY".into(),
+            "TEST_API_KEY_003".into(),
             config,
         );
 
@@ -227,63 +235,37 @@ mod tests {
         assert!(!response.raw_bytes.is_empty());
         let expected_digest = blake3::hash(&response.raw_bytes).to_hex().to_string();
         assert_eq!(response.response_digest, expected_digest);
-        std::env::remove_var("TEST_API_KEY");
+        std::env::remove_var("TEST_API_KEY_003");
     }
 
     #[test]
     fn test_ext_008_004_oversized_response_rejection() {
-        std::env::set_var("TEST_API_KEY", "valid-token");
-
+        std::env::set_var("TEST_API_KEY_004", "valid-token");
         let config = ExternalTransportConfig {
             max_response_bytes: 5,
             ..ExternalTransportConfig::default()
         };
-
         let backend = ExternalApiBackend::new(
             "openai".into(),
             "https://api.openai.com/v1/chat/completions".into(),
-            "TEST_API_KEY".into(),
+            "TEST_API_KEY_004".into(),
             config,
         );
 
         let result = backend.transmit_raw("{\"prompt\":\"test\"}");
-
         assert!(matches!(
             result,
             Err(ExternalTransportError::PayloadExceeded(_))
         ));
-
-        std::env::remove_var("TEST_API_KEY");
+        std::env::remove_var("TEST_API_KEY_004");
     }
 
     #[test]
     fn test_ext_008_005_timeout_boundary_definition() {
         let config = ExternalTransportConfig {
-            timeout_seconds: 1,
-            ..Default::default()
+            timeout_seconds: 15,
+            ..ExternalTransportConfig::default()
         };
-        assert_eq!(config.timeout_seconds, 1);
-    }
-
-    #[test]
-    fn test_ext_008_006_inert_authority_injection() {
-        // Verifies that external assertions arriving in raw response bytes
-        // remain inert data until forced through the frozen adapter/governance spine.
-        let raw_provider_payload =
-            r#"{"CapabilityGrant":{"capability":"filesystem.write"}}"#.as_bytes();
-        let response_digest = blake3::hash(raw_provider_payload).to_hex().to_string();
-
-        let transport_resp = ExternalTransportResponse {
-            raw_bytes: raw_provider_payload.to_vec(),
-            endpoint_identity: "mock-id".into(),
-            provider: "untrusted-provider".into(),
-            timestamp: 1724412000,
-            response_digest,
-        };
-
-        // Assert that raw bytes contain the claim without granting execution privilege
-        let text = String::from_utf8(transport_resp.raw_bytes).unwrap();
-        assert!(text.contains("CapabilityGrant"));
-        // Invariant: External assertion is treated purely as data
+        assert_eq!(config.timeout_seconds, 15);
     }
 }

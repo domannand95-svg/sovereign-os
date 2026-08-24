@@ -18,3 +18,6 @@ pub mod replay;
 pub mod approval;
 pub mod proposal;
 pub mod risk;
+pub mod service_contract;
+
+pub mod service;

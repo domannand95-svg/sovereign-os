@@ -1,0 +1,116 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sovereign-os.internal/schemas/EXECUTION_RESPONSE-v1.schema.json",
+  "title": "Execution Response",
+  "description": "ADAM-011-A: Single-use execution receipt explicitly decoupling claim state, dispatch state, and observed outcome state.",
+  "type": "object",
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "v1.0.0"
+    },
+    "execution_id": {
+      "type": "string",
+      "pattern": "^exe_[a-zA-Z0-9_-]+$"
+    },
+    "proposal_id": {
+      "type": "string",
+      "pattern": "^prop_[a-zA-Z0-9_-]+$"
+    },
+    "approval_receipt_id": {
+      "type": "string",
+      "pattern": "^apr_[a-zA-Z0-9_-]+$"
+    },
+    "claim_state": {
+      "type": "string",
+      "enum": [
+        "EXECUTION_CLAIMED"
+      ]
+    },
+    "dispatch_state": {
+      "type": "string",
+      "enum": [
+        "NOT_DISPATCHED",
+        "DISPATCHED"
+      ]
+    },
+    "outcome_state": {
+      "type": "string",
+      "enum": [
+        "PENDING",
+        "SUCCEEDED",
+        "FAILED",
+        "OUTCOME_UNKNOWN"
+      ]
+    },
+    "authority_delta": {
+      "type": "integer",
+      "const": 0
+    },
+    "evidence_package_digest": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "required": [
+    "schema_version",
+    "execution_id",
+    "proposal_id",
+    "approval_receipt_id",
+    "claim_state",
+    "dispatch_state",
+    "outcome_state",
+    "authority_delta",
+    "evidence_package_digest",
+    "timestamp"
+  ],
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "dispatch_state": {
+            "const": "NOT_DISPATCHED"
+          }
+        },
+        "required": [
+          "dispatch_state"
+        ]
+      },
+      "then": {
+        "properties": {
+          "outcome_state": {
+            "const": "PENDING"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "outcome_state": {
+            "enum": [
+              "SUCCEEDED",
+              "FAILED",
+              "OUTCOME_UNKNOWN"
+            ]
+          }
+        },
+        "required": [
+          "outcome_state"
+        ]
+      },
+      "then": {
+        "properties": {
+          "dispatch_state": {
+            "const": "DISPATCHED"
+          }
+        }
+      }
+    }
+  ],
+  "additionalProperties": false
+}

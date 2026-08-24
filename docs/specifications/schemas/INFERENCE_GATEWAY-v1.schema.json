@@ -1,0 +1,122 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sovereign-os.internal/schemas/INFERENCE_GATEWAY-v1.schema.json",
+  "title": "Inference Gateway Envelope",
+  "description": "ADAM-011-A: Transport and evidence capture record for external probabilistic models. Contains zero authority fields.",
+  "type": "object",
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "v1.0.0"
+    },
+    "session_id": {
+      "type": "string",
+      "pattern": "^ses_[a-zA-Z0-9_-]+$"
+    },
+    "provider_identity": {
+      "type": "string",
+      "minLength": 1
+    },
+    "adapter_identity": {
+      "type": "string",
+      "minLength": 1
+    },
+    "request_digest": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "response_digest": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "transport_status": {
+      "type": "string",
+      "enum": [
+        "SUCCESS",
+        "FAILED",
+        "TIMEOUT",
+        "DISCONNECTED"
+      ]
+    },
+    "raw_model_output": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "evidence_seal_digest": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "required": [
+    "schema_version",
+    "session_id",
+    "provider_identity",
+    "adapter_identity",
+    "request_digest",
+    "response_digest",
+    "transport_status",
+    "raw_model_output",
+    "evidence_seal_digest",
+    "timestamp"
+  ],
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "transport_status": {
+            "const": "SUCCESS"
+          }
+        },
+        "required": [
+          "transport_status"
+        ]
+      },
+      "then": {
+        "properties": {
+          "response_digest": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "raw_model_output": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "transport_status": {
+            "enum": [
+              "FAILED",
+              "TIMEOUT",
+              "DISCONNECTED"
+            ]
+          }
+        },
+        "required": [
+          "transport_status"
+        ]
+      },
+      "then": {
+        "properties": {
+          "response_digest": {
+            "type": "null"
+          },
+          "raw_model_output": {
+            "type": "null"
+          }
+        }
+      }
+    }
+  ],
+  "additionalProperties": false
+}

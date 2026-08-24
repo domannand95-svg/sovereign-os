@@ -1,0 +1,56 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sovereign-os.internal/schemas/PROPOSAL_REQUEST-v1.schema.json",
+  "title": "Proposal Request",
+  "description": "ADAM-011-A: Intake data contract for untrusted client intent. Free-text intent undergoes semantic evaluation downstream.",
+  "type": "object",
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "v1.0.0"
+    },
+    "user_id": {
+      "type": "string",
+      "pattern": "^usr_[a-zA-Z0-9_-]+$"
+    },
+    "session_id": {
+      "type": "string",
+      "pattern": "^ses_[a-zA-Z0-9_-]+$"
+    },
+    "intent": {
+      "type": "string",
+      "minLength": 1
+    },
+    "proposed_operation": {
+      "type": "string",
+      "enum": [
+        "EmitNotification",
+        "RequestReview",
+        "RequestApproval",
+        "RequestStateMutation"
+      ]
+    },
+    "source_evidence_references": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^[a-f0-9]{64}$"
+      },
+      "minItems": 1
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "required": [
+    "schema_version",
+    "user_id",
+    "session_id",
+    "intent",
+    "proposed_operation",
+    "source_evidence_references",
+    "timestamp"
+  ],
+  "additionalProperties": false
+}

@@ -1,0 +1,99 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sovereign-os.internal/schemas/PROPOSAL_RESPONSE-v1.schema.json",
+  "title": "Proposal Response",
+  "description": "ADAM-011-A: Governed state and risk evaluation returned by the service. Does not confer authorization.",
+  "type": "object",
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "v1.0.0"
+    },
+    "proposal_id": {
+      "type": "string",
+      "pattern": "^prop_[a-zA-Z0-9_-]+$"
+    },
+    "session_id": {
+      "type": "string",
+      "pattern": "^ses_[a-zA-Z0-9_-]+$"
+    },
+    "lifecycle_state": {
+      "type": "string",
+      "enum": [
+        "DRAFT",
+        "VALIDATED",
+        "RISK_EVALUATED",
+        "AWAITING_APPROVAL",
+        "REJECTED",
+        "QUARANTINED",
+        "EXPIRED"
+      ]
+    },
+    "risk_context": {
+      "type": "object",
+      "properties": {
+        "context_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "risk_level": {
+          "type": "string",
+          "enum": [
+            "LOW",
+            "MEDIUM",
+            "HIGH",
+            "CRITICAL"
+          ]
+        },
+        "blast_radius": {
+          "type": "string",
+          "enum": [
+            "ISOLATED",
+            "SUBSYSTEM",
+            "SYSTEM",
+            "EXTERNAL"
+          ]
+        }
+      },
+      "required": [
+        "context_id",
+        "risk_level",
+        "blast_radius"
+      ],
+      "additionalProperties": false
+    },
+    "required_approval_level": {
+      "type": "string",
+      "enum": [
+        "PEER",
+        "OPERATOR",
+        "GOVERNANCE",
+        "NONE"
+      ]
+    },
+    "authority_delta": {
+      "type": "integer",
+      "const": 0
+    },
+    "provenance_digest": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "required": [
+    "schema_version",
+    "proposal_id",
+    "session_id",
+    "lifecycle_state",
+    "risk_context",
+    "required_approval_level",
+    "authority_delta",
+    "provenance_digest",
+    "timestamp"
+  ],
+  "additionalProperties": false
+}
