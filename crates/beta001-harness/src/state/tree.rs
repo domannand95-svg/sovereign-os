@@ -71,6 +71,11 @@ impl StateTree {
         mutated
     }
 
+    /// Applies pre-normalized mutations directly into the tree state.
+    pub fn apply_normalized_mutations(&mut self, mutations: &[StateMutation]) -> bool {
+        self.apply_raw_mutations(mutations)
+    }
+
     /// Computes the canonical BLAKE3 state root over lexicographically sorted entries.
     pub fn compute_state_root(&self) -> String {
         let mut hasher = blake3::Hasher::new();
