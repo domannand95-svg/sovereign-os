@@ -128,8 +128,8 @@ impl TransactionOrchestrator {
                         let receipt = StateTransitionReceipt {
                             transition_root,
                             previous_transition_root: prev_transition_root,
-                            initial_state_root,
-                            final_state_root,
+                            initial_state_root: initial_root,
+                            final_state_root: final_root,
                             initial_revision: initial_rev,
                             final_revision: final_rev,
                             execution_id: ctx.execution_id.clone(),
