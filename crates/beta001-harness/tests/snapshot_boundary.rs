@@ -4,7 +4,7 @@
 //! checksum verification, state root recomputation, and determinism (C013-001..C013-006).
 
 use std::fs::{File, OpenOptions};
-use std::io::{Read, Seek, SeekFrom, Write};
+use std::io::{Seek, SeekFrom, Write};
 use tempfile::tempdir;
 
 use beta001_harness::state::{StateMutation, StateTree};
@@ -33,7 +33,6 @@ fn test_c013_001_snapshot_write_atomic_and_verified_hydration() {
     assert_eq!(manifest.state_root, tree.compute_state_root());
     assert_eq!(manifest.transition_root, trans_root);
 
-    // Read back and verify
     let (hydrated_tree, loaded_manifest) = StateSnapshot::load_and_verify(&snap_path).unwrap();
     assert_eq!(loaded_manifest, manifest);
     assert_eq!(
@@ -61,7 +60,6 @@ fn test_c013_002_corrupted_snapshot_checksum_fails_closed() {
 
     StateSnapshot::write_atomic(&snap_path, &tree, 1, "tr_1").unwrap();
 
-    // Corrupt the trailer checksum
     let file_len = File::open(&snap_path).unwrap().metadata().unwrap().len();
     {
         let mut file = OpenOptions::new().write(true).open(&snap_path).unwrap();
@@ -83,7 +81,6 @@ fn test_c013_003_invalid_magic_fails_closed() {
 
     StateSnapshot::write_atomic(&snap_path, &tree, 1, "tr_1").unwrap();
 
-    // Corrupt magic bytes
     {
         let mut file = OpenOptions::new().write(true).open(&snap_path).unwrap();
         file.seek(SeekFrom::Start(0)).unwrap();
