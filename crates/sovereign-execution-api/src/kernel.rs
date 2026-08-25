@@ -1,20 +1,35 @@
+use crate::{AuthorizationReceiptRef, CanonicalAction};
 use serde::{Deserialize, Serialize};
 
-/// Typed request crossing from the execution API boundary
-/// into the governed execution kernel contract.
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, PartialEq, Eq)]
 pub struct KernelExecutionRequest {
-    pub authorization_receipt_id: String,
-    pub operation_payload: Vec<u8>,
+    authorization_receipt: AuthorizationReceiptRef,
+    action: CanonicalAction,
 }
 
-/// Typed response returned from the governed execution kernel.
+impl KernelExecutionRequest {
+    pub(crate) fn new(
+        authorization_receipt: AuthorizationReceiptRef,
+        action: CanonicalAction,
+    ) -> Self {
+        Self {
+            authorization_receipt,
+            action,
+        }
+    }
+    pub fn authorization_receipt(&self) -> AuthorizationReceiptRef {
+        self.authorization_receipt
+    }
+    pub fn action(&self) -> &CanonicalAction {
+        &self.action
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct KernelExecutionResponse {
     pub report_reference: String,
 }
 
-/// Typed failures crossing the kernel boundary.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub enum KernelExecutionError {
     AuthenticationFailure,
@@ -23,11 +38,7 @@ pub enum KernelExecutionError {
     ExecutionFailure(String),
 }
 
-/// Dependency injection boundary between the API layer
-/// and the execution kernel.
-///
-/// This trait does not grant authority.
-/// It only transports already-governed execution requests.
+/// This trait transports validated requests; it grants no authority.
 pub trait KernelInvoker {
     fn invoke_kernel(
         &self,
