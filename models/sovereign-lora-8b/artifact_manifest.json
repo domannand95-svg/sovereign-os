@@ -1,0 +1,59 @@
+{
+  "schema_version": "sovereign.model-artifact-manifest.v1",
+  "directory_name": "sovereign-lora-8b",
+  "actual_base_model": "unsloth/Llama-3.2-3B-Instruct",
+  "architecture": "dense-llama-3.2",
+  "parameter_count": 3237063680,
+  "adapter_type": "PEFT_LORA",
+  "training_status": "COMPLETE",
+  "generalization_validation": "PARTIAL",
+  "runtime_authority": "NONE",
+  "dataset": {
+    "examples": 500,
+    "sha256": "79551cc7c424b3b851d6199f7049542bcad5d66d0bf239337a7dd5089efdebc1"
+  },
+  "files": [
+    {
+      "path": "lora_adapter/adapter_config.json",
+      "bytes": 765,
+      "sha256": "bf9b8805207bbff88a32fb9bce23e4beff3b9155d5afa5ccedd5dcf55d727a5e",
+      "git_storage": "tracked"
+    },
+    {
+      "path": "lora_adapter/adapter_model.safetensors",
+      "bytes": 97307544,
+      "sha256": "7177c855ecc5cb560d5dfa7bb87e840e2fcb1bfa7256e6b481d8bbd4e0b40184",
+      "git_storage": "ignored-local"
+    },
+    {
+      "path": "lora_adapter/README.md",
+      "bytes": 5103,
+      "sha256": "1c8f70d4e160fffa25383c9106d5f60c84a78ea658df691c9c7a02ddded2f141",
+      "git_storage": "ignored-local"
+    },
+    {
+      "path": "lora_adapter/special_tokens_map.json",
+      "bytes": 477,
+      "sha256": "8e4e823b62ca673865ac60b203c51d0d3f0f4e21f806323cd7d35616cb457e0d",
+      "git_storage": "tracked"
+    },
+    {
+      "path": "lora_adapter/tokenizer_config.json",
+      "bytes": 56741,
+      "sha256": "bb954dfaba3539427c9c00ddef117597503604130b1f41738e56160514355667",
+      "git_storage": "tracked"
+    },
+    {
+      "path": "lora_adapter/tokenizer.json",
+      "bytes": 17210018,
+      "sha256": "9c85066e7642934ed09b44155e6566b0b5dab2637fb9433439ba5c9c7f8b50d3",
+      "git_storage": "ignored-local"
+    },
+    {
+      "path": "provenance_ledger.json",
+      "bytes": 433,
+      "sha256": "a363ce18656106ddd71655a50dd0eb89fcce06942d502520a4d0b3aaa0ca8918",
+      "git_storage": "tracked"
+    }
+  ]
+}
