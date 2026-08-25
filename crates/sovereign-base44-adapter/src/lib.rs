@@ -21,8 +21,8 @@ pub use error::Base44AdapterError;
 
 use serde::{Deserialize, Serialize};
 use sovereign_execution_api::{
-    ExecutionApiFacade, ExecutionStatus, GovernedExecutionRequest, GovernedExecutionResponse,
-    KernelInvoker,
+    AuthorizationReceiptRef, CanonicalAction, DigestRef, ExecutionApiFacade, ExecutionId,
+    ExecutionStatus, GovernedExecutionRequest, GovernedExecutionResponse, KernelInvoker,
 };
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -72,7 +72,7 @@ impl Base44EgressTranslator {
 
         Ok(Base44EgressResponse {
             request_id,
-            execution_id: governed.execution_id,
+            execution_id: governed.execution_id.to_string(),
             status,
             report_reference: governed.report_reference,
         })
@@ -107,11 +107,22 @@ impl<K: KernelInvoker> Base44Dispatcher<K> {
             request.timestamp,
         )?;
 
-        let governed_request = GovernedExecutionRequest {
-            execution_id: request.request_id.clone(),
-            authorization_receipt_id: request.receipt_reference.clone(),
-            operation_payload: request.content.clone(),
-        };
+        let content_digest = DigestRef::parse_hex(&request.content_digest)
+            .map_err(|error| Base44AdapterError::ExecutionApi(error.to_string()))?;
+        let action = CanonicalAction::encode(
+            &request.operation,
+            &request.target,
+            content_digest,
+            &request.content,
+        )
+        .map_err(|error| Base44AdapterError::ExecutionApi(error.to_string()))?;
+        let governed_request = GovernedExecutionRequest::new(
+            ExecutionId::parse(request.request_id.clone())
+                .map_err(|error| Base44AdapterError::ExecutionApi(error.to_string()))?,
+            AuthorizationReceiptRef::parse_hex(&request.receipt_reference)
+                .map_err(|error| Base44AdapterError::ExecutionApi(error.to_string()))?,
+            action,
+        );
 
         let governed_response = self
             .api

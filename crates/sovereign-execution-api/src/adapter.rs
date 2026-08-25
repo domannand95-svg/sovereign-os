@@ -18,30 +18,20 @@ impl<K: KernelInvoker> ExecutionApiFacade<K> {
         &self,
         request: GovernedExecutionRequest,
     ) -> Result<GovernedExecutionResponse, ExecutionApiError> {
-        if request.authorization_receipt_id.trim().is_empty() {
-            return Err(ExecutionApiError::AuthorizationFailure(
-                "Authorization receipt ID is missing".into(),
-            ));
-        }
-
-        if request.operation_payload.is_empty() {
-            return Err(ExecutionApiError::ValidationFailure(
-                "Operation payload cannot be empty".into(),
-            ));
-        }
-
-        match self.kernel.invoke_kernel(crate::KernelExecutionRequest {
-            authorization_receipt_id: request.authorization_receipt_id,
-            operation_payload: request.operation_payload,
-        }) {
+        let execution_id = request.execution_id().clone();
+        let kernel_request = crate::KernelExecutionRequest::new(
+            request.authorization_receipt(),
+            request.action().clone(),
+        );
+        match self.kernel.invoke_kernel(kernel_request) {
             Ok(response) => Ok(GovernedExecutionResponse {
-                execution_id: request.execution_id,
+                execution_id: execution_id.clone(),
                 status: ExecutionStatus::AuthorizedAndExecuted,
                 report_reference: Some(response.report_reference),
             }),
 
             Err(_error) => Ok(GovernedExecutionResponse {
-                execution_id: request.execution_id,
+                execution_id,
                 status: ExecutionStatus::ExecutionFailed,
                 report_reference: None,
             }),

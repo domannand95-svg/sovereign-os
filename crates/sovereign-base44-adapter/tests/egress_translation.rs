@@ -5,13 +5,13 @@ extern crate sovereign_base44_adapter;
 use sovereign_base44_adapter::{
     Base44EgressResponse, Base44EgressTranslator, Base44ExecutionStatus,
 };
-use sovereign_execution_api::{ExecutionStatus, GovernedExecutionResponse};
+use sovereign_execution_api::{ExecutionId, ExecutionStatus, GovernedExecutionResponse};
 
 #[test]
 fn test_translate_success_response() {
     let translator = Base44EgressTranslator::new();
     let governed_response = GovernedExecutionResponse {
-        execution_id: "exec-001".to_string(),
+        execution_id: ExecutionId::parse("exec-001").unwrap(),
         status: ExecutionStatus::AuthorizedAndExecuted,
         report_reference: Some("report-001".to_string()),
     };
@@ -30,7 +30,7 @@ fn test_translate_success_response() {
 fn test_translate_authentication_failed() {
     let translator = Base44EgressTranslator::new();
     let governed_response = GovernedExecutionResponse {
-        execution_id: "exec-002".to_string(),
+        execution_id: ExecutionId::parse("exec-002").unwrap(),
         status: ExecutionStatus::AuthenticationFailed,
         report_reference: None,
     };
@@ -46,7 +46,7 @@ fn test_translate_authentication_failed() {
 fn test_translate_execution_failed_sanitizes_error() {
     let translator = Base44EgressTranslator::new();
     let governed_response = GovernedExecutionResponse {
-        execution_id: "exec-003".to_string(),
+        execution_id: ExecutionId::parse("exec-003").unwrap(),
         status: ExecutionStatus::ExecutionFailed,
         report_reference: None,
     };
