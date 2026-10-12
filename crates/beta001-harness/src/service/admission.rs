@@ -84,7 +84,7 @@ impl ProposalAdmissionGate {
             hasher.update(evidence.as_str().as_bytes());
         }
         hasher.update(req.timestamp.to_rfc3339().as_bytes());
-        let digest_hex = format!("{:x}", hasher.finalize());
+        let digest_hex = hex::encode(hasher.finalize());
 
         // 2. Check replay WITHOUT mutating state (anti-poisoning)
         {
@@ -274,7 +274,7 @@ impl ExecutionAdmissionGate {
         hasher.update(receipt.receipt_id.as_bytes());
         hasher.update(req.caller_identity.as_bytes());
         hasher.update(req.timestamp.to_rfc3339().as_bytes());
-        let exec_digest = format!("{:x}", hasher.finalize());
+        let exec_digest = hex::encode(hasher.finalize());
         let execution_id_str = format!("exe_{}", &exec_digest[..24]);
 
         let execution_id = ExecutionId::new(execution_id_str)
