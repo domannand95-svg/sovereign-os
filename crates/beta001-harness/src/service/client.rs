@@ -109,7 +109,7 @@ impl ClientSanitizer {
         // 4. Compute Raw Intent Digest (Preserves raw client evidence) (D011-001)
         let mut hasher_raw = Sha256::new();
         hasher_raw.update(req.intent.as_bytes());
-        let raw_digest_hex = format!("{:x}", hasher_raw.finalize());
+        let raw_digest_hex = hex::encode(hasher_raw.finalize());
         let raw_intent_digest = Sha256Digest::new(raw_digest_hex)
             .map_err(|_| ClientSanitizationError::ProhibitedCharactersDetected)?;
 
@@ -124,7 +124,7 @@ impl ClientSanitizer {
         // 6. Compute Normalized Intent Digest (D011-001)
         let mut hasher_norm = Sha256::new();
         hasher_norm.update(normalized_intent.as_bytes());
-        let norm_digest_hex = format!("{:x}", hasher_norm.finalize());
+        let norm_digest_hex = hex::encode(hasher_norm.finalize());
         let normalized_intent_digest = Sha256Digest::new(norm_digest_hex)
             .map_err(|_| ClientSanitizationError::ProhibitedCharactersDetected)?;
 

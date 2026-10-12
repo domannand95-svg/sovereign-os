@@ -87,6 +87,28 @@ fn test_d011_002_timestamp_skew_enforcement() {
 }
 
 #[test]
+fn client_digests_preserve_sha256_known_vectors() {
+    // Fixed known answers catch byte order, padding, casing and digest changes.
+    for (intent, expected) in [
+        (
+            "",
+            "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        ),
+        (
+            "abc",
+            "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+        ),
+    ] {
+        let req = sample_request("usr_alice_1", "ses_web_1", intent);
+        let time = req.timestamp;
+        let auth = sample_auth_context("usr_alice_1", "ses_web_1");
+        let sanitized = ClientSanitizer::sanitize_proposal_request(req, &auth, time).unwrap();
+        assert_eq!(sanitized.raw_intent_digest.as_str(), expected);
+        assert_eq!(sanitized.normalized_intent_digest.as_str(), expected);
+    }
+}
+
+#[test]
 fn test_d011_003_payload_exhaustion_defense() {
     let server_time = Utc::now();
     let auth_ctx = sample_auth_context("usr_alice_1", "ses_web_1");
