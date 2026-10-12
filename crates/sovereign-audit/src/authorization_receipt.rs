@@ -422,6 +422,37 @@ mod tests {
     }
 
     #[test]
+    fn signature_payload_preserves_dalek_v2_fixture() {
+        // Produced by ed25519-dalek 2.2.0 from test_signature_payload() and the
+        // public test seed [7; 32]. Keep these bytes fixed across major upgrades.
+        let signature = ed25519_dalek::Signature::from_bytes(&[
+            57, 28, 174, 176, 156, 5, 0, 179, 21, 101, 186, 38, 23, 60, 230, 108, 153, 123, 110,
+            108, 22, 11, 55, 151, 219, 114, 32, 231, 190, 107, 164, 179, 216, 53, 55, 169, 49, 73,
+            92, 186, 134, 216, 183, 198, 213, 96, 106, 196, 237, 178, 245, 7, 126, 57, 142, 42,
+            151, 102, 36, 174, 88, 142, 79, 10,
+        ]);
+        let key = VerifyingKey::from_bytes(&[
+            234, 74, 108, 99, 226, 156, 82, 10, 190, 245, 80, 123, 19, 46, 197, 249, 149, 71, 118,
+            174, 190, 190, 123, 146, 66, 30, 234, 105, 20, 70, 210, 44,
+        ])
+        .unwrap();
+        let mut payload = test_signature_payload();
+        assert!(payload.verify(&key, &signature).is_ok());
+        assert_eq!(payload.sign(&SigningKey::from_bytes(&[7; 32])), signature);
+
+        payload.authorized_scope = "modified-scope".into();
+        assert!(payload.verify(&key, &signature).is_err());
+        let payload = test_signature_payload();
+        let wrong_key = SigningKey::from_bytes(&[8; 32]).verifying_key();
+        assert!(payload.verify(&wrong_key, &signature).is_err());
+        let mut corrupted = signature.to_bytes();
+        corrupted[0] ^= 1;
+        assert!(payload
+            .verify(&key, &ed25519_dalek::Signature::from_bytes(&corrupted))
+            .is_err());
+    }
+
+    #[test]
     fn signature_payload_verification_succeeds_with_matching_key() {
         let payload = test_signature_payload();
         let signing_key = SigningKey::from_bytes(&[7u8; 32]);
