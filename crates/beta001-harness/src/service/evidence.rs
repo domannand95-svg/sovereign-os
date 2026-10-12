@@ -177,7 +177,7 @@ impl ServiceEvidencePackage {
         hasher.update(format!("{}:", ts_str.len()).as_bytes());
         hasher.update(ts_str.as_bytes());
 
-        let seal_hex = format!("{:x}", hasher.finalize());
+        let seal_hex = hex::encode(hasher.finalize());
         Sha256Digest::new(seal_hex)
             .map_err(|e| EvidenceClosureError::DigestDerivationFailed(e.to_string()))
     }
@@ -258,7 +258,7 @@ impl ServiceEvidencePackage {
         // 2. Recompute Protected Raw & Normalized Ingress Intent (F011-004)
         let mut raw_hasher = Sha256::new();
         raw_hasher.update(self.sanitized_ingress.original_request.intent.as_bytes());
-        let expected_raw_digest = format!("{:x}", raw_hasher.finalize());
+        let expected_raw_digest = hex::encode(raw_hasher.finalize());
         if expected_raw_digest != self.sanitized_ingress.raw_intent_digest.as_str() {
             return Err(EvidenceClosureError::IntegrityViolation(
                 "Recomputed raw_intent_digest does not match stored binding".to_string(),
@@ -282,7 +282,7 @@ impl ServiceEvidencePackage {
 
         let mut norm_hasher = Sha256::new();
         norm_hasher.update(self.sanitized_ingress.normalized_intent.as_bytes());
-        let expected_norm_digest = format!("{:x}", norm_hasher.finalize());
+        let expected_norm_digest = hex::encode(norm_hasher.finalize());
         if expected_norm_digest != self.sanitized_ingress.normalized_intent_digest.as_str() {
             return Err(EvidenceClosureError::IntegrityViolation(
                 "Recomputed normalized_intent_digest does not match stored binding".to_string(),
@@ -327,7 +327,7 @@ impl ServiceEvidencePackage {
                 .to_rfc3339()
                 .as_bytes(),
         );
-        let expected_prop_digest = format!("{:x}", prop_hasher.finalize());
+        let expected_prop_digest = hex::encode(prop_hasher.finalize());
 
         if expected_prop_digest != self.proposal_response.provenance_digest.as_str() {
             return Err(EvidenceClosureError::IntegrityViolation(
@@ -364,7 +364,7 @@ impl ServiceEvidencePackage {
                 })?;
                 let mut resp_hasher = Sha256::new();
                 resp_hasher.update(raw_out.as_bytes());
-                let expected_resp_digest = format!("{:x}", resp_hasher.finalize());
+                let expected_resp_digest = hex::encode(resp_hasher.finalize());
                 let stored_resp_digest = inf.response_digest.as_ref().ok_or_else(|| {
                     EvidenceClosureError::IntegrityViolation(format!(
                         "InferenceRecord[{}] has TransportStatus::Success but missing response_digest",
