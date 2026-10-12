@@ -48,7 +48,7 @@ impl InferenceGatewayAdapter {
         // 1. Compute lowercase SHA-256 request digest (E011-002)
         let mut req_hasher = Sha256::new();
         req_hasher.update(request_payload.as_bytes());
-        let req_digest_hex = format!("{:x}", req_hasher.finalize());
+        let req_digest_hex = hex::encode(req_hasher.finalize());
         let request_digest = Sha256Digest::new(req_digest_hex)
             .map_err(|e| InferenceGatewayError::DigestDerivationFailed(e.to_string()))?;
 
@@ -57,7 +57,7 @@ impl InferenceGatewayAdapter {
             RecordedTransportOutcome::Success { raw_model_output } => {
                 let mut resp_hasher = Sha256::new();
                 resp_hasher.update(raw_model_output.as_bytes());
-                let resp_digest_hex = format!("{:x}", resp_hasher.finalize());
+                let resp_digest_hex = hex::encode(resp_hasher.finalize());
                 let resp_digest = Sha256Digest::new(resp_digest_hex)
                     .map_err(|e| InferenceGatewayError::DigestDerivationFailed(e.to_string()))?;
                 (
@@ -149,7 +149,7 @@ impl InferenceGatewayAdapter {
         hasher.update(format!("{}:", ts_str.len()).as_bytes());
         hasher.update(ts_str.as_bytes());
 
-        let seal_hex = format!("{:x}", hasher.finalize());
+        let seal_hex = hex::encode(hasher.finalize());
         Sha256Digest::new(seal_hex)
             .map_err(|e| InferenceGatewayError::DigestDerivationFailed(e.to_string()))
     }
