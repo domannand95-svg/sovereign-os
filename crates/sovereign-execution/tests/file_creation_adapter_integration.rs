@@ -1,4 +1,6 @@
-// File: crates/sovereign-execution/tests/file_creation_adapter_integration.rs
+// Adapter tests trust caller-supplied authentication results. They do not prove
+// cryptographic authentication, durability, or lost-ack safety.
+// Fixed times 1000..2000 satisfy the receipt lifetime contract; this API has no clock check.
 use sovereign_execution::{
     ExecutionError, ExecutionOutcome, FileCreationAdapter, FileCreationOperation, GovernedExecutor,
 };
@@ -8,8 +10,8 @@ use sovereign_audit::authorization_receipt::{
 };
 use sovereign_audit::governance_admission::{AdmissionDecision, AdmissionOutcome};
 
-use tempfile::TempDir;
 use std::fs;
+use tempfile::TempDir;
 
 // Helper: build a minimal AdmissionDecision::Permit and an IssuerContext suitable for
 // AuthorizationReceipt::generate() in tests. The decision id is reused for intent and
@@ -152,7 +154,10 @@ fn test_operation_mismatch_rejected_absent_requested_and_sentinel_unchanged() {
     let read_back = fs::read(&sentinel_path).expect("read sentinel");
     assert_eq!(read_back.as_slice(), sentinel_bytes);
     // Requested path must not have been created.
-    assert!(!requested_path.exists(), "requested path must not be created on operation mismatch");
+    assert!(
+        !requested_path.exists(),
+        "requested path must not be created on operation mismatch"
+    );
 }
 
 #[test]
@@ -267,7 +272,10 @@ fn test_content_integrity_rejected_and_preexisting_unmodified() {
         actual,
     );
 
-    assert_eq!(result.unwrap_err(), ExecutionError::ContentIntegrityMismatch);
+    assert_eq!(
+        result.unwrap_err(),
+        ExecutionError::ContentIntegrityMismatch
+    );
 
     // Ensure pre-existing file was not modified.
     let read_back = fs::read(&target_path).expect("read preexisting");
@@ -320,11 +328,129 @@ fn test_successful_creation_and_report_fields() {
 
     // Verify report fields supported by the actual API.
     assert_eq!(exec_report.outcome, ExecutionOutcome::Created);
+    assert_eq!(exec_report.attempt.outcome, ExecutionOutcome::Created);
+    assert_eq!(exec_report.attempt.timestamp, 0);
     assert_eq!(exec_report.attempt.execution_id, "exec-local-001");
-    assert_eq!(exec_report.attempt.receipt_reference, receipt.receipt_reference);
+    assert_eq!(
+        exec_report.attempt.receipt_reference,
+        receipt.receipt_reference
+    );
     assert_eq!(exec_report.attempt.operation_reference, target_str);
 
     // Ensure bytes were written exactly.
     let written = fs::read(&target_path).expect("read written file");
     assert_eq!(written.as_slice(), content);
+}
+
+#[test]
+fn test_unauthenticated_rejected_and_absent_target_not_created() {
+    let tmp = TempDir::new().expect("tempdir");
+    let target_path = tmp.path().join("unauth.txt");
+    let target_str = target_path.to_string_lossy().to_string();
+
+    assert!(!target_path.exists());
+
+    // Build a valid admission + receipt structure (structural only). Reuse the same
+    // base id for decision and intent to keep fixtures consistent.
+    let base = "ad_unauth";
+    let admission = make_permit_decision(base, "test-scope");
+    let issuer = mock_issuer();
+
+    let receipt = AuthorizationReceipt::generate(
+        &admission,
+        "subject-agent-unauth",
+        &admission.intent_reference,
+        "policy-test",
+        &admission.governance_context_reference,
+        "file_create",
+        &target_str,
+        1000,
+        2000,
+        &issuer,
+        "nonce-unauth-001",
+    )
+    .expect("generate receipt");
+
+    let content = b"payload";
+    let operation = FileCreationOperation {
+        path: target_str.clone(),
+        content_hash: *blake3::hash(content).as_bytes(),
+    };
+
+    let adapter = FileCreationAdapter;
+
+    // Supply ReceiptAuthenticationResult::Invalid to simulate unauthenticated receipt.
+    // This test treats ReceiptAuthenticationResult::Invalid as a caller-supplied input;
+    // it does NOT attempt cryptographic verification here.
+    let result = adapter.execute(
+        &receipt,
+        ReceiptAuthenticationResult::Invalid,
+        &operation,
+        &operation,
+        content,
+    );
+
+    assert_eq!(result.unwrap_err(), ExecutionError::Unauthenticated);
+
+    assert!(
+        !target_path.exists(),
+        "unauthenticated target must remain absent"
+    );
+}
+
+#[test]
+fn test_content_integrity_rejected_and_absent_target_not_created() {
+    let tmp = TempDir::new().expect("tempdir");
+    let target_path = tmp.path().join("content_mismatch.txt");
+    let target_str = target_path.to_string_lossy().to_string();
+
+    assert!(!target_path.exists());
+
+    let base = "ad_content_mismatch";
+    let admission = make_permit_decision(base, "test-scope");
+    let issuer = mock_issuer();
+
+    let receipt = AuthorizationReceipt::generate(
+        &admission,
+        "subject-agent-content",
+        &admission.intent_reference,
+        "policy-test",
+        &admission.governance_context_reference,
+        "file_create",
+        &target_str,
+        1000,
+        2000,
+        &issuer,
+        "nonce-content-001",
+    )
+    .expect("generate receipt");
+
+    // expected content hash is for b"expected", but we will pass b"different"
+    let expected = b"expected";
+    let actual = b"different";
+
+    let operation = FileCreationOperation {
+        path: target_str.clone(),
+        content_hash: *blake3::hash(expected).as_bytes(),
+    };
+
+    let adapter = FileCreationAdapter;
+
+    let result = adapter.execute(
+        &receipt,
+        ReceiptAuthenticationResult::Valid,
+        &operation,
+        &operation,
+        actual,
+    );
+
+    assert_eq!(
+        result.unwrap_err(),
+        ExecutionError::ContentIntegrityMismatch
+    );
+
+    assert!(
+        !target_path.exists(),
+        "content mismatch target must remain absent"
+    );
 }
