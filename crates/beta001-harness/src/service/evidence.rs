@@ -5,11 +5,11 @@
 //!
 //! Invariant: Verified Evidence Chain != Authorization Proof (Δ Authority = 0)
 
+use super::intent_normalization::normalize_intent;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use sha2::digest::Digest;
 use sha2::Sha256;
-use unicode_normalization::UnicodeNormalization;
 
 use crate::approval::{ApprovalReceipt, ApprovalValidationError};
 use crate::risk::RiskEvaluationContext;
@@ -265,14 +265,7 @@ impl ServiceEvidencePackage {
             ));
         }
 
-        let filtered: String = self
-            .sanitized_ingress
-            .original_request
-            .intent
-            .chars()
-            .filter(|c| !c.is_control() || *c == '\n' || *c == '\r' || *c == '\t')
-            .collect();
-        let expected_norm_text: String = filtered.nfkc().collect();
+        let expected_norm_text = normalize_intent(&self.sanitized_ingress.original_request.intent);
         if expected_norm_text != self.sanitized_ingress.normalized_intent {
             return Err(EvidenceClosureError::IntegrityViolation(
                 "Recomputed normalized_intent text does not match stored normalized string"
