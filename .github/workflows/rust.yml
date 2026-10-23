@@ -26,6 +26,14 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@v7
 
+      - name: Set up Python for baseline-reader contract tests
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+
+      - name: Test baseline-reader failure and framing contracts
+        run: python -B -m unittest discover -s scripts/tests -p test_baseline_reader.py -v
+
       - name: Install required Rust components
         run: rustup component add clippy rustfmt
 
