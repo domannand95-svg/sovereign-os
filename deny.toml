@@ -82,7 +82,7 @@ crate = "writeable@0.6.4"
 allow = ["Unicode-3.0"]
 
 [[licenses.exceptions]]
-crate = "webpki-root-certs@1.0.9"
+crate = "webpki-root-certs@1.0.10"
 allow = ["CDLA-Permissive-2.0"]
 
 [[licenses.exceptions]]
