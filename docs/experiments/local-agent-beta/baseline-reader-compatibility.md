@@ -85,6 +85,13 @@ baseline's own manifests even if the current workspace later changes dependencie
 This acquisition can use the network; verification has no online fallback.
 Missing or changed inputs fail the job. The runtime harness remains unchanged.
 
+Both acquisition and verification scope Git export conversion to
+`core.autocrlf=false` and `core.eol=lf` through process environment settings.
+Git archive otherwise honors runner line-ending defaults: a CRLF export changes
+the lockfile bytes even when its Git blob is correct. The scoped settings retain
+the pinned LF bytes and hash checks on Windows, preserve the original fixture,
+and leave persistent Git configuration unchanged.
+
 Verification sets Cargo offline mode and disables Git lazy fetching, then uses
 the unchanged two-build acceptance contract above. Temporary build directories
 use the runner's disposable temporary storage; no pre-existing cache or runner
