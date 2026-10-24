@@ -5,11 +5,11 @@
 //!
 //! Invariant: Sanitization != Trust (Δ Authority = 0)
 
+use super::intent_normalization::normalize_intent;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use sha2::digest::Digest;
 use sha2::Sha256;
-use unicode_normalization::UnicodeNormalization;
 
 use crate::service_contract::{ProposalRequest, SessionId, Sha256Digest, UserId};
 
@@ -114,12 +114,7 @@ impl ClientSanitizer {
             .map_err(|_| ClientSanitizationError::ProhibitedCharactersDetected)?;
 
         // 5. Deterministic Unicode NFKC Normalization & Control Character Filtering (D011-001)
-        let filtered: String = req
-            .intent
-            .chars()
-            .filter(|c| !c.is_control() || *c == '\n' || *c == '\r' || *c == '\t')
-            .collect();
-        let normalized_intent: String = filtered.nfkc().collect();
+        let normalized_intent = normalize_intent(&req.intent);
 
         // 6. Compute Normalized Intent Digest (D011-001)
         let mut hasher_norm = Sha256::new();
