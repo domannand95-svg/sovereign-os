@@ -77,9 +77,11 @@ the pinned baseline reader twice using separate fresh sources and target trees.
 
 Input acquisition is an explicit preceding workflow step. It fetches the exact
 baseline commit, verifies its lockfile Git blob
-`1dcc6f9b3b8a732cbdb1a5407d65906be1c00975`, and requires the checked-out lockfile
-and all Cargo manifests to match the baseline. It then fetches only the locked
-native-target Cargo inputs and checks their availability with an offline fetch.
+`1dcc6f9b3b8a732cbdb1a5407d65906be1c00975`, and exports its unchanged manifests
+and lockfile into disposable storage. The exported lockfile must match the
+SHA-256 above. It then fetches the baseline's locked native-target Cargo inputs
+and checks their availability with an offline fetch. Acquisition uses the
+baseline's own manifests even if the current workspace later changes dependencies.
 This acquisition can use the network; verification has no online fallback.
 Missing or changed inputs fail the job. The runtime harness remains unchanged.
 
