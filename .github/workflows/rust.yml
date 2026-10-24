@@ -45,3 +45,64 @@ jobs:
 
       - name: Run tests
         run: cargo test --workspace --all-targets --locked
+
+      - name: Acquire pinned baseline and locked Cargo inputs
+        shell: python {0}
+        env:
+          GIT_CONFIG_COUNT: "2"
+          GIT_CONFIG_KEY_0: core.autocrlf
+          GIT_CONFIG_VALUE_0: "false"
+          GIT_CONFIG_KEY_1: core.eol
+          GIT_CONFIG_VALUE_1: lf
+        run: |
+          import hashlib
+          import io
+          from pathlib import Path
+          import subprocess
+          import tarfile
+          import tempfile
+
+          baseline = "f8a10a3c639e4b8911f6b7069e1565d5eb99c48f"
+          subprocess.run(["git", "fetch", "--no-tags", "--depth=1", "origin", baseline], check=True, timeout=120)
+          blob = subprocess.check_output(["git", "rev-parse", baseline + ":Cargo.lock"], text=True, timeout=30).strip()
+          if blob != "1dcc6f9b3b8a732cbdb1a5407d65906be1c00975":
+              raise RuntimeError("Pinned baseline lockfile blob mismatch")
+          version = subprocess.check_output(["rustc", "-vV"], text=True, timeout=30)
+          host = next(line.split(": ", 1)[1] for line in version.splitlines() if line.startswith("host: "))
+          archive = subprocess.check_output(["git", "archive", "--format=tar", baseline], timeout=120)
+          with tempfile.TemporaryDirectory(prefix="baseline-input-acquisition-") as directory:
+              source = Path(directory)
+              with tarfile.open(fileobj=io.BytesIO(archive)) as tar:
+                  tar.extractall(source, filter="data")
+              expected = "e0fc3ed947a8d348e2d472db9e5ec22d834cb839070ddc71087701afea20e567"
+              if hashlib.sha256((source / "Cargo.lock").read_bytes()).hexdigest() != expected:
+                  raise RuntimeError("Exported baseline lockfile SHA-256 mismatch")
+              # Acquisition is explicit; offline verification never retries online.
+              subprocess.run(["cargo", "fetch", "--locked", "--target", host], cwd=source, check=True, timeout=600)
+              subprocess.run(["cargo", "fetch", "--locked", "--offline", "--target", host], cwd=source, check=True, timeout=120)
+
+      - name: Qualify source-pinned baseline reader offline
+        env:
+          CARGO_NET_OFFLINE: "true"
+          GIT_NO_LAZY_FETCH: "1"
+          GIT_CONFIG_COUNT: "2"
+          GIT_CONFIG_KEY_0: core.autocrlf
+          GIT_CONFIG_VALUE_0: "false"
+          GIT_CONFIG_KEY_1: core.eol
+          GIT_CONFIG_VALUE_1: lf
+          TMPDIR: ${{ runner.temp }}
+        run: python -B scripts/verify-baseline-reader.py --output "${{ runner.temp }}/baseline-reader-report.json"
+
+      - name: Check preserved baseline inputs
+        shell: bash
+        run: |
+          git diff --exit-code -- Cargo.lock scripts/verify-baseline-reader.py crates/beta001-harness/tests/fixtures/unicode17_v1_package.json
+          python -c "import hashlib,pathlib,sys; sys.exit(0 if hashlib.sha256(pathlib.Path('crates/beta001-harness/tests/fixtures/unicode17_v1_package.json').read_bytes()).hexdigest() == '23aeb15569569d96c1aa57a037964aff218814b79dd5ce3fdde5fa8e362c3fdd' else 'Frozen fixture SHA-256 mismatch')"
+
+      - name: Retain baseline-reader qualification evidence
+        uses: actions/upload-artifact@v7
+        with:
+          name: baseline-reader-${{ matrix.os }}
+          path: ${{ runner.temp }}/baseline-reader-report.json
+          if-no-files-found: error
+          retention-days: 30
