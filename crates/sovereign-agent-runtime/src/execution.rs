@@ -393,7 +393,10 @@ pub fn validate_receipt_identity(receipt: &ExecutionReceipt) -> bool {
 }
 
 pub fn verify_receipt(receipt: &ExecutionReceipt, verifying_key: &[u8; 32]) -> bool {
-    if !validate_receipt_identity(receipt) || receipt.schema_version != "EXECUTION_RECEIPT-v1" {
+    if !validate_receipt_identity(receipt)
+        || receipt.schema_version != "EXECUTION_RECEIPT-v1"
+        || !receipt.verify_receipt_integrity()
+    {
         return false;
     }
     let Ok(key) = VerifyingKey::from_bytes(verifying_key) else {

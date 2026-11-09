@@ -149,7 +149,7 @@ fn invalid_signature_rejects_projection() {
 }
 
 #[test]
-fn tampered_receipt_digest_rejects_projection() {
+fn tampered_output_digest_rejects_projection() {
     let mut receipt = create_receipt(ExecutionResult::Success);
 
     receipt.output_digest = "tampered".into();
@@ -163,6 +163,29 @@ fn tampered_receipt_digest_rejects_projection() {
     );
 
     assert_eq!(result, Err(NewProjectionError::InvalidReceipt));
+}
+
+#[test]
+fn receipt_digest_only_tamper_rejects_projection() {
+    let receipt = create_receipt(ExecutionResult::Success);
+    let tampered = ExecutionReceipt {
+        receipt_digest: "0".repeat(64),
+        ..receipt.clone()
+    };
+    assert_ne!(tampered.receipt_digest, receipt.receipt_digest);
+
+    let project = |candidate: &ExecutionReceipt| {
+        new_project_execution_receipt(
+            candidate,
+            &execution_authority().verifying_key(),
+            0,
+            Digest("genesis".into()),
+            recorder(),
+        )
+    };
+
+    assert!(project(&receipt).is_ok());
+    assert_eq!(project(&tampered), Err(NewProjectionError::InvalidReceipt));
 }
 
 #[test]
