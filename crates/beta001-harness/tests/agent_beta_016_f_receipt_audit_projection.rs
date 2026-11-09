@@ -72,6 +72,32 @@ fn tampered_receipt_is_rejected_before_projection() {
 }
 
 #[test]
+fn receipt_digest_only_tamper_fails_shared_verifier() {
+    let receipt = create_receipt();
+    let verifying_key = execution_authority().verifying_key();
+
+    assert!(receipt.verify_receipt_integrity());
+    assert!(verify_receipt(&receipt, &verifying_key));
+
+    for stored_digest in [String::new(), "0".repeat(64)] {
+        assert_ne!(stored_digest, receipt.receipt_digest);
+
+        let tampered = ExecutionReceipt {
+            receipt_digest: stored_digest,
+            ..receipt.clone()
+        };
+
+        // Every other field, including the signature, is untouched.
+        assert_eq!(
+            tampered.derive_receipt_digest(),
+            receipt.derive_receipt_digest()
+        );
+        assert!(!tampered.verify_receipt_integrity());
+        assert!(!verify_receipt(&tampered, &verifying_key));
+    }
+}
+
+#[test]
 fn projection_does_not_mutate_receipt() {
     let receipt = create_receipt();
     let before = receipt.clone();
