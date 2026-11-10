@@ -1663,3 +1663,36 @@ fn dal_44_process_death_during_checkpoint_save_reopens_consumed_with_unknown_out
         assert!(reopen_checkpointed(&temp).is_ok());
     }
 }
+
+#[test]
+fn dal_45_identity_revocation_stays_final_across_restart_and_writes_nothing_when_refused() {
+    let temp = TempDir::new().unwrap();
+    let (mut authority, grant_id) = with_grant(&temp);
+    let id = identity().identity_id;
+    authority
+        .set_identity_status(&id, AgentIdentityStatus::Revoked, &clock(T_ATTEMPT))
+        .unwrap();
+    drop(authority);
+
+    let mut authority = reopen(&temp);
+    let head = authority.head();
+    for status in [AgentIdentityStatus::Active, AgentIdentityStatus::Suspended] {
+        assert_eq!(
+            authority.set_identity_status(&id, status, &clock(T_LATER)),
+            Err(AuthorityLogError::Authorization(
+                ExecutionAuthorizationError::Identity(IdentityValidationError::IdentityRevoked)
+            ))
+        );
+    }
+    assert_eq!(authority.head(), head);
+    assert!(!authority.is_poisoned());
+    assert_eq!(
+        authority.authorize(&attempt(&grant_id), &clock(T_LATER)),
+        Err(AuthorityLogError::Authorization(
+            ExecutionAuthorizationError::IdentityInactive
+        ))
+    );
+    drop(authority);
+    // The log still rebuilds: no refused change was recorded.
+    assert_eq!(reopen(&temp).head(), head);
+}
