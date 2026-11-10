@@ -454,3 +454,132 @@ fn test_content_integrity_rejected_and_absent_target_not_created() {
         "content mismatch target must remain absent"
     );
 }
+
+#[test]
+fn test_content_hash_substitution_rejected_and_preexisting_unmodified() {
+    // Same path, different approved and requested content hashes. The supplied content
+    // matches the REQUESTED hash, so the content-integrity check alone would accept it;
+    // only the governed-vs-requested operation comparison can reject this.
+    let tmp = TempDir::new().expect("tempdir");
+    let target_path = tmp.path().join("hash_substitution.txt");
+    let target_str = target_path.to_string_lossy().to_string();
+
+    let pre_bytes = b"pre-existing-bytes";
+    fs::write(&target_path, pre_bytes).expect("write preexisting");
+
+    let base = "ad_hash_substitution";
+    let admission = make_permit_decision(base, "test-scope");
+    let issuer = mock_issuer();
+
+    let receipt = AuthorizationReceipt::generate(
+        &admission,
+        "subject-agent-hash-substitution",
+        &admission.intent_reference,
+        "policy-test",
+        &admission.governance_context_reference,
+        "file_create",
+        &target_str,
+        1000,
+        2000,
+        &issuer,
+        "nonce-hash-substitution-001",
+    )
+    .expect("generate receipt");
+
+    let approved = b"approved-content";
+    let substituted = b"substituted-content";
+
+    let governed_operation = FileCreationOperation {
+        path: target_str.clone(),
+        content_hash: *blake3::hash(approved).as_bytes(),
+    };
+    let requested_operation = FileCreationOperation {
+        path: target_str.clone(),
+        content_hash: *blake3::hash(substituted).as_bytes(),
+    };
+
+    // Guard the fixture: paths are equal, hashes differ, content matches the requested hash.
+    assert_eq!(governed_operation.path, requested_operation.path);
+    assert_ne!(
+        governed_operation.content_hash,
+        requested_operation.content_hash
+    );
+    assert!(requested_operation.verify_content(substituted));
+
+    let adapter = FileCreationAdapter;
+
+    // ReceiptAuthenticationResult::Valid is a trusted test input (test-only).
+    let result = adapter.execute(
+        &receipt,
+        ReceiptAuthenticationResult::Valid,
+        &governed_operation,
+        &requested_operation,
+        substituted,
+    );
+
+    assert_eq!(result.unwrap_err(), ExecutionError::OperationMismatch);
+
+    // Ensure pre-existing file was not modified.
+    let read_back = fs::read(&target_path).expect("read preexisting");
+    assert_eq!(read_back.as_slice(), pre_bytes);
+}
+
+#[test]
+fn test_filesystem_failure_reported_and_nothing_created() {
+    // The requested path sits inside a directory that does not exist, so the write fails
+    // on every supported platform. This covers the failure report only; it does not
+    // cover partial writes, durability, or lost-ack behaviour.
+    let tmp = TempDir::new().expect("tempdir");
+    let missing_parent = tmp.path().join("missing-parent");
+    let target_path = missing_parent.join("unwritable.txt");
+    let target_str = target_path.to_string_lossy().to_string();
+
+    assert!(!missing_parent.exists());
+
+    let base = "ad_fs_failure";
+    let admission = make_permit_decision(base, "test-scope");
+    let issuer = mock_issuer();
+
+    let receipt = AuthorizationReceipt::generate(
+        &admission,
+        "subject-agent-fs-failure",
+        &admission.intent_reference,
+        "policy-test",
+        &admission.governance_context_reference,
+        "file_create",
+        &target_str,
+        1000,
+        2000,
+        &issuer,
+        "nonce-fs-failure-001",
+    )
+    .expect("generate receipt");
+
+    let content = b"payload";
+    let operation = FileCreationOperation {
+        path: target_str.clone(),
+        content_hash: *blake3::hash(content).as_bytes(),
+    };
+
+    let adapter = FileCreationAdapter;
+
+    // ReceiptAuthenticationResult::Valid is a trusted test input (test-only).
+    let result = adapter.execute(
+        &receipt,
+        ReceiptAuthenticationResult::Valid,
+        &operation,
+        &operation,
+        content,
+    );
+
+    assert_eq!(result.unwrap_err(), ExecutionError::FilesystemFailure);
+
+    assert!(
+        !missing_parent.exists(),
+        "failed write must not create the missing parent directory"
+    );
+    assert!(
+        !target_path.exists(),
+        "failed write must not leave a target file"
+    );
+}
