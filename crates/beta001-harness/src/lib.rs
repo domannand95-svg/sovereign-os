@@ -2,6 +2,7 @@ pub mod adapter;
 pub mod agent;
 pub mod containment;
 pub mod corpus;
+pub mod durable_authority;
 pub mod effect_reconciliation;
 pub mod evaluator;
 pub mod evidence;
