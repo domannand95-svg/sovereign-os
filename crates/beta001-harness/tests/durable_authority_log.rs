@@ -5,8 +5,9 @@
 //! per-test temporary directory, and nothing here is the C01 milestone.
 
 use beta001_harness::durable_authority::{
-    authority_log_config, AttemptOutcome, AuthorityJournal, AuthorityLogError, DurableAuthority,
-    HeadAnchor, LedgerJournal, TrustConfig, AUTHORITY_LOG_EVENT_TYPE,
+    authority_log_config, AttemptOutcome, AuthorityJournal, AuthorityLogError, CheckpointStore,
+    DurableAuthority, FileCheckpoint, HeadAnchor, LedgerJournal, TrustConfig,
+    AUTHORITY_LOG_EVENT_TYPE,
 };
 use sovereign_agent_runtime::capability::{
     derive_grant_id, derive_request_id, CapabilityRequest, CapabilityScope, CapabilityType,
@@ -14,18 +15,20 @@ use sovereign_agent_runtime::capability::{
     SignedEvaluation,
 };
 use sovereign_agent_runtime::execution::{
-    derive_attempt_id, AttemptId, AuthorizedExecution, CapabilityRegistry, ExecutionAttempt,
-    ExecutionAuthority, ExecutionAuthorizationError, ExecutionReceipt, ExecutionResult, FixedClock,
+    derive_attempt_id, AttemptId, AuthorizedExecution, ExecutionAttempt, ExecutionAuthority,
+    ExecutionAuthorizationError, ExecutionReceipt, ExecutionResult, FixedClock,
 };
 use sovereign_agent_runtime::identity::{
-    derive_identity_id, AgentClass, AgentIdentity, AgentIdentityStatus, Digest, PolicyId,
-    ReplayTimestamp, SchemaVersion,
+    derive_identity_id, AgentClass, AgentIdentity, AgentIdentityId, AgentIdentityStatus, Digest,
+    IdentityValidationError, PolicyId, ReplayTimestamp, SchemaVersion,
 };
 use sovereign_audit::RecordId;
 use sovereign_ledger::{AppendCommitStage, EventType, LedgerAppendEngine, LedgerError};
+use std::cell::Cell;
 use std::collections::HashMap;
 use std::panic::{catch_unwind, AssertUnwindSafe};
 use std::path::{Path, PathBuf};
+use std::rc::Rc;
 use tempfile::TempDir;
 
 const T_REGISTER: &str = "2026-08-20T09:30:00Z";
@@ -381,7 +384,9 @@ fn dal_06_duplicate_admission_is_rejected_before_and_after_restart() {
     for time in [T_ADMIT, "2026-08-20T10:00:01Z"] {
         assert_eq!(
             authority.admit(&request, &approval(&request), &clock(time)),
-            Err(AuthorityLogError::DuplicateAdmission)
+            Err(AuthorityLogError::Authorization(
+                ExecutionAuthorizationError::DuplicateAdmission
+            ))
         );
     }
     assert_eq!(authority.head(), head);
@@ -391,7 +396,9 @@ fn dal_06_duplicate_admission_is_rejected_before_and_after_restart() {
     let mut authority = reopen(&temp);
     assert_eq!(
         authority.admit(&request, &approval(&request), &clock(T_ATTEMPT)),
-        Err(AuthorityLogError::DuplicateAdmission)
+        Err(AuthorityLogError::Authorization(
+            ExecutionAuthorizationError::DuplicateAdmission
+        ))
     );
     assert_eq!(
         authority.registry().grant(&grant_id).unwrap().status,
@@ -400,40 +407,25 @@ fn dal_06_duplicate_admission_is_rejected_before_and_after_restart() {
 }
 
 #[test]
-fn dal_07_characterization_raw_registry_allows_what_the_wrapper_refuses() {
-    // Documents the behaviour of the unmodified in-memory registry that makes the
-    // wrapper's duplicate checks necessary. This test does not endorse it.
+fn dal_07_refused_duplicates_write_nothing_and_do_not_block_the_store() {
+    // Duplicate refusal now comes from the registry itself (see the
+    // agent_beta_018_f tests); the wrapper only has to stay consistent.
+    let temp = TempDir::new().unwrap();
+    let (mut authority, grant_id) = with_grant(&temp);
     let request = request();
-    let evaluation = approval(&request);
-    let mut registry =
-        CapabilityRegistry::new("policy_engine_v1", policy_authority().verifying_key());
-    registry.register_identity(identity()).unwrap();
+    let head = authority.head();
 
-    let first = registry.admit(&request, &evaluation, T_ADMIT).unwrap();
-    let second = registry
-        .admit(&request, &evaluation, "2026-08-20T10:00:01Z")
-        .unwrap();
-    assert_ne!(first, second, "one approval yields two single-use grants");
-
-    registry.revoke(&first).unwrap();
-    let again = registry.admit(&request, &evaluation, T_ADMIT).unwrap();
-    assert_eq!(again, first, "identifier is stable for identical inputs");
-    assert_eq!(
-        registry.grant(&first).unwrap().status,
-        GrantStatus::Active,
-        "re-admission silently reactivates a revoked grant"
-    );
-
-    let mut suspended = identity();
-    suspended.status = AgentIdentityStatus::Suspended;
-    registry.register_identity(suspended).unwrap();
-    registry.register_identity(identity()).unwrap();
-    assert!(
-        registry
-            .authorize_and_consume(&attempt(&second), &clock(T_ATTEMPT))
-            .is_ok(),
-        "re-registration silently reactivates a suspended identity"
-    );
+    assert!(authority
+        .admit(&request, &approval(&request), &clock(T_ADMIT))
+        .is_err());
+    assert!(authority
+        .register_identity(identity(), &clock(T_ADMIT))
+        .is_err());
+    assert_eq!(authority.head(), head);
+    assert!(!authority.is_poisoned());
+    assert!(authority
+        .authorize(&attempt(&grant_id), &clock(T_ATTEMPT))
+        .is_ok());
 }
 
 #[test]
@@ -450,13 +442,17 @@ fn dal_08_duplicate_identity_registration_cannot_reactivate_a_suspended_identity
 
     assert_eq!(
         authority.register_identity(identity(), &clock(T_ATTEMPT)),
-        Err(AuthorityLogError::DuplicateIdentity)
+        Err(AuthorityLogError::Authorization(
+            ExecutionAuthorizationError::Identity(IdentityValidationError::AlreadyRegistered)
+        ))
     );
     drop(authority);
     let mut authority = reopen(&temp);
     assert_eq!(
         authority.register_identity(identity(), &clock(T_ATTEMPT)),
-        Err(AuthorityLogError::DuplicateIdentity)
+        Err(AuthorityLogError::Authorization(
+            ExecutionAuthorizationError::Identity(IdentityValidationError::AlreadyRegistered)
+        ))
     );
     assert_eq!(
         authority.authorize(&attempt(&grant_id), &clock(T_ATTEMPT)),
@@ -994,4 +990,571 @@ fn dal_24_open_and_create_refuse_the_wrong_starting_state() {
         DurableAuthority::create(authority_log_config(log_dir(&temp)), trust()).map(|_| ()),
         Err(AuthorityLogError::LogNotEmpty)
     );
+}
+
+// --- More failed and uncertain saves ---------------------------------------------
+
+#[test]
+fn dal_25_revocation_save_failure_and_ambiguity_resolve_from_the_log() {
+    // Failed before writing: the revocation was never acknowledged and is absent.
+    let temp = TempDir::new().unwrap();
+    let (authority, grant_id) = with_grant(&temp);
+    let mut authority = faulty(authority, Fault::BeforeWrite);
+    assert_eq!(
+        authority.revoke(&grant_id, &clock(T_ATTEMPT)),
+        Err(AuthorityLogError::DurabilityUncertain)
+    );
+    // Memory says revoked, the log does not: nothing more is decided here.
+    authority.journal_mut().fault = Fault::None;
+    assert_eq!(
+        authority
+            .authorize(&attempt(&grant_id), &clock(T_ATTEMPT))
+            .err(),
+        Some(AuthorityLogError::Poisoned)
+    );
+    drop(authority);
+    assert_eq!(
+        reopen(&temp).registry().grant(&grant_id).unwrap().status,
+        GrantStatus::Active
+    );
+
+    // Written, then reported as uncertain: the revocation holds after reopening.
+    let temp = TempDir::new().unwrap();
+    let (authority, grant_id) = with_grant(&temp);
+    let mut authority = faulty(authority, Fault::AfterWrite);
+    assert_eq!(
+        authority.revoke(&grant_id, &clock(T_ATTEMPT)),
+        Err(AuthorityLogError::DurabilityUncertain)
+    );
+    drop(authority);
+    let mut authority = reopen(&temp);
+    assert_eq!(
+        authority.authorize(&attempt(&grant_id), &clock(T_ATTEMPT)),
+        Err(AuthorityLogError::Authorization(
+            ExecutionAuthorizationError::InactiveGrant
+        ))
+    );
+}
+
+#[test]
+fn dal_26_suspension_save_failure_and_ambiguity_resolve_from_the_log() {
+    let id = identity().identity_id;
+    for (fault, expect_active) in [(Fault::BeforeWrite, true), (Fault::AfterWrite, false)] {
+        let temp = TempDir::new().unwrap();
+        let (authority, grant_id) = with_grant(&temp);
+        let mut authority = faulty(authority, fault);
+        assert_eq!(
+            authority.set_identity_status(&id, AgentIdentityStatus::Suspended, &clock(T_ATTEMPT)),
+            Err(AuthorityLogError::DurabilityUncertain)
+        );
+        assert!(authority.is_poisoned());
+        drop(authority);
+
+        let mut authority = reopen(&temp);
+        let result = authority.authorize(&attempt(&grant_id), &clock(T_ATTEMPT));
+        if expect_active {
+            assert!(result.is_ok());
+        } else {
+            assert_eq!(
+                result,
+                Err(AuthorityLogError::Authorization(
+                    ExecutionAuthorizationError::IdentityInactive
+                ))
+            );
+        }
+    }
+}
+
+#[test]
+fn dal_27_receipt_save_failure_leaves_a_consumed_permission_with_unknown_outcome() {
+    for (fault, expected) in [
+        (Fault::BeforeWrite, AttemptOutcome::Unknown),
+        (
+            Fault::AfterWrite,
+            AttemptOutcome::Confirmed(ExecutionResult::Success),
+        ),
+    ] {
+        let temp = TempDir::new().unwrap();
+        let (mut authority, grant_id) = with_grant(&temp);
+        let attempt = attempt(&grant_id);
+        let mut action = SimulatedAction::default();
+        let token = authority.authorize(&attempt, &clock(T_ATTEMPT)).unwrap();
+        action.run(&token);
+
+        let mut authority = faulty(authority, fault);
+        assert_eq!(
+            authority.record_receipt(&receipt(&token), &clock(T_RECEIPT)),
+            Err(AuthorityLogError::DurabilityUncertain)
+        );
+        assert!(authority.is_poisoned());
+        drop(authority);
+
+        let mut authority = reopen(&temp);
+        assert_eq!(
+            authority.attempt_outcome(&attempt.attempt_id),
+            Some(&expected)
+        );
+        // Either way the permission stays consumed and the action is not repeated.
+        assert!(consumed(
+            authority.authorize(&attempt, &clock(T_LATER)).unwrap_err()
+        ));
+        assert_eq!(action.count(&attempt), 1);
+    }
+}
+
+// --- More receipt validation -------------------------------------------------------
+
+#[test]
+fn dal_28_receipt_field_tampering_and_foreign_executor_are_rejected() {
+    let temp = TempDir::new().unwrap();
+    let (mut authority, grant_id) = with_grant(&temp);
+    let token = authority
+        .authorize(&attempt(&grant_id), &clock(T_ATTEMPT))
+        .unwrap();
+    let head = authority.head();
+
+    // Only the stored receipt digest is changed (the case fixed by PR 263).
+    let mut digest_only = receipt(&token);
+    digest_only.receipt_digest = "0".repeat(64);
+    // An unsupported schema version.
+    let mut wrong_schema = receipt(&token);
+    wrong_schema.schema_version = "EXECUTION_RECEIPT-v2".into();
+    // The result flipped after signing.
+    let mut flipped = receipt(&token);
+    flipped.result = ExecutionResult::Failure;
+    for invalid in [digest_only, wrong_schema, flipped] {
+        assert_eq!(
+            authority.record_receipt(&invalid, &clock(T_RECEIPT)),
+            Err(AuthorityLogError::InvalidReceipt)
+        );
+    }
+
+    // Correctly signed for this attempt and grant, but naming another executor.
+    let other_executor = receipt(&AuthorizedExecution {
+        attempt_id: token.attempt_id.clone(),
+        grant_id: token.grant_id.clone(),
+        executor_identity: AgentIdentityId("another-executor".into()),
+    });
+    assert_eq!(
+        authority.record_receipt(&other_executor, &clock(T_RECEIPT)),
+        Err(AuthorityLogError::ReceiptBindingMismatch)
+    );
+    assert_eq!(authority.head(), head);
+}
+
+#[test]
+fn dal_29_a_result_is_still_recorded_after_later_revocation_or_suspension() {
+    // Intended boundary: a receipt records an action that was authorized before the
+    // revocation or suspension. Refusing it would turn a known result into an
+    // unknown one. It grants nothing new.
+    let temp = TempDir::new().unwrap();
+    let (mut authority, grant_id) = with_grant(&temp);
+    let attempt = attempt(&grant_id);
+    let token = authority.authorize(&attempt, &clock(T_ATTEMPT)).unwrap();
+    authority.revoke(&grant_id, &clock(T_ATTEMPT)).unwrap();
+    authority
+        .set_identity_status(
+            &identity().identity_id,
+            AgentIdentityStatus::Suspended,
+            &clock(T_ATTEMPT),
+        )
+        .unwrap();
+
+    authority
+        .record_receipt(&receipt(&token), &clock(T_RECEIPT))
+        .unwrap();
+    drop(authority);
+    let mut authority = reopen(&temp);
+    assert_eq!(
+        authority.attempt_outcome(&attempt.attempt_id),
+        Some(&AttemptOutcome::Confirmed(ExecutionResult::Success))
+    );
+    assert_eq!(
+        authority.authorize(&attempt_at(&grant_id, T_LATER), &clock(T_LATER)),
+        Err(AuthorityLogError::Authorization(
+            ExecutionAuthorizationError::IdentityInactive
+        ))
+    );
+}
+
+// --- Separately retained checkpoint ---------------------------------------------------
+
+fn checkpoint_path(temp: &TempDir) -> PathBuf {
+    // Deliberately outside the log directory.
+    let directory = temp.path().join("checkpoint");
+    std::fs::create_dir_all(&directory).unwrap();
+    directory.join("authority.checkpoint")
+}
+
+fn file_checkpoint(temp: &TempDir) -> Box<FileCheckpoint> {
+    Box::new(FileCheckpoint::new(checkpoint_path(temp)))
+}
+
+fn reopen_checkpointed(temp: &TempDir) -> Result<Authority, AuthorityLogError> {
+    DurableAuthority::open_with_checkpoint(
+        authority_log_config(log_dir(temp)),
+        &trust(),
+        file_checkpoint(temp),
+    )
+}
+
+/// Checkpointed store with one identity, one grant and that grant consumed.
+/// Records: genesis (0), identity (1), grant (2), consumption (3).
+fn checkpointed_consumed(temp: &TempDir) -> (ExecutionAttempt, HeadAnchor) {
+    let mut authority = DurableAuthority::create_with_checkpoint(
+        authority_log_config(log_dir(temp)),
+        trust(),
+        file_checkpoint(temp),
+    )
+    .unwrap();
+    authority
+        .register_identity(identity(), &clock(T_REGISTER))
+        .unwrap();
+    let request = request();
+    let grant_id = authority
+        .admit(&request, &approval(&request), &clock(T_ADMIT))
+        .unwrap();
+    let attempt = attempt(&grant_id);
+    authority.authorize(&attempt, &clock(T_ATTEMPT)).unwrap();
+    let head = authority.head();
+    (attempt, head)
+}
+
+#[test]
+fn dal_31_checkpoint_tracks_every_acknowledged_record_and_detects_loss_of_the_newest() {
+    let temp = TempDir::new().unwrap();
+    let (attempt, head) = checkpointed_consumed(&temp);
+    assert_eq!(file_checkpoint(&temp).load(), Ok(Some(head.clone())));
+
+    // Intact: opens, and the consumed permission is still consumed.
+    let mut authority = reopen_checkpointed(&temp).unwrap();
+    assert!(consumed(
+        authority.authorize(&attempt, &clock(T_LATER)).unwrap_err()
+    ));
+    drop(authority);
+
+    // The newest acknowledged record (the consumption) is lost.
+    std::fs::remove_file(record_path(&temp, 3)).unwrap();
+    assert_eq!(
+        reopen_checkpointed(&temp).map(|_| ()),
+        Err(AuthorityLogError::AnchorMismatch)
+    );
+}
+
+#[test]
+fn dal_32_missing_or_damaged_checkpoint_fails_closed() {
+    let temp = TempDir::new().unwrap();
+    checkpointed_consumed(&temp);
+    let path = checkpoint_path(&temp);
+    let good = std::fs::read(&path).unwrap();
+
+    std::fs::remove_file(&path).unwrap();
+    assert_eq!(
+        reopen_checkpointed(&temp).map(|_| ()),
+        Err(AuthorityLogError::CheckpointMissing)
+    );
+
+    let mut flipped = good.clone();
+    flipped[20] ^= 0x01;
+    for damaged in [flipped, good[..40].to_vec(), Vec::new()] {
+        std::fs::write(&path, &damaged).unwrap();
+        assert_eq!(
+            reopen_checkpointed(&temp).map(|_| ()),
+            Err(AuthorityLogError::CheckpointCorrupt)
+        );
+    }
+
+    std::fs::write(&path, &good).unwrap();
+    assert!(reopen_checkpointed(&temp).is_ok());
+}
+
+#[test]
+fn dal_33_create_refuses_an_existing_checkpoint_and_a_foreign_one_is_rejected() {
+    let temp = TempDir::new().unwrap();
+    checkpointed_consumed(&temp);
+
+    // A new log must not adopt a checkpoint that already exists.
+    let fresh = TempDir::new().unwrap();
+    let result = DurableAuthority::create_with_checkpoint(
+        authority_log_config(log_dir(&fresh)),
+        trust(),
+        file_checkpoint(&temp),
+    )
+    .map(|_| ());
+    assert_eq!(result, Err(AuthorityLogError::CheckpointAlreadyExists));
+
+    // A checkpoint from a different history does not match this log.
+    let other = TempDir::new().unwrap();
+    let (authority, _) = with_grant(&other);
+    drop(authority);
+    let result = DurableAuthority::open_with_checkpoint(
+        authority_log_config(log_dir(&other)),
+        &trust(),
+        file_checkpoint(&temp),
+    )
+    .map(|_| ());
+    assert_eq!(result, Err(AuthorityLogError::AnchorMismatch));
+}
+
+/// Checkpoint store whose saves can be made to fail.
+struct FaultyCheckpoint {
+    inner: FileCheckpoint,
+    fail: Rc<Cell<bool>>,
+}
+
+impl CheckpointStore for FaultyCheckpoint {
+    fn load(&self) -> Result<Option<HeadAnchor>, AuthorityLogError> {
+        self.inner.load()
+    }
+    fn save(&mut self, head: &HeadAnchor) -> Result<(), AuthorityLogError> {
+        if self.fail.get() {
+            return Err(AuthorityLogError::CheckpointUnavailable);
+        }
+        self.inner.save(head)
+    }
+}
+
+#[test]
+fn dal_34_checkpoint_save_failure_blocks_authority_and_reopens_as_unknown_outcome() {
+    let temp = TempDir::new().unwrap();
+    let fail = Rc::new(Cell::new(false));
+    let mut authority = DurableAuthority::create_with_checkpoint(
+        authority_log_config(log_dir(&temp)),
+        trust(),
+        Box::new(FaultyCheckpoint {
+            inner: FileCheckpoint::new(checkpoint_path(&temp)),
+            fail: Rc::clone(&fail),
+        }),
+    )
+    .unwrap();
+    authority
+        .register_identity(identity(), &clock(T_REGISTER))
+        .unwrap();
+    let request = request();
+    let grant_id = authority
+        .admit(&request, &approval(&request), &clock(T_ADMIT))
+        .unwrap();
+    let attempt = attempt(&grant_id);
+    let mut action = SimulatedAction::default();
+    let before = authority.head();
+
+    fail.set(true);
+    let result = authority.authorize(&attempt, &clock(T_ATTEMPT));
+    assert_eq!(
+        result.as_ref().err(),
+        Some(&AuthorityLogError::DurabilityUncertain)
+    );
+    if let Ok(token) = &result {
+        action.run(token);
+    }
+    fail.set(false);
+    assert_eq!(
+        authority.revoke(&grant_id, &clock(T_ATTEMPT)),
+        Err(AuthorityLogError::Poisoned)
+    );
+    drop(authority);
+
+    // The checkpoint is one record behind the log. That record was durable but
+    // never acknowledged, so it is kept, and the outcome is unknown.
+    assert_eq!(file_checkpoint(&temp).load(), Ok(Some(before)));
+    let mut authority = reopen_checkpointed(&temp).unwrap();
+    assert_eq!(
+        authority.unknown_outcomes(),
+        vec![attempt.attempt_id.clone()]
+    );
+    assert!(consumed(
+        authority.authorize(&attempt, &clock(T_LATER)).unwrap_err()
+    ));
+    assert_eq!(action.count(&attempt), 0);
+    // Opening brought the checkpoint up to the log's head.
+    assert_eq!(file_checkpoint(&temp).load(), Ok(Some(authority.head())));
+}
+
+#[test]
+fn dal_35_limitation_an_outdated_or_rewritten_checkpoint_hides_later_loss() {
+    // KNOWN LIMITATION, asserted so that nobody assumes otherwise.
+    let temp = TempDir::new().unwrap();
+    let mut authority = DurableAuthority::create_with_checkpoint(
+        authority_log_config(log_dir(&temp)),
+        trust(),
+        file_checkpoint(&temp),
+    )
+    .unwrap();
+    authority
+        .register_identity(identity(), &clock(T_REGISTER))
+        .unwrap();
+    let request = request();
+    let grant_id = authority
+        .admit(&request, &approval(&request), &clock(T_ADMIT))
+        .unwrap();
+    let older_checkpoint = std::fs::read(checkpoint_path(&temp)).unwrap();
+    let attempt = attempt(&grant_id);
+    authority.authorize(&attempt, &clock(T_ATTEMPT)).unwrap();
+    drop(authority);
+
+    // An older checkpoint is put back (or, since it is unkeyed, simply rewritten)
+    // and the consumption record is removed.
+    std::fs::write(checkpoint_path(&temp), &older_checkpoint).unwrap();
+    std::fs::remove_file(record_path(&temp, 3)).unwrap();
+
+    let mut authority = reopen_checkpointed(&temp).expect("the loss is not detected");
+    assert!(
+        authority.authorize(&attempt, &clock(T_ATTEMPT)).is_ok(),
+        "the consumed permission is usable again"
+    );
+}
+
+fn copy_dir(from: &Path, to: &Path) {
+    std::fs::create_dir_all(to).unwrap();
+    for entry in std::fs::read_dir(from).unwrap() {
+        let entry = entry.unwrap();
+        std::fs::copy(entry.path(), to.join(entry.file_name())).unwrap();
+    }
+}
+
+#[test]
+fn dal_36_limitation_rolling_back_log_and_checkpoint_together_is_not_detected() {
+    // KNOWN LIMITATION: a consistent earlier copy of both is indistinguishable from
+    // the truth. Only something outside both directories could tell.
+    let temp = TempDir::new().unwrap();
+    let mut authority = DurableAuthority::create_with_checkpoint(
+        authority_log_config(log_dir(&temp)),
+        trust(),
+        file_checkpoint(&temp),
+    )
+    .unwrap();
+    authority
+        .register_identity(identity(), &clock(T_REGISTER))
+        .unwrap();
+    let request = request();
+    let grant_id = authority
+        .admit(&request, &approval(&request), &clock(T_ADMIT))
+        .unwrap();
+
+    let backup = TempDir::new().unwrap();
+    copy_dir(&log_dir(&temp), &backup.path().join("log"));
+    copy_dir(
+        checkpoint_path(&temp).parent().unwrap(),
+        &backup.path().join("checkpoint"),
+    );
+
+    let attempt = attempt(&grant_id);
+    authority.authorize(&attempt, &clock(T_ATTEMPT)).unwrap();
+    drop(authority);
+
+    std::fs::remove_dir_all(log_dir(&temp)).unwrap();
+    std::fs::remove_dir_all(checkpoint_path(&temp).parent().unwrap()).unwrap();
+    copy_dir(&backup.path().join("log"), &log_dir(&temp));
+    copy_dir(
+        &backup.path().join("checkpoint"),
+        checkpoint_path(&temp).parent().unwrap(),
+    );
+
+    let mut authority = reopen_checkpointed(&temp).expect("the rollback is not detected");
+    assert!(authority.authorize(&attempt, &clock(T_ATTEMPT)).is_ok());
+}
+
+// --- Real process interruption ------------------------------------------------------
+//
+// These tests start a second copy of this test binary and let it exit abruptly,
+// without unwinding or cleanup, at a chosen point. That is a real process death
+// with the operating system closing its files. It is not power loss: data the OS
+// had accepted is still written out. No power-loss durability is claimed.
+
+const WORKER_DIR: &str = "DAL_WORKER_DIR";
+const WORKER_CRASH: &str = "DAL_WORKER_CRASH";
+const WORKER_EXIT: i32 = 86;
+
+#[test]
+fn dal_40_process_crash_worker() {
+    let (Ok(directory), Ok(crash)) = (std::env::var(WORKER_DIR), std::env::var(WORKER_CRASH))
+    else {
+        return; // Not running as a worker: nothing to do.
+    };
+    let config = authority_log_config(PathBuf::from(directory).join("authority-log"));
+    let mut authority = DurableAuthority::create(config, trust()).unwrap();
+    authority
+        .register_identity(identity(), &clock(T_REGISTER))
+        .unwrap();
+    let request = request();
+    let grant_id = authority
+        .admit(&request, &approval(&request), &clock(T_ADMIT))
+        .unwrap();
+
+    let stage = match crash.as_str() {
+        "pending" => Some(AppendCommitStage::PendingSynced),
+        "published" => Some(AppendCommitStage::Published),
+        "durable" => Some(AppendCommitStage::Durable),
+        _ => None,
+    };
+    if let Some(stage) = stage {
+        authority
+            .journal_mut()
+            .set_stage_observer(Box::new(move |reached| {
+                if reached == stage {
+                    std::process::exit(WORKER_EXIT);
+                }
+            }));
+    }
+    let _token = authority
+        .authorize(&attempt(&grant_id), &clock(T_ATTEMPT))
+        .unwrap();
+    // "after-authorize": the permission is durably consumed, no receipt follows.
+    std::process::exit(WORKER_EXIT);
+}
+
+fn run_worker(temp: &TempDir, crash: &str) {
+    let status = std::process::Command::new(std::env::current_exe().unwrap())
+        .args(["dal_40_process_crash_worker", "--exact", "--nocapture"])
+        .env(WORKER_DIR, temp.path())
+        .env(WORKER_CRASH, crash)
+        .stdout(std::process::Stdio::null())
+        .stderr(std::process::Stdio::null())
+        .status()
+        .expect("start worker");
+    assert_eq!(
+        status.code(),
+        Some(WORKER_EXIT),
+        "worker must die at the crash point"
+    );
+}
+
+fn worker_attempt(authority: &Authority) -> ExecutionAttempt {
+    let request = request();
+    let grant_id = derive_grant_id(&request, &approval(&request), T_ADMIT);
+    assert!(authority.registry().grant(&grant_id).is_some());
+    attempt(&grant_id)
+}
+
+#[test]
+fn dal_41_process_death_before_publication_leaves_the_permission_unconsumed() {
+    let temp = TempDir::new().unwrap();
+    run_worker(&temp, "pending");
+    assert_eq!(pending_files(&log_dir(&temp)), 1);
+
+    let mut authority = reopen(&temp);
+    // The dead process's pending file is removed by the ledger on open.
+    assert_eq!(pending_files(&log_dir(&temp)), 0);
+    assert!(authority.unknown_outcomes().is_empty());
+    let attempt = worker_attempt(&authority);
+    assert!(authority.authorize(&attempt, &clock(T_ATTEMPT)).is_ok());
+}
+
+#[test]
+fn dal_42_process_death_after_publication_leaves_consumed_with_unknown_outcome() {
+    for crash in ["published", "durable", "after-authorize"] {
+        let temp = TempDir::new().unwrap();
+        run_worker(&temp, crash);
+
+        let mut authority = reopen(&temp);
+        let attempt = worker_attempt(&authority);
+        assert_eq!(
+            authority.unknown_outcomes(),
+            vec![attempt.attempt_id.clone()],
+            "crash point {crash}"
+        );
+        assert!(consumed(
+            authority.authorize(&attempt, &clock(T_LATER)).unwrap_err()
+        ));
+    }
 }

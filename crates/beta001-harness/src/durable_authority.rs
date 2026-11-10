@@ -13,8 +13,15 @@
 //! - The log directory must not be shared with an engine ledger. Records use the
 //!   `PolicyEnforcement` event type, which no existing mapper consumes, and carry
 //!   their own magic header so a foreign reader cannot mistake them.
-//! - Removal of the newest records cannot be detected from the log alone. A caller
-//!   that holds a [`HeadAnchor`] from before the restart can detect it.
+//! - Removal of the newest records cannot be detected from the log alone. A
+//!   separately retained checkpoint ([`CheckpointStore`]) detects loss of any
+//!   acknowledged record, provided the checkpoint itself is intact and current.
+//!   It does not detect a rollback of the log and the checkpoint together, loss
+//!   after an outdated checkpoint was put back, or deliberate rewriting: the
+//!   checkpoint is unkeyed. Where a checkpoint should live is an open decision.
+//! - Durability claims are those of `sovereign-ledger`. On Windows the ledger
+//!   cannot synchronize the directory, and nothing here has been tested against
+//!   power loss.
 
 use chrono::{DateTime, FixedOffset};
 use sovereign_agent_runtime::capability::{
@@ -35,13 +42,16 @@ use sovereign_ledger::{
     AppendCommitStage, EventType, LedgerAppendEngine, LedgerConfig, LedgerError, Lsn,
     ReplayIterator,
 };
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
+use std::io::Write as _;
 use std::path::PathBuf;
 
 /// Ledger event type used for every record in the isolated authority log.
 pub const AUTHORITY_LOG_EVENT_TYPE: EventType = EventType::PolicyEnforcement;
 
 const MAGIC: &[u8; 8] = b"SOVAUTH1";
+const CHECKPOINT_MAGIC: &[u8; 8] = b"SOVAUTHC";
+const CHECKPOINT_LEN: usize = 8 + 8 + 32 + 32;
 const ZERO_DIGEST: [u8; 32] = [0u8; 32];
 const AUTHORITY_LOG_MAX_PAYLOAD: usize = 16 * 1024;
 const AUTHORITY_LOG_MAX_SEGMENT: usize = 32 * 1024;
@@ -101,8 +111,6 @@ pub enum AuthorityLogError {
     InvalidTimestamp,
     ClockRegression,
     RecordTooLarge,
-    DuplicateIdentity,
-    DuplicateAdmission,
     GrantIdentityMismatch,
     InvalidReceipt,
     ReceiptWithoutAuthorization,
@@ -116,6 +124,88 @@ pub enum AuthorityLogError {
     /// is authorized until the store is reopened from the log.
     DurabilityUncertain,
     Poisoned,
+    /// `open_with_checkpoint` found no checkpoint. Never treated as "no history".
+    CheckpointMissing,
+    /// The checkpoint exists but is damaged or not a checkpoint.
+    CheckpointCorrupt,
+    /// The checkpoint could not be read or written.
+    CheckpointUnavailable,
+    /// `create_with_checkpoint` found an existing checkpoint.
+    CheckpointAlreadyExists,
+}
+
+/// Separately retained record of the newest acknowledged log position.
+///
+/// The store is updated after a record is durable and before the caller is
+/// answered, so every acknowledged change is at or below the checkpoint.
+pub trait CheckpointStore {
+    /// `Ok(None)` means no checkpoint exists.
+    fn load(&self) -> Result<Option<HeadAnchor>, AuthorityLogError>;
+    fn save(&mut self, head: &HeadAnchor) -> Result<(), AuthorityLogError>;
+}
+
+/// Checkpoint kept in one small file, replaced atomically on every save.
+///
+/// The file carries a digest of its own contents to detect damage. It is not
+/// signed: anyone who can write the file can forge it.
+pub struct FileCheckpoint {
+    path: PathBuf,
+}
+
+impl FileCheckpoint {
+    pub fn new(path: PathBuf) -> Self {
+        Self { path }
+    }
+}
+
+impl CheckpointStore for FileCheckpoint {
+    fn load(&self) -> Result<Option<HeadAnchor>, AuthorityLogError> {
+        let bytes = match std::fs::read(&self.path) {
+            Ok(bytes) => bytes,
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(None),
+            Err(_) => return Err(AuthorityLogError::CheckpointUnavailable),
+        };
+        if bytes.len() != CHECKPOINT_LEN
+            || &bytes[..8] != CHECKPOINT_MAGIC
+            || digest(&bytes[..48]) != bytes[48..]
+        {
+            return Err(AuthorityLogError::CheckpointCorrupt);
+        }
+        let records: [u8; 8] = bytes[8..16]
+            .try_into()
+            .map_err(|_| AuthorityLogError::CheckpointCorrupt)?;
+        let head: [u8; 32] = bytes[16..48]
+            .try_into()
+            .map_err(|_| AuthorityLogError::CheckpointCorrupt)?;
+        Ok(Some(HeadAnchor {
+            records: u64::from_be_bytes(records),
+            digest: head,
+        }))
+    }
+
+    fn save(&mut self, head: &HeadAnchor) -> Result<(), AuthorityLogError> {
+        let mut bytes = Vec::with_capacity(CHECKPOINT_LEN);
+        bytes.extend_from_slice(CHECKPOINT_MAGIC);
+        bytes.extend_from_slice(&head.records.to_be_bytes());
+        bytes.extend_from_slice(&head.digest);
+        let self_digest = digest(&bytes);
+        bytes.extend_from_slice(&self_digest);
+
+        let unavailable = |_| AuthorityLogError::CheckpointUnavailable;
+        let pending = self.path.with_extension("pending");
+        let mut file = std::fs::File::create(&pending).map_err(unavailable)?;
+        file.write_all(&bytes).map_err(unavailable)?;
+        file.sync_all().map_err(unavailable)?;
+        drop(file);
+        std::fs::rename(&pending, &self.path).map_err(unavailable)?;
+        #[cfg(not(windows))]
+        if let Some(parent) = self.path.parent() {
+            std::fs::File::open(parent)
+                .and_then(|directory| directory.sync_all())
+                .map_err(unavailable)?;
+        }
+        Ok(())
+    }
 }
 
 /// Minimal durable append interface, so tests can inject save failures.
@@ -198,8 +288,6 @@ struct AttemptState {
 struct State {
     trust: TrustConfig,
     registry: CapabilityRegistry,
-    identities: HashSet<AgentIdentityId>,
-    admitted_requests: HashSet<String>,
     attempts: HashMap<AttemptId, AttemptState>,
     last_decision: Option<DateTime<FixedOffset>>,
 }
@@ -216,8 +304,6 @@ impl State {
         Self {
             trust,
             registry,
-            identities: HashSet::new(),
-            admitted_requests: HashSet::new(),
             attempts: HashMap::new(),
             last_decision: None,
         }
@@ -234,13 +320,10 @@ impl State {
         let applied = match &envelope.record {
             AuthorityRecord::Genesis(_) => return Err(AuthorityLogError::UnexpectedGenesis),
             AuthorityRecord::IdentityRegistered(identity) => {
-                if self.identities.contains(&identity.identity_id) {
-                    return Err(AuthorityLogError::DuplicateIdentity);
-                }
+                // The registry refuses an identity that is already registered.
                 self.registry
                     .register_identity(identity.clone())
                     .map_err(AuthorityLogError::Authorization)?;
-                self.identities.insert(identity.identity_id.clone());
                 Applied::None
             }
             AuthorityRecord::IdentityStatusChanged {
@@ -270,11 +353,7 @@ impl State {
                         error,
                     ))
                 })?;
-                if self.admitted_requests.contains(&request.request_id.0)
-                    || self.registry.grant(&expected.grant_id).is_some()
-                {
-                    return Err(AuthorityLogError::DuplicateAdmission);
-                }
+                // The registry refuses a request or grant it has already admitted.
                 let grant_id = self
                     .registry
                     .admit(request, evaluation, &envelope.decided_at)
@@ -282,7 +361,6 @@ impl State {
                 if grant_id != expected.grant_id {
                     return Err(AuthorityLogError::GrantIdentityMismatch);
                 }
-                self.admitted_requests.insert(request.request_id.0.clone());
                 Applied::Grant(grant_id)
             }
             AuthorityRecord::GrantRevoked(grant_id) => {
@@ -349,11 +427,33 @@ pub struct DurableAuthority<J: AuthorityJournal> {
     next_sequence: u64,
     head_digest: [u8; 32],
     poisoned: bool,
+    checkpoint: Option<Box<dyn CheckpointStore>>,
 }
 
 impl DurableAuthority<LedgerJournal> {
     /// Starts a new authority log. Fails if the directory already holds records.
     pub fn create(config: LedgerConfig, trust: TrustConfig) -> Result<Self, AuthorityLogError> {
+        Self::create_inner(config, trust, None)
+    }
+
+    /// Starts a new authority log with a separately retained checkpoint. Fails
+    /// if either the log or the checkpoint already exists.
+    pub fn create_with_checkpoint(
+        config: LedgerConfig,
+        trust: TrustConfig,
+        checkpoint: Box<dyn CheckpointStore>,
+    ) -> Result<Self, AuthorityLogError> {
+        if checkpoint.load()?.is_some() {
+            return Err(AuthorityLogError::CheckpointAlreadyExists);
+        }
+        Self::create_inner(config, trust, Some(checkpoint))
+    }
+
+    fn create_inner(
+        config: LedgerConfig,
+        trust: TrustConfig,
+        checkpoint: Option<Box<dyn CheckpointStore>>,
+    ) -> Result<Self, AuthorityLogError> {
         let (journal, payloads) = open_ledger(&config)?;
         if !payloads.is_empty() {
             return Err(AuthorityLogError::LogNotEmpty);
@@ -364,6 +464,7 @@ impl DurableAuthority<LedgerJournal> {
             next_sequence: 0,
             head_digest: ZERO_DIGEST,
             poisoned: false,
+            checkpoint,
         };
         let envelope = Envelope {
             sequence: 0,
@@ -384,6 +485,35 @@ impl DurableAuthority<LedgerJournal> {
         config: LedgerConfig,
         expected_trust: &TrustConfig,
         anchor: Option<&HeadAnchor>,
+    ) -> Result<Self, AuthorityLogError> {
+        Self::open_inner(config, expected_trust, anchor, None)
+    }
+
+    /// Rebuilds authority state and requires the log to contain the checkpointed
+    /// head. A missing or damaged checkpoint fails closed. Records newer than
+    /// the checkpoint are kept: they were durable but not yet acknowledged.
+    pub fn open_with_checkpoint(
+        config: LedgerConfig,
+        expected_trust: &TrustConfig,
+        mut checkpoint: Box<dyn CheckpointStore>,
+    ) -> Result<Self, AuthorityLogError> {
+        let anchor = checkpoint
+            .load()?
+            .ok_or(AuthorityLogError::CheckpointMissing)?;
+        let mut authority = Self::open_inner(config, expected_trust, Some(&anchor), None)?;
+        let head = authority.head();
+        if head != anchor {
+            checkpoint.save(&head)?;
+        }
+        authority.checkpoint = Some(checkpoint);
+        Ok(authority)
+    }
+
+    fn open_inner(
+        config: LedgerConfig,
+        expected_trust: &TrustConfig,
+        anchor: Option<&HeadAnchor>,
+        checkpoint: Option<Box<dyn CheckpointStore>>,
     ) -> Result<Self, AuthorityLogError> {
         let (journal, payloads) = open_ledger(&config)?;
         if payloads.is_empty() {
@@ -442,6 +572,7 @@ impl DurableAuthority<LedgerJournal> {
             next_sequence: payloads.len() as u64,
             head_digest,
             poisoned: false,
+            checkpoint,
         })
     }
 }
@@ -458,6 +589,7 @@ impl<J: AuthorityJournal> DurableAuthority<J> {
             next_sequence: self.next_sequence,
             head_digest: self.head_digest,
             poisoned: self.poisoned,
+            checkpoint: self.checkpoint,
         }
     }
 
@@ -596,6 +728,15 @@ impl<J: AuthorityJournal> DurableAuthority<J> {
         }
         self.head_digest = digest(payload);
         self.next_sequence += 1;
+        let head = self.head();
+        if let Some(checkpoint) = self.checkpoint.as_mut() {
+            if checkpoint.save(&head).is_err() {
+                // The record is durable but the caller has not been answered, and
+                // the checkpoint may be behind it. Stop until reconstructed.
+                self.poisoned = true;
+                return Err(AuthorityLogError::DurabilityUncertain);
+            }
+        }
         Ok(())
     }
 
