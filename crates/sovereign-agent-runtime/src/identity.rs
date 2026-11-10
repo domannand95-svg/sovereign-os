@@ -53,6 +53,12 @@ pub enum IdentityValidationError {
     InvalidPublicKeyDigest,
     InvalidIdentity,
     UnknownIdentity,
+    /// The identity is already registered. Status changes go through
+    /// `set_status`; registration never replaces an existing record.
+    AlreadyRegistered,
+    /// The identity is revoked. Revocation is final: access needs a new identity
+    /// and a fresh approval. Suspension, by contrast, is reversible.
+    IdentityRevoked,
 }
 
 #[derive(Default)]
@@ -63,6 +69,9 @@ pub struct IdentityRegistry {
 impl IdentityRegistry {
     pub fn register(&mut self, identity: AgentIdentity) -> Result<(), IdentityValidationError> {
         validate_identity(&identity)?;
+        if self.identities.contains_key(&identity.identity_id) {
+            return Err(IdentityValidationError::AlreadyRegistered);
+        }
         self.identities
             .insert(identity.identity_id.clone(), identity);
         Ok(())
@@ -77,6 +86,9 @@ impl IdentityRegistry {
             .identities
             .get_mut(identity_id)
             .ok_or(IdentityValidationError::UnknownIdentity)?;
+        if identity.status == AgentIdentityStatus::Revoked {
+            return Err(IdentityValidationError::IdentityRevoked);
+        }
         identity.status = status;
         Ok(())
     }

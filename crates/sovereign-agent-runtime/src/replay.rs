@@ -65,6 +65,7 @@ pub fn replay(
     execution_verifying_key: &[u8; 32],
 ) -> Result<ReplayedRuntimeState, ReplayError> {
     let mut grants = HashMap::<GrantId, CapabilityGrant>::new();
+    let mut admitted_requests = HashSet::<String>::new();
     let mut consumed_grants = HashSet::new();
     let mut authorized_attempts = HashMap::<AttemptId, GrantId>::new();
     let mut recorded_receipts = HashSet::new();
@@ -86,12 +87,14 @@ pub fn replay(
                 if grant.status != GrantStatus::Active {
                     return Err(ReplayError::InactiveGrant);
                 }
-                if grants
-                    .insert(grant.grant_id.clone(), grant.clone())
-                    .is_some()
+                // Mirrors the registry: one grant per approved request, and an
+                // admitted grant is never replaced.
+                if grants.contains_key(&grant.grant_id)
+                    || !admitted_requests.insert(grant.request_reference.0.clone())
                 {
                     return Err(ReplayError::DuplicateGrant);
                 }
+                grants.insert(grant.grant_id.clone(), grant.clone());
             }
             RuntimeEvent::GrantRevoked { grant_id, .. } => {
                 let grant = grants.get_mut(grant_id).ok_or(ReplayError::UnknownGrant)?;
