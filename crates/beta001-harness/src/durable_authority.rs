@@ -150,11 +150,37 @@ pub trait CheckpointStore {
 /// signed: anyone who can write the file can forge it.
 pub struct FileCheckpoint {
     path: PathBuf,
+    stage_observer: Option<Box<dyn FnMut(CheckpointSaveStage)>>,
+}
+
+/// Observable points in one checkpoint save, for interruption tests.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum CheckpointSaveStage {
+    /// Nothing has been written yet. The log record is already durable.
+    Started,
+    /// The new contents exist only in a synchronized pending file.
+    PendingSynced,
+    /// The pending file has replaced the checkpoint.
+    Replaced,
 }
 
 impl FileCheckpoint {
     pub fn new(path: PathBuf) -> Self {
-        Self { path }
+        Self {
+            path,
+            stage_observer: None,
+        }
+    }
+
+    /// Installs an observer for the save stages (crash-point tests).
+    pub fn set_stage_observer(&mut self, observer: Box<dyn FnMut(CheckpointSaveStage)>) {
+        self.stage_observer = Some(observer);
+    }
+
+    fn observe(&mut self, stage: CheckpointSaveStage) {
+        if let Some(observer) = self.stage_observer.as_mut() {
+            observer(stage);
+        }
     }
 }
 
@@ -193,11 +219,14 @@ impl CheckpointStore for FileCheckpoint {
 
         let unavailable = |_| AuthorityLogError::CheckpointUnavailable;
         let pending = self.path.with_extension("pending");
+        self.observe(CheckpointSaveStage::Started);
         let mut file = std::fs::File::create(&pending).map_err(unavailable)?;
         file.write_all(&bytes).map_err(unavailable)?;
         file.sync_all().map_err(unavailable)?;
         drop(file);
+        self.observe(CheckpointSaveStage::PendingSynced);
         std::fs::rename(&pending, &self.path).map_err(unavailable)?;
+        self.observe(CheckpointSaveStage::Replaced);
         #[cfg(not(windows))]
         if let Some(parent) = self.path.parent() {
             std::fs::File::open(parent)

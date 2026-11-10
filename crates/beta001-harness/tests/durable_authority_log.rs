@@ -5,8 +5,8 @@
 //! per-test temporary directory, and nothing here is the C01 milestone.
 
 use beta001_harness::durable_authority::{
-    authority_log_config, AttemptOutcome, AuthorityJournal, AuthorityLogError, CheckpointStore,
-    DurableAuthority, FileCheckpoint, HeadAnchor, LedgerJournal, TrustConfig,
+    authority_log_config, AttemptOutcome, AuthorityJournal, AuthorityLogError, CheckpointSaveStage,
+    CheckpointStore, DurableAuthority, FileCheckpoint, HeadAnchor, LedgerJournal, TrustConfig,
     AUTHORITY_LOG_EVENT_TYPE,
 };
 use sovereign_agent_runtime::capability::{
@@ -1556,5 +1556,110 @@ fn dal_42_process_death_after_publication_leaves_consumed_with_unknown_outcome()
         assert!(consumed(
             authority.authorize(&attempt, &clock(T_LATER)).unwrap_err()
         ));
+    }
+}
+
+// --- Process death during the checkpoint's own save -------------------------------------
+
+const CP_WORKER_DIR: &str = "DAL_CP_WORKER_DIR";
+const CP_WORKER_CRASH: &str = "DAL_CP_WORKER_CRASH";
+
+#[test]
+fn dal_43_checkpoint_crash_worker() {
+    let (Ok(directory), Ok(crash)) = (std::env::var(CP_WORKER_DIR), std::env::var(CP_WORKER_CRASH))
+    else {
+        return; // Not running as a worker: nothing to do.
+    };
+    let root = PathBuf::from(directory);
+    let checkpoint_dir = root.join("checkpoint");
+    std::fs::create_dir_all(&checkpoint_dir).unwrap();
+    let stage = match crash.as_str() {
+        "started" => CheckpointSaveStage::Started,
+        "pending" => CheckpointSaveStage::PendingSynced,
+        "replaced" => CheckpointSaveStage::Replaced,
+        other => panic!("unknown crash point {other}"),
+    };
+
+    // The observer stays quiet during setup and is armed just before the
+    // authorization whose checkpoint save is to be interrupted.
+    let armed = Rc::new(Cell::new(false));
+    let mut checkpoint = FileCheckpoint::new(checkpoint_dir.join("authority.checkpoint"));
+    let observer_armed = Rc::clone(&armed);
+    checkpoint.set_stage_observer(Box::new(move |reached| {
+        if observer_armed.get() && reached == stage {
+            std::process::exit(WORKER_EXIT);
+        }
+    }));
+
+    let mut authority = DurableAuthority::create_with_checkpoint(
+        authority_log_config(root.join("authority-log")),
+        trust(),
+        Box::new(checkpoint),
+    )
+    .unwrap();
+    authority
+        .register_identity(identity(), &clock(T_REGISTER))
+        .unwrap();
+    let request = request();
+    let grant_id = authority
+        .admit(&request, &approval(&request), &clock(T_ADMIT))
+        .unwrap();
+
+    armed.set(true);
+    let _ = authority.authorize(&attempt(&grant_id), &clock(T_ATTEMPT));
+    // Reaching this line means the crash point was never hit.
+    std::process::exit(1);
+}
+
+#[test]
+fn dal_44_process_death_during_checkpoint_save_reopens_consumed_with_unknown_outcome() {
+    // The consumption record is durable in every case; only the checkpoint differs.
+    for (crash, checkpoint_records, pending_left) in [
+        ("started", 3, false),
+        ("pending", 3, true),
+        ("replaced", 4, false),
+    ] {
+        let temp = TempDir::new().unwrap();
+        let status = std::process::Command::new(std::env::current_exe().unwrap())
+            .args(["dal_43_checkpoint_crash_worker", "--exact", "--nocapture"])
+            .env(CP_WORKER_DIR, temp.path())
+            .env(CP_WORKER_CRASH, crash)
+            .stdout(std::process::Stdio::null())
+            .stderr(std::process::Stdio::null())
+            .status()
+            .expect("start worker");
+        assert_eq!(status.code(), Some(WORKER_EXIT), "crash point {crash}");
+
+        // The checkpoint is never left half-written: it is the old one or the new one.
+        let before_open = file_checkpoint(&temp)
+            .load()
+            .expect("checkpoint readable")
+            .expect("checkpoint present");
+        assert_eq!(
+            before_open.records, checkpoint_records,
+            "crash point {crash}"
+        );
+        assert_eq!(
+            checkpoint_path(&temp).with_extension("pending").exists(),
+            pending_left,
+            "crash point {crash}"
+        );
+
+        let mut authority = reopen_checkpointed(&temp).expect("reopen");
+        let attempt = worker_attempt(&authority);
+        assert_eq!(
+            authority.unknown_outcomes(),
+            vec![attempt.attempt_id.clone()],
+            "crash point {crash}"
+        );
+        assert!(consumed(
+            authority.authorize(&attempt, &clock(T_LATER)).unwrap_err()
+        ));
+        // Opening brought the checkpoint up to the log's head.
+        assert_eq!(authority.head().records, 4);
+        assert_eq!(file_checkpoint(&temp).load(), Ok(Some(authority.head())));
+        drop(authority);
+        // A leftover pending file does not get in the way of later saves or opens.
+        assert!(reopen_checkpointed(&temp).is_ok());
     }
 }
