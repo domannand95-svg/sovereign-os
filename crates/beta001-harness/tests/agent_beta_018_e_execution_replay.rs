@@ -348,6 +348,45 @@ fn o18_e_013_replay_rejects_tampered_receipt() {
 }
 
 #[test]
+fn o18_e_015_replay_rejects_receipt_digest_only_tamper() {
+    let (registry, grant_id) = admitted_registry();
+    let grant = registry.grant(&grant_id).unwrap().clone();
+    let attempt = attempt(grant_id);
+    let receipt = receipt_for(&attempt);
+    let tampered = ExecutionReceipt {
+        receipt_digest: "0".repeat(64),
+        ..receipt.clone()
+    };
+    assert_ne!(tampered.receipt_digest, receipt.receipt_digest);
+
+    let events_with = |recorded: ExecutionReceipt| {
+        vec![
+            RuntimeEvent::GrantAdmitted {
+                grant: grant.clone(),
+                recorded_at: "2026-08-20T10:00:00Z".into(),
+            },
+            RuntimeEvent::ExecutionAuthorized {
+                attempt: attempt.clone(),
+                recorded_at: "2026-08-20T10:15:00Z".into(),
+            },
+            RuntimeEvent::ReceiptRecorded {
+                receipt: recorded,
+                recorded_at: "2026-08-20T10:16:00Z".into(),
+            },
+        ]
+    };
+
+    assert!(replay(&events_with(receipt), &execution_verifying_key())
+        .unwrap()
+        .recorded_receipts
+        .contains(&attempt.attempt_id));
+    assert_eq!(
+        replay(&events_with(tampered), &execution_verifying_key()),
+        Err(ReplayError::InvalidReceipt)
+    );
+}
+
+#[test]
 fn o18_e_014_identity_revocation_invalidates_existing_grant() {
     let (mut registry, grant_id) = admitted_registry();
     let identity_id = active_identity().identity_id;
