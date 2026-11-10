@@ -46,6 +46,9 @@ pub enum ExecutionAuthorizationError {
     InvalidAttemptIdentity,
     AlreadyConsumed,
     UnknownGrant,
+    /// The request, or the exact grant, has already been admitted. Approval
+    /// evidence is single-use and admission never revives a grant.
+    DuplicateAdmission,
     GrantAdmission(GrantValidationError),
     Identity(IdentityValidationError),
     IdentityInactive,
@@ -83,6 +86,7 @@ pub struct CapabilityRegistry {
     policy_id: String,
     policy_verifying_key: [u8; 32],
     grants: HashMap<GrantId, CapabilityGrant>,
+    admitted_requests: HashSet<String>,
     consumed_grants: HashSet<GrantId>,
     consumed_attempts: HashSet<AttemptId>,
     identities: IdentityRegistry,
@@ -94,6 +98,7 @@ impl CapabilityRegistry {
             policy_id: policy_id.into(),
             policy_verifying_key,
             grants: HashMap::new(),
+            admitted_requests: HashSet::new(),
             consumed_grants: HashSet::new(),
             consumed_attempts: HashSet::new(),
             identities: IdentityRegistry::default(),
@@ -135,7 +140,17 @@ impl CapabilityRegistry {
         }
         let grant = issue_grant(request, evaluation, &self.policy_verifying_key, issued_at)
             .map_err(ExecutionAuthorizationError::GrantAdmission)?;
+        // One approved request yields at most one grant, whatever the issue time
+        // (ADAM-010 T010-004), and an existing grant is never replaced, so a
+        // revoked, expired or consumed grant cannot be revived by repeating its
+        // admission (EXP-BETA-016 INVARIANT-068 and INVARIANT-069).
+        if self.admitted_requests.contains(&request.request_id.0)
+            || self.grants.contains_key(&grant.grant_id)
+        {
+            return Err(ExecutionAuthorizationError::DuplicateAdmission);
+        }
         let grant_id = grant.grant_id.clone();
+        self.admitted_requests.insert(request.request_id.0.clone());
         self.grants.insert(grant_id.clone(), grant);
         Ok(grant_id)
     }

@@ -53,6 +53,9 @@ pub enum IdentityValidationError {
     InvalidPublicKeyDigest,
     InvalidIdentity,
     UnknownIdentity,
+    /// The identity is already registered. Status changes go through
+    /// `set_status`; registration never replaces an existing record.
+    AlreadyRegistered,
 }
 
 #[derive(Default)]
@@ -63,6 +66,9 @@ pub struct IdentityRegistry {
 impl IdentityRegistry {
     pub fn register(&mut self, identity: AgentIdentity) -> Result<(), IdentityValidationError> {
         validate_identity(&identity)?;
+        if self.identities.contains_key(&identity.identity_id) {
+            return Err(IdentityValidationError::AlreadyRegistered);
+        }
         self.identities
             .insert(identity.identity_id.clone(), identity);
         Ok(())
