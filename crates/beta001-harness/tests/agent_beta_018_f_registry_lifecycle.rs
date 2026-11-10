@@ -218,6 +218,58 @@ fn o18_f_004_explicit_status_change_is_the_intended_way_to_reactivate() {
         .is_ok());
 }
 
+#[test]
+fn o18_f_013_revocation_is_final_for_an_identity() {
+    // Owner decision, 2026-11-11: a revoked identity stays revoked. Access needs a
+    // new identity and a fresh approval. No earlier contract settled this.
+    let (mut registry, grant_id) = admitted();
+    let id = identity().identity_id;
+    registry
+        .set_identity_status(&id, AgentIdentityStatus::Revoked)
+        .unwrap();
+
+    for status in [
+        AgentIdentityStatus::Active,
+        AgentIdentityStatus::Suspended,
+        AgentIdentityStatus::Pending,
+        AgentIdentityStatus::Revoked,
+    ] {
+        assert_eq!(
+            registry.set_identity_status(&id, status),
+            Err(ExecutionAuthorizationError::Identity(
+                IdentityValidationError::IdentityRevoked
+            ))
+        );
+    }
+    assert_eq!(
+        registry.authorize_and_consume(&attempt(&grant_id), &clock()),
+        Err(ExecutionAuthorizationError::IdentityInactive)
+    );
+    let renewed = request_created_at("2026-08-20T09:56:00Z");
+    assert_eq!(
+        registry.admit(&renewed, &approval(&renewed), T_ADMIT_LATER),
+        Err(ExecutionAuthorizationError::IdentityInactive)
+    );
+}
+
+#[test]
+fn o18_f_014_suspension_stays_reversible_and_can_still_end_in_revocation() {
+    let (mut registry, grant_id) = admitted();
+    let id = identity().identity_id;
+    for status in [
+        AgentIdentityStatus::Suspended,
+        AgentIdentityStatus::Active,
+        AgentIdentityStatus::Suspended,
+        AgentIdentityStatus::Revoked,
+    ] {
+        registry.set_identity_status(&id, status).unwrap();
+    }
+    assert_eq!(
+        registry.authorize_and_consume(&attempt(&grant_id), &clock()),
+        Err(ExecutionAuthorizationError::IdentityInactive)
+    );
+}
+
 // --- Grant admission ----------------------------------------------------------
 
 #[test]

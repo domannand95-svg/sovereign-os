@@ -56,6 +56,9 @@ pub enum IdentityValidationError {
     /// The identity is already registered. Status changes go through
     /// `set_status`; registration never replaces an existing record.
     AlreadyRegistered,
+    /// The identity is revoked. Revocation is final: access needs a new identity
+    /// and a fresh approval. Suspension, by contrast, is reversible.
+    IdentityRevoked,
 }
 
 #[derive(Default)]
@@ -83,6 +86,9 @@ impl IdentityRegistry {
             .identities
             .get_mut(identity_id)
             .ok_or(IdentityValidationError::UnknownIdentity)?;
+        if identity.status == AgentIdentityStatus::Revoked {
+            return Err(IdentityValidationError::IdentityRevoked);
+        }
         identity.status = status;
         Ok(())
     }
