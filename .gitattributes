@@ -1,1 +1,2 @@
 docs/experiments/local-agent-beta/fixtures/raw-output-adapter/*.txt text eol=lf
+crates/beta001-harness/tests/fixtures/unicode17_v1_package.json text eol=lf

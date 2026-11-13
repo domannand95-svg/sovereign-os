@@ -1,0 +1,91 @@
+{
+  "sanitized_ingress": {
+    "original_request": {
+      "schema_version": "v1.0.0",
+      "user_id": "usr_alice_001",
+      "session_id": "ses_portal_123",
+      "intent": "Execute controlled diagnostic query",
+      "proposed_operation": "RequestReview",
+      "source_evidence_references": [
+        "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      ],
+      "timestamp": "2026-08-24T02:05:00Z"
+    },
+    "raw_intent_digest": "01aeb1fbe68e7e88fed7ec0a919c3916096d127778ea7c7a28aa6b404a84e682",
+    "normalized_intent": "Execute controlled diagnostic query",
+    "normalized_intent_digest": "01aeb1fbe68e7e88fed7ec0a919c3916096d127778ea7c7a28aa6b404a84e682",
+    "server_intake_timestamp": "2026-08-24T02:05:00Z"
+  },
+  "proposal_response": {
+    "schema_version": "v1.0.0",
+    "proposal_id": "prop_738f513e1fd2d63bc2e195d0",
+    "session_id": "ses_portal_123",
+    "lifecycle_state": "AWAITING_APPROVAL",
+    "risk_context": {
+      "context_id": "risk-ctx-prop_738f513e1fd2d63bc2e195d0",
+      "risk_level": "LOW",
+      "blast_radius": "SUBSYSTEM"
+    },
+    "required_approval_level": "PEER",
+    "authority_delta": 0,
+    "provenance_digest": "738f513e1fd2d63bc2e195d0fb95dd025b827775292ec9a27f9385c4043b526f",
+    "timestamp": "2026-08-24T02:05:00Z"
+  },
+  "risk_context": {
+    "context_id": "risk-ctx-prop_738f513e1fd2d63bc2e195d0",
+    "proposal_id": "prop_738f513e1fd2d63bc2e195d0",
+    "risk_level": "Low",
+    "blast_radius": "Subsystem",
+    "evaluator_identity": "system-risk-evaluator-v1"
+  },
+  "approval_receipt": {
+    "receipt_id": "apr_gov_001",
+    "proposal_id": "prop_738f513e1fd2d63bc2e195d0",
+    "risk_context_id": "risk-ctx-prop_738f513e1fd2d63bc2e195d0",
+    "approver_identity": "governance_peer_1",
+    "approval_level": "Peer",
+    "timestamp": "2026-08-24T02:05:00Z",
+    "expiration_timestamp": "2099-12-31T23:59:59Z",
+    "signature": "crypto_sig_abc"
+  },
+  "execution_response": {
+    "schema_version": "v1.0.0",
+    "execution_id": "exe_fbd4ee3575f9231d9a506cc3",
+    "proposal_id": "prop_738f513e1fd2d63bc2e195d0",
+    "approval_receipt_id": "apr_gov_001",
+    "claim_state": "EXECUTION_CLAIMED",
+    "dispatch_state": "NOT_DISPATCHED",
+    "outcome_state": "PENDING",
+    "authority_delta": 0,
+    "evidence_package_digest": "738f513e1fd2d63bc2e195d0fb95dd025b827775292ec9a27f9385c4043b526f",
+    "timestamp": "2026-08-24T02:05:00Z"
+  },
+  "inference_records": [
+    {
+      "schema_version": "v1.0.0",
+      "session_id": "ses_portal_123",
+      "provider_identity": "gemini-2.5-pro",
+      "adapter_identity": "adapter_v1",
+      "request_digest": "2f5e29b57a9bb8d31dadeb69591d06ad9672fe7dac78a4cab1cd5367f46206c2",
+      "response_digest": "5bea5455d0f0ae828cabd020a0a4003a8e773a259cb153163e6936352ed65af7",
+      "transport_status": "SUCCESS",
+      "raw_model_output": "Analysis: Low risk.",
+      "evidence_seal_digest": "61a752cb855bdcd3e0466122b9ca699c34f42fa1c0b34cba274615ebae4f2b00",
+      "timestamp": "2026-08-24T02:05:00Z"
+    },
+    {
+      "schema_version": "v1.0.0",
+      "session_id": "ses_portal_123",
+      "provider_identity": "gemini-2.5-pro",
+      "adapter_identity": "adapter_v1",
+      "request_digest": "763b2e951954df58564ad2e7ea9ba8112c7a7f6c335efcf24882cbd6a41fc39e",
+      "response_digest": "e88a327df70639f8f21ce63902ec3db4ffbecc330e81c7de64a6c1ddbf5b414a",
+      "transport_status": "SUCCESS",
+      "raw_model_output": "Report finalized.",
+      "evidence_seal_digest": "a3895ce83328e264621f8e9dcd4f87e2c2122079120d13aa45687c0e6d7080c3",
+      "timestamp": "2026-08-24T02:05:00Z"
+    }
+  ],
+  "package_digest": "ab68e504a3d07f96b23a85420a4f5a66753704eb67d2fbac7609b8c57a717a9e",
+  "closed_timestamp": "2026-08-24T02:05:00Z"
+}

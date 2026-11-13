@@ -35,6 +35,56 @@ fn sample_auth_context(user_id: &str, session_id: &str) -> AuthenticatedClientCo
 }
 
 #[test]
+fn unicode17_raw_byte_limit_precedes_filtering_and_normalization() {
+    let now = Utc::now();
+    let auth = sample_auth_context("usr_limits", "ses_limits");
+    for (intent, expected) in [
+        (format!("{}\u{209d}", "a".repeat(65_532)), true),
+        (format!("{}\u{209d}", "a".repeat(65_533)), true),
+        (format!("{}\u{209d}", "a".repeat(65_534)), false),
+        ("\0".repeat(MAX_INTENT_BYTES + 1), false),
+    ] {
+        let mut req = sample_request("usr_limits", "ses_limits", &intent);
+        req.timestamp = now;
+        let result = ClientSanitizer::sanitize_proposal_request(req, &auth, now);
+        if expected {
+            assert_eq!(result.unwrap().normalized_intent, intent);
+        } else {
+            assert!(matches!(
+                result,
+                Err(ClientSanitizationError::IntentPayloadExceeded { .. })
+            ));
+        }
+    }
+}
+
+#[test]
+fn unicode17_does_not_add_a_post_normalization_cap_or_scalar_gate() {
+    let now = Utc::now();
+    let auth = sample_auth_context("usr_limits", "ses_limits");
+    for intent in [
+        format!("{}\u{fdfa}", "a".repeat(65_533)),
+        format!("{}\u{1b123}", "a".repeat(65_532)),
+        String::new(),
+        "\0\u{7f}".into(),
+    ] {
+        let mut req = sample_request("usr_limits", "ses_limits", &intent);
+        req.timestamp = now;
+        let result = ClientSanitizer::sanitize_proposal_request(req, &auth, now).unwrap();
+        if intent.ends_with('\u{fdfa}') {
+            assert_eq!(intent.len(), MAX_INTENT_BYTES);
+            assert!(result.normalized_intent.len() > MAX_INTENT_BYTES);
+        } else if intent.ends_with('\u{1b123}') {
+            assert_eq!(result.normalized_intent, intent);
+            assert_eq!(result.normalized_intent.len(), MAX_INTENT_BYTES);
+            assert_eq!(result.normalized_intent.chars().count(), 65_533);
+        } else {
+            assert!(result.normalized_intent.is_empty());
+        }
+    }
+}
+
+#[test]
 fn test_d011_001_raw_and_normalized_digests_preserved() {
     let raw_intent = "Diagnostic \u{212A} report \u{0000}generation"; // Contains Kelvin sign and null byte
     let server_time = Utc::now();
